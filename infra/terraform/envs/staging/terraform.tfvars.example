@@ -5,7 +5,7 @@ aws_region = "us-east-1"
 # GitHub connection for Amplify
 github_repository_url = "https://github.com/landsamboni/pedidoscloud"
 github_access_token   = "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-amplify_branch        = "staging"
+amplify_branch        = "staging-aws"
 
 # Database
 db_password = "change-me-strong-password"

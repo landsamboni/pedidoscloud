@@ -31,7 +31,7 @@ variable "github_access_token" {
 variable "amplify_branch" {
   description = "Branch Amplify builds for this environment."
   type        = string
-  default     = "staging"
+  default     = "staging-aws"
 }
 
 # ---- Database ----

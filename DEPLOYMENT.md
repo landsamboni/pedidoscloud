@@ -28,7 +28,7 @@ AWS Amplify Hosting  ──►  build desde GitHub (rama por entorno)
 - **GitHub Personal Access Token (PAT)** con acceso al repo `landsamboni/pedidoscloud`
   (classic: scope `repo`; o fine-grained con permiso de *Contents/Webhooks*). Amplify lo
   usa para conectarse y crear el webhook.
-- El repo en GitHub con las ramas `staging` y `main`.
+- El repo en GitHub con las ramas `staging-aws` (staging) y `main` (prod).
 - Cliente de Postgres para migraciones: basta con Node + Prisma (ya en `apps/web`).
 
 ---
@@ -57,7 +57,7 @@ terraform apply
 ```
 
 Esto crea: bucket S3 privado, usuario IAM con acceso al bucket, instancia RDS PostgreSQL,
-app de Amplify + rama `staging` con todas las variables de entorno ya configuradas.
+app de Amplify + rama `staging-aws` con todas las variables de entorno ya configuradas.
 
 Al terminar, mira los outputs:
 
@@ -89,9 +89,9 @@ Terraform ya crea la app y la rama, pero la **primera conexión a GitHub** neces
 PAT sea válido. Tras `apply`:
 
 1. Abre la consola de **AWS Amplify** → tu app `pedidoscloud-staging`.
-2. Confirma que la rama `staging` aparece conectada y que detecta el `amplify.yml` del repo
+2. Confirma que la rama `staging-aws` aparece conectada y que detecta el `amplify.yml` del repo
    (monorepo, `appRoot: apps/web`, plataforma **WEB_COMPUTE** para SSR).
-3. Lanza el primer build: **Run build** (o haz un push a `staging`).
+3. Lanza el primer build: **Run build** (o haz un push a `staging-aws`).
 4. Si el build no arranca solo, en *App settings → General* revisa que el repositorio y el
    token estén OK.
 
@@ -150,9 +150,9 @@ El dominio `pedidoscloud.com` está en Cloudflare. Lo más simple para el MVP es
 registro a la URL de Amplify:
 
 1. En Terraform: `terraform output amplify_branch_url`
-   (ej. `https://staging.d1abcd2efghij.amplifyapp.com`).
+   (ej. `https://staging-aws.d1abcd2efghij.amplifyapp.com`).
 2. En Cloudflare → DNS, crea un **CNAME**:
-   - Staging: `staging` → `staging.d1abcd2efghij.amplifyapp.com` (Proxy: naranja ON).
+   - Staging: `staging` → `staging-aws.d1abcd2efghij.amplifyapp.com` (Proxy: naranja ON).
    - Prod: `@` o `www` → `main.dXXXX.amplifyapp.com`.
 3. SSL/TLS en Cloudflare en modo **Full**.
 
@@ -171,7 +171,7 @@ Están separados por carpeta de Terraform y por rama de Git:
 | | Staging | Prod |
 | --- | --- | --- |
 | Carpeta Terraform | `infra/terraform/envs/staging` | `infra/terraform/envs/prod` |
-| Rama de Amplify | `staging` | `main` |
+| Rama de Amplify | `staging-aws` | `main` |
 | Recursos | sufijo `-staging` | sufijo `-prod` |
 | RDS | `db.t3.micro`, sin protección | `db.t3.small`, `deletion_protection`, snapshot final, backups 14 días |
 | S3 | `force_destroy = true` | `force_destroy = false` |
