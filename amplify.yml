@@ -1,26 +1,26 @@
-# AWS Amplify Hosting build settings (monorepo).
-# The Next.js app lives in apps/web. Set the Amplify app's "monorepo app root"
-# to apps/web in the console, or rely on the appRoot below.
+# AWS Amplify Hosting build settings.
 #
-# Migrations are NOT run here on purpose — run `npm run db:deploy` against RDS
-# manually (see DEPLOYMENT.md). Build only generates the Prisma client + builds.
+# AMPLIFY_MONOREPO_APP_ROOT=apps/web is set as an Amplify environment variable
+# (via Terraform). Amplify navigates to that directory before running this spec,
+# so the build commands run from apps/web — no `applications:` wrapper needed.
+#
+# Migrations are NOT run here — run `npm run db:deploy` against RDS manually
+# (see DEPLOYMENT.md). Build only generates the Prisma client + next build.
 version: 1
-applications:
-  - appRoot: apps/web
-    frontend:
-      phases:
-        preBuild:
-          commands:
-            - npm ci
-        build:
-          commands:
-            # package.json "build" runs `prisma generate && next build`
-            - npm run build
-      artifacts:
-        baseDirectory: .next
-        files:
-          - "**/*"
-      cache:
-        paths:
-          - node_modules/**/*
-          - .next/cache/**/*
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+    build:
+      commands:
+        # package.json "build" runs `prisma generate && next build`
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - "**/*"
+  cache:
+    paths:
+      - node_modules/**/*
+      - .next/cache/**/*
