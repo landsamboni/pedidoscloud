@@ -60,17 +60,20 @@ module "amplify" {
   branch_stage        = "PRODUCTION"
 
   # Amplify rejects env var names starting with "AWS"; see lib/storage.ts.
+  # AMPLIFY_MONOREPO_APP_ROOT is required for Amplify to locate package.json
+  # in a monorepo — appRoot in amplify.yml alone is not enough.
   environment_variables = {
-    DATABASE_URL         = module.rds.database_url
-    STORAGE_DRIVER       = "s3"
-    S3_REGION            = var.aws_region
-    S3_BUCKET            = module.s3_uploads.bucket_name
-    S3_ACCESS_KEY_ID     = module.iam.access_key_id
-    S3_SECRET_ACCESS_KEY = module.iam.secret_access_key
-    ADMIN_USER           = var.admin_user
-    ADMIN_PASSWORD       = var.admin_password
-    RESTAURANT_USER      = var.restaurant_user
-    RESTAURANT_PASSWORD  = var.restaurant_password
+    AMPLIFY_MONOREPO_APP_ROOT = "apps/web"
+    DATABASE_URL              = module.rds.database_url
+    STORAGE_DRIVER            = "s3"
+    S3_REGION                 = var.aws_region
+    S3_BUCKET                 = module.s3_uploads.bucket_name
+    S3_ACCESS_KEY_ID          = module.iam.access_key_id
+    S3_SECRET_ACCESS_KEY      = module.iam.secret_access_key
+    ADMIN_USER                = var.admin_user
+    ADMIN_PASSWORD            = var.admin_password
+    RESTAURANT_USER           = var.restaurant_user
+    RESTAURANT_PASSWORD       = var.restaurant_password
   }
 
   tags = local.tags
