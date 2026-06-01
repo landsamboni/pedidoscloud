@@ -1,0 +1,22 @@
+# Copy to terraform.tfvars and fill in. terraform.tfvars is gitignored.
+
+aws_region = "us-east-1"
+
+# GitHub connection for Amplify
+github_repository_url = "https://github.com/landsamboni/pedidoscloud"
+github_access_token   = "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+amplify_branch        = "staging"
+
+# Database
+db_password = "change-me-strong-password"
+# Your laptop's public IP so you can run Prisma migrations. Find it with:
+#   curl -s https://checkip.amazonaws.com
+# For Amplify SSR to also reach RDS you may need to widen this — see DEPLOYMENT.md.
+db_allowed_cidr_blocks = ["203.0.113.10/32"]
+
+# Operator auth (HTTP Basic Auth)
+admin_password      = "change-me-admin"
+restaurant_password = "change-me-restaurant"
+
+# Optional
+enable_secrets_manager = false

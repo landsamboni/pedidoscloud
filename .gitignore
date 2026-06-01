@@ -1,6 +1,33 @@
-node_modules
-.next
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+*.tsbuildinfo
+
+# Env files (never commit secrets)
 .env
+.env.local
+.env.*.local
+
+# Logs
 *.log
-public/uploads/*
-!public/uploads/.gitkeep
+
+# Uploaded files (local storage driver) — keep the folder, ignore contents
+apps/web/public/uploads/*
+!apps/web/public/uploads/.gitkeep
+
+# OS
+.DS_Store
+
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+# tfvars hold real values/secrets; commit only the *.example files
+infra/terraform/**/*.tfvars
+!infra/terraform/**/*.tfvars.example
