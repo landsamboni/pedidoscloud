@@ -1,26 +1,26 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth";
 
-export default function Home() {
-  return (
-    <main className="mx-auto max-w-3xl p-6">
-      <section className="card mt-10">
-        <p className="text-sm font-semibold uppercase tracking-wide text-teal-600">Demo local</p>
-        <h1 className="mt-2 text-3xl font-bold">Pedidos de almuerzo</h1>
-        <p className="mt-3 text-stone-600">
-          Un flujo simple para enviar un enlace por WhatsApp y recibir pedidos ordenados.
-        </p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Link className="button-primary" href="/r/martica-la-bonita">
-            Pedir en Martica la Bonita
-          </Link>
-          <Link className="button-secondary" href="/restaurant/martica-la-bonita/orders" prefetch={false}>
-            Ver tablero
-          </Link>
-          <Link className="button-secondary" href="/admin" prefetch={false}>
-            Abrir admin
-          </Link>
-        </div>
-      </section>
-    </main>
-  );
+/**
+ * Root route — smart redirect based on session state.
+ *
+ * Authenticated as restaurant → /restaurant/[slug]
+ * Authenticated as admin      → /admin
+ * Not authenticated           → /login
+ *
+ * Customer-facing pages (/r/[slug]) are shared directly by the restaurant
+ * and are never reached through this root route.
+ */
+export default async function RootPage() {
+  const session = await getSession();
+
+  if (session?.role === "admin") {
+    redirect("/admin");
+  }
+
+  if (session?.role === "restaurant" && session.restaurantSlug) {
+    redirect(`/restaurant/${session.restaurantSlug}`);
+  }
+
+  redirect("/login");
 }
