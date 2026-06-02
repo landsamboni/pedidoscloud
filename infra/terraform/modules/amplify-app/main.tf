@@ -10,9 +10,6 @@ resource "aws_amplify_app" "this" {
   access_token = var.github_access_token
   platform     = "WEB_COMPUTE"
 
-  # App-level env vars are inherited by every branch.
-  environment_variables = var.environment_variables
-
   # Next.js SPA-style rewrite so client-side routes resolve. Amplify adds the
   # SSR routing automatically for WEB_COMPUTE; this is a safe catch-all.
   custom_rule {
@@ -36,6 +33,11 @@ resource "aws_amplify_branch" "this" {
   stage       = var.branch_stage
 
   enable_auto_build = var.enable_auto_build
+
+  # Set env vars at the BRANCH level, not the app level.
+  # Amplify WEB_COMPUTE SSR compute reads env vars from the branch configuration;
+  # app-level vars reach CodeBuild (build time) but not the SSR compute (runtime).
+  environment_variables = var.environment_variables
 
   tags = var.tags
 }
