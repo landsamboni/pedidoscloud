@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { deleteRestaurant, deleteRestaurantOrders, deleteRestaurantOrdersByDate, populateDemoData, setRestaurantPassword, setRestaurantSubscription } from "@/app/actions";
+import { deactivateRestaurantSubscription, deleteRestaurant, deleteRestaurantOrders, deleteRestaurantOrdersByDate, populateDemoData, setRestaurantPassword, setRestaurantSubscription } from "@/app/actions";
 import { getDaysRemaining, getSubscriptionStatus, STATUS_COLORS, STATUS_LABELS } from "@/lib/subscription";
 import { logoutAction } from "@/app/login/actions";
 import { CreateRestaurantForm } from "@/components/create-restaurant-form";
@@ -53,9 +53,18 @@ export default async function AdminPage() {
               {(() => {
                 const status = getSubscriptionStatus(restaurant.subscriptionEndsAt ?? null);
                 const daysLeft = restaurant.subscriptionEndsAt ? getDaysRemaining(restaurant.subscriptionEndsAt) : null;
+                const endsAtStr = restaurant.subscriptionEndsAt
+                  ? new Date(restaurant.subscriptionEndsAt).toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" })
+                  : null;
+
+                // Default end date for "set-date" = today + 30 days
+                const defaultEndDate = new Date();
+                defaultEndDate.setDate(defaultEndDate.getDate() + 30);
+                const defaultEndDateStr = defaultEndDate.toISOString().slice(0, 10);
+
                 return (
                   <div className="mt-5 rounded-xl border border-stone-200 p-4">
-                    <div className="flex flex-wrap items-center gap-3">
+                    <div className="mb-4 flex flex-wrap items-center gap-3">
                       <h3 className="font-semibold">Suscripción</h3>
                       <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_COLORS[status]}`}>
                         {STATUS_LABELS[status]}
@@ -64,35 +73,71 @@ export default async function AdminPage() {
                         <span className="text-sm text-stone-500">
                           {daysLeft > 0
                             ? `${daysLeft} día${daysLeft !== 1 ? "s" : ""} restante${daysLeft !== 1 ? "s" : ""}`
-                            : daysLeft === 0
-                            ? "Vence hoy"
+                            : daysLeft === 0 ? "Vence hoy"
                             : `Venció hace ${Math.abs(daysLeft)} día${Math.abs(daysLeft) !== 1 ? "s" : ""}`}
                         </span>
                       )}
-                      {restaurant.subscriptionEndsAt && (
-                        <span className="text-xs text-stone-400">
-                          Vence: {new Date(restaurant.subscriptionEndsAt).toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" })}
-                        </span>
-                      )}
+                      {endsAtStr && <span className="text-xs text-stone-400">Hasta: {endsAtStr}</span>}
                     </div>
 
-                    <form action={setRestaurantSubscription} className="mt-3 flex flex-wrap items-end gap-3">
-                      <input name="restaurantId" type="hidden" value={restaurant.id} />
-                      <label className="text-sm font-medium text-stone-700">
-                        Fecha de pago recibido
-                        <input
-                          className="input mt-1"
-                          defaultValue={new Date().toISOString().slice(0, 10)}
-                          max={new Date().toISOString().slice(0, 10)}
-                          name="paymentDate"
-                          required
-                          type="date"
-                        />
-                      </label>
-                      <button className="button-primary" type="submit">
-                        {status === "no-subscription" ? "Activar suscripción" : "Renovar suscripción"}
-                      </button>
-                    </form>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      {/* Action 1 — Standard renewal (+30 days from correct base) */}
+                      <div className="rounded-xl border border-stone-200 bg-stone-50 p-3">
+                        <p className="text-xs font-semibold text-stone-700">Renovar (+30 días)</p>
+                        <p className="mt-0.5 text-xs text-stone-500">Registra el pago recibido. Extiende 30 días desde la base correcta.</p>
+                        <form action={setRestaurantSubscription} className="mt-2 space-y-2">
+                          <input name="restaurantId" type="hidden" value={restaurant.id} />
+                          <input name="mode" type="hidden" value="renew" />
+                          <input
+                            className="input text-sm"
+                            defaultValue={new Date().toISOString().slice(0, 10)}
+                            max={new Date().toISOString().slice(0, 10)}
+                            name="paymentDate"
+                            required
+                            title="Fecha en que recibiste el pago"
+                            type="date"
+                          />
+                          <button className="button-primary w-full text-sm" type="submit">
+                            {status === "no-subscription" ? "Activar" : "Registrar pago"}
+                          </button>
+                        </form>
+                      </div>
+
+                      {/* Action 2 — Set specific end date (manual override) */}
+                      <div className="rounded-xl border border-teal-200 bg-teal-50 p-3">
+                        <p className="text-xs font-semibold text-teal-800">Fijar fecha de vencimiento</p>
+                        <p className="mt-0.5 text-xs text-teal-700">Override manual. Define exactamente hasta cuándo está activa.</p>
+                        <form action={setRestaurantSubscription} className="mt-2 space-y-2">
+                          <input name="restaurantId" type="hidden" value={restaurant.id} />
+                          <input name="mode" type="hidden" value="set-date" />
+                          <input
+                            className="input text-sm"
+                            defaultValue={defaultEndDateStr}
+                            min={new Date().toISOString().slice(0, 10)}
+                            name="endDate"
+                            required
+                            title="Fecha hasta la que estará activa la suscripción"
+                            type="date"
+                          />
+                          <button className="button-primary w-full text-sm" type="submit">Aplicar</button>
+                        </form>
+                      </div>
+
+                      {/* Action 3 — Deactivate immediately */}
+                      <div className="rounded-xl border border-red-200 bg-red-50 p-3">
+                        <p className="text-xs font-semibold text-red-800">Desactivar ahora</p>
+                        <p className="mt-0.5 text-xs text-red-700">Suspende el acceso de forma inmediata. Útil ante impagos o cancelaciones.</p>
+                        <form action={deactivateRestaurantSubscription} className="mt-2">
+                          <input name="restaurantId" type="hidden" value={restaurant.id} />
+                          <button
+                            className="w-full rounded-xl border border-red-400 bg-white px-3 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50"
+                            type="submit"
+                          >
+                            Desactivar suscripción
+                          </button>
+                        </form>
+                      </div>
+                    </div>
 
                     {/* WhatsApp reminder button */}
                     {(() => {

@@ -433,6 +433,22 @@ export async function setRestaurantSubscription(formData: FormData) {
   if (!session || session.role !== "admin") throw new Error("No autorizado.");
 
   const restaurantId = String(formData.get("restaurantId"));
+  const mode = String(formData.get("mode") ?? "renew");
+
+  if (mode === "set-date") {
+    // Manual override: set a specific end date regardless of current state
+    const endDateRaw = String(formData.get("endDate"));
+    const endDate = new Date(`${endDateRaw}T23:59:59.000Z`);
+    if (isNaN(endDate.getTime())) throw new Error("Fecha inválida.");
+    await prisma.restaurant.update({
+      where: { id: restaurantId },
+      data: { subscriptionEndsAt: endDate },
+    });
+    revalidatePath("/admin");
+    return;
+  }
+
+  // mode === "renew": standard +30 days renewal from the correct base
   const paymentDate = new Date(String(formData.get("paymentDate")));
   if (isNaN(paymentDate.getTime())) throw new Error("Fecha de pago inválida.");
 
@@ -446,10 +462,7 @@ export async function setRestaurantSubscription(formData: FormData) {
 
   await prisma.restaurant.update({
     where: { id: restaurantId },
-    data: {
-      subscriptionStartedAt: paymentDate,
-      subscriptionEndsAt: newEndsAt,
-    },
+    data: { subscriptionStartedAt: paymentDate, subscriptionEndsAt: newEndsAt },
   });
   revalidatePath("/admin");
 }
@@ -501,6 +514,21 @@ export async function deleteRestaurant(formData: FormData) {
   if (confirmation !== slug) throw new Error("La confirmación no coincide con el slug.");
 
   await prisma.restaurant.delete({ where: { id: restaurantId } });
+  revalidatePath("/admin");
+}
+
+/** Admin: immediately deactivate a restaurant's subscription. */
+export async function deactivateRestaurantSubscription(formData: FormData) {
+  const { getSession } = await import("@/lib/auth");
+  const session = await getSession();
+  if (!session || session.role !== "admin") throw new Error("No autorizado.");
+
+  const restaurantId = String(formData.get("restaurantId"));
+  // Set endsAt to right now so middleware blocks access immediately on next request
+  await prisma.restaurant.update({
+    where: { id: restaurantId },
+    data: { subscriptionEndsAt: new Date() },
+  });
   revalidatePath("/admin");
 }
 
