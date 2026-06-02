@@ -16,7 +16,8 @@ const SESSION_TTL_HOURS = 12;
 
 export type SessionPayload = {
   role: "admin" | "restaurant";
-  restaurantSlug?: string; // only for role=restaurant
+  restaurantSlug?: string;          // only for role=restaurant
+  subscriptionEndsAt?: string;      // ISO string — checked in middleware without DB
 };
 
 function getSecret() {

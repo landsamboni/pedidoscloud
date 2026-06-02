@@ -4,6 +4,7 @@ import { RestaurantSettings } from "@/components/restaurant-settings";
 import { ChangePasswordForm } from "@/components/change-password-form";
 import { logoutAction } from "@/app/login/actions";
 import { formatMoney, formatOrderNumber } from "@/lib/format";
+import { getDaysRemaining, getSubscriptionStatus, STATUS_COLORS, STATUS_LABELS } from "@/lib/subscription";
 import { getTodayOrders } from "@/lib/data";
 
 export default async function RestaurantConsolePage({ params }: { params: Promise<{ restaurantSlug: string }> }) {
@@ -13,6 +14,9 @@ export default async function RestaurantConsolePage({ params }: { params: Promis
 
   const menuRestaurant = await import("@/lib/data").then(({ getRestaurantMenu }) => getRestaurantMenu(restaurantSlug));
   const menu = menuRestaurant?.menus[0];
+
+  const subStatus = getSubscriptionStatus(restaurant.subscriptionEndsAt ?? null);
+  const daysLeft = restaurant.subscriptionEndsAt ? getDaysRemaining(restaurant.subscriptionEndsAt) : null;
 
   return (
     <main className="mx-auto max-w-4xl p-4 sm:p-6">
@@ -29,6 +33,24 @@ export default async function RestaurantConsolePage({ params }: { params: Promis
         </form>
       </header>
 
+      {/* Subscription status banner */}
+      {subStatus !== "no-subscription" && subStatus !== "active" && (
+        <div className={`mb-4 rounded-xl border px-4 py-3 text-sm font-medium ${
+          subStatus === "expiring-soon" ? "border-amber-300 bg-amber-50 text-amber-800" :
+          subStatus === "grace" ? "border-orange-400 bg-orange-50 text-orange-900" :
+          "border-red-400 bg-red-50 text-red-900"
+        }`}>
+          {subStatus === "expiring-soon" && `⏰ Tu suscripción vence en ${daysLeft} día${daysLeft !== 1 ? "s" : ""} (${restaurant.subscriptionEndsAt!.toLocaleDateString("es-CO", { day: "numeric", month: "long" })}). Contáctanos para renovar.`}
+          {subStatus === "grace" && "⚠ Tu suscripción venció hoy. Tienes 24 horas de gracia. Realiza el pago para continuar sin interrupciones."}
+          {subStatus === "suspended" && "🔒 Suscripción suspendida. Contacta al administrador para reactivar."}
+        </div>
+      )}
+      {subStatus === "no-subscription" && (
+        <div className="mb-4 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-500">
+          📋 Sin suscripción activa. Contacta al administrador para activar tu cuenta.
+        </div>
+      )}
+
       <section className="card">
         <div className="flex flex-wrap gap-3">
           <Link className="button-primary" href={`/restaurant/${restaurantSlug}/orders`}>Pedidos de hoy</Link>
@@ -36,10 +58,19 @@ export default async function RestaurantConsolePage({ params }: { params: Promis
           <Link className="button-secondary" href={`/restaurant/${restaurantSlug}/analytics`}>Analíticas</Link>
           <Link className="button-secondary" href={`/r/${restaurantSlug}`}>Página del cliente</Link>
         </div>
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <div className="mt-5 grid gap-3 sm:grid-cols-4">
           <Summary label="Pedidos de hoy" value={String(restaurant.orders.length)} />
           <Summary label="Precio base" value={formatMoney(Number(restaurant.basePrice))} />
           <Summary label="Última orden" value={restaurant.orders.length ? formatOrderNumber(restaurant.orders.at(-1)!.orderNumber) : "Sin pedidos"} />
+          <div className={`rounded-xl p-3 ${STATUS_COLORS[subStatus]}`}>
+            <p className="text-sm opacity-80">Suscripción</p>
+            <p className="mt-1 font-bold">{STATUS_LABELS[subStatus]}</p>
+            {restaurant.subscriptionEndsAt && daysLeft !== null && (
+              <p className="mt-0.5 text-xs opacity-70">
+                {daysLeft > 0 ? `Renueva el ${restaurant.subscriptionEndsAt.toLocaleDateString("es-CO", { day: "numeric", month: "short" })}` : "Vencida"}
+              </p>
+            )}
+          </div>
         </div>
       </section>
 

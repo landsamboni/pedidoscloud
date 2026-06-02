@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { deleteRestaurant, deleteRestaurantOrders, deleteRestaurantOrdersByDate, setRestaurantPassword } from "@/app/actions";
+import { deleteRestaurant, deleteRestaurantOrders, deleteRestaurantOrdersByDate, setRestaurantPassword, setRestaurantSubscription } from "@/app/actions";
+import { getDaysRemaining, getSubscriptionStatus, STATUS_COLORS, STATUS_LABELS } from "@/lib/subscription";
 import { logoutAction } from "@/app/login/actions";
 import { CreateRestaurantForm } from "@/components/create-restaurant-form";
 import { RestaurantSettings } from "@/components/restaurant-settings";
@@ -47,6 +48,61 @@ export default async function AdminPage() {
                   <Link className="button-secondary" href={`/admin/customers/${restaurant.slug}`}>Clientes</Link>
                 </div>
               </div>
+
+              {/* Subscription management */}
+              {(() => {
+                const status = getSubscriptionStatus(restaurant.subscriptionEndsAt ?? null);
+                const daysLeft = restaurant.subscriptionEndsAt ? getDaysRemaining(restaurant.subscriptionEndsAt) : null;
+                return (
+                  <div className="mt-5 rounded-xl border border-stone-200 p-4">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <h3 className="font-semibold">Suscripción</h3>
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_COLORS[status]}`}>
+                        {STATUS_LABELS[status]}
+                      </span>
+                      {daysLeft !== null && (
+                        <span className="text-sm text-stone-500">
+                          {daysLeft > 0
+                            ? `${daysLeft} día${daysLeft !== 1 ? "s" : ""} restante${daysLeft !== 1 ? "s" : ""}`
+                            : daysLeft === 0
+                            ? "Vence hoy"
+                            : `Venció hace ${Math.abs(daysLeft)} día${Math.abs(daysLeft) !== 1 ? "s" : ""}`}
+                        </span>
+                      )}
+                      {restaurant.subscriptionEndsAt && (
+                        <span className="text-xs text-stone-400">
+                          Vence: {new Date(restaurant.subscriptionEndsAt).toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" })}
+                        </span>
+                      )}
+                    </div>
+
+                    <form action={setRestaurantSubscription} className="mt-3 flex flex-wrap items-end gap-3">
+                      <input name="restaurantId" type="hidden" value={restaurant.id} />
+                      <label className="text-sm font-medium text-stone-700">
+                        Fecha de pago recibido
+                        <input
+                          className="input mt-1"
+                          defaultValue={new Date().toISOString().slice(0, 10)}
+                          max={new Date().toISOString().slice(0, 10)}
+                          name="paymentDate"
+                          required
+                          type="date"
+                        />
+                      </label>
+                      <button className="button-primary" type="submit">
+                        {status === "no-subscription" ? "Activar suscripción" : "Renovar suscripción"}
+                      </button>
+                    </form>
+                    {(status === "grace" || status === "expiring-soon") && (
+                      <p className="mt-2 text-xs text-amber-700">
+                        {status === "grace"
+                          ? "⚠ En período de gracia. Al renovar, el nuevo ciclo empieza desde la fecha de vencimiento original."
+                          : "⏰ Próximo a vencer. Recuerda confirmar el pago antes de la fecha de corte."}
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
 
               <div className="mt-5">
                 <RestaurantSettings menu={menu} restaurant={restaurant} returnPath="/admin" />

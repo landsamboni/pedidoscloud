@@ -29,6 +29,8 @@ model Restaurant {
   nequiQrPath      String?
   whatsappPhone    String?
   passwordHash     String?           // bcrypt hash — set by admin, changeable by restaurant
+  subscriptionStartedAt DateTime?   // date admin confirmed payment
+  subscriptionEndsAt    DateTime?   // startedAt + 30 days (or extended)
   active        Boolean             @default(true)
   createdAt     DateTime            @default(now())
   menus         Menu[]

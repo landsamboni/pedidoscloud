@@ -291,6 +291,34 @@ export async function deleteRestaurantOrdersByDate(formData: FormData) {
   revalidatePath(`/restaurant/${restaurant.slug}/analytics`);
 }
 
+/** Admin: activate or renew a restaurant's subscription. */
+export async function setRestaurantSubscription(formData: FormData) {
+  const { getSession } = await import("@/lib/auth");
+  const session = await getSession();
+  if (!session || session.role !== "admin") throw new Error("No autorizado.");
+
+  const restaurantId = String(formData.get("restaurantId"));
+  const paymentDate = new Date(String(formData.get("paymentDate")));
+  if (isNaN(paymentDate.getTime())) throw new Error("Fecha de pago inválida.");
+
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { id: restaurantId },
+    select: { subscriptionEndsAt: true },
+  });
+
+  const { calculateNewSubscriptionEnd } = await import("@/lib/subscription");
+  const newEndsAt = calculateNewSubscriptionEnd(restaurant?.subscriptionEndsAt, paymentDate);
+
+  await prisma.restaurant.update({
+    where: { id: restaurantId },
+    data: {
+      subscriptionStartedAt: paymentDate,
+      subscriptionEndsAt: newEndsAt,
+    },
+  });
+  revalidatePath("/admin");
+}
+
 /** Admin: update a customer's name, phone and last address. */
 export async function updateCustomer(formData: FormData) {
   const { getSession } = await import("@/lib/auth");

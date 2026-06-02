@@ -27,7 +27,7 @@ export async function loginAction(_: LoginState, formData: FormData): Promise<Lo
   // Restaurant login — credentials from DB
   const restaurant = await prisma.restaurant.findUnique({
     where: { slug: username },
-    select: { slug: true, active: true, passwordHash: true },
+    select: { slug: true, active: true, passwordHash: true, subscriptionEndsAt: true },
   });
 
   if (!restaurant || !restaurant.active) return { error: "Credenciales inválidas." };
@@ -39,7 +39,11 @@ export async function loginAction(_: LoginState, formData: FormData): Promise<Lo
   const valid = await compare(password, restaurant.passwordHash);
   if (!valid) return { error: "Credenciales inválidas." };
 
-  await createSession({ role: "restaurant", restaurantSlug: restaurant.slug });
+  await createSession({
+    role: "restaurant",
+    restaurantSlug: restaurant.slug,
+    subscriptionEndsAt: restaurant.subscriptionEndsAt?.toISOString(),
+  });
   const dest = from && from.startsWith(`/restaurant/${username}`) ? from : `/restaurant/${username}`;
   redirect(dest);
 }

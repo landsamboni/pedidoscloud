@@ -1,21 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 import { COOKIE_NAME } from "@/lib/auth";
+import { GRACE_HOURS } from "@/lib/subscription";
 
-/**
- * JWT-based session middleware for operator areas of the app.
- *
- * Replaces the previous HTTP Basic Auth approach with proper per-restaurant
- * sessions. Sessions are stored in an HttpOnly cookie signed with AUTH_SECRET.
- *
- * Public routes (customer-facing) are NOT listed in the matcher and are
- * therefore never touched by this middleware.
- *
- * Auth flow:
- *   /admin/*       → requires role=admin
- *   /restaurant/[slug]/* → requires role=restaurant AND slug matches the path
- *   Unauthenticated or wrong role → redirect to /login?from=current_path
- */
 export const config = {
   matcher: ["/admin/:path*", "/restaurant/:path*"],
 };
@@ -29,16 +16,22 @@ async function getSession(token: string | undefined) {
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, getSecret());
-    return payload as { role: string; restaurantSlug?: string };
+    return payload as { role: string; restaurantSlug?: string; subscriptionEndsAt?: string };
   } catch {
     return null;
   }
 }
 
+function isSubscriptionSuspended(subscriptionEndsAt: string | undefined): boolean {
+  if (!subscriptionEndsAt) return false; // no subscription = allow (no-subscription state)
+  const endsAt = new Date(subscriptionEndsAt);
+  const graceCutoff = new Date(endsAt.getTime() + GRACE_HOURS * 60 * 60 * 1000);
+  return new Date() > graceCutoff;
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip Next.js router prefetch requests — they shouldn't trigger auth challenges
   const isPrefetch =
     request.headers.get("next-router-prefetch") === "1" ||
     request.headers.get("purpose") === "prefetch";
@@ -61,10 +54,19 @@ export async function middleware(request: NextRequest) {
   }
 
   if (pathname.startsWith("/restaurant")) {
-    const slug = pathname.split("/")[2]; // /restaurant/[slug]/...
+    const slug = pathname.split("/")[2];
     if (session.role !== "restaurant" || session.restaurantSlug !== slug) {
       return redirectToLogin();
     }
+
+    // Check subscription — suspended restaurants are blocked (grace period still allowed)
+    if (isSubscriptionSuspended(session.subscriptionEndsAt)) {
+      // Allow access to the /suspended page itself to avoid redirect loop
+      if (!pathname.includes("/suspended")) {
+        return NextResponse.redirect(new URL(`/restaurant/${slug}/suspended`, request.url));
+      }
+    }
+
     return NextResponse.next();
   }
 
