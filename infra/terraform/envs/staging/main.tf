@@ -180,10 +180,8 @@ module "amplify" {
     S3_SECRET_ACCESS_KEY = module.iam.secret_access_key
     ADMIN_USER           = var.admin_user
     ADMIN_PASSWORD       = var.admin_password
-    # RESTAURANT_USER / RESTAURANT_PASSWORD kept for backward compat but no longer
-    # used for auth (replaced by per-restaurant passwordHash in the database).
-    RESTAURANT_USER     = var.restaurant_user
-    RESTAURANT_PASSWORD = var.restaurant_password
+    RESTAURANT_USER      = var.restaurant_user
+
   }
 
   tags = local.tags

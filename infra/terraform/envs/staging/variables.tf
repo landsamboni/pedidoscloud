@@ -89,10 +89,10 @@ variable "restaurant_user" {
   default = "restaurante"
 }
 
-variable "restaurant_password" {
-  type      = string
-  sensitive = true
-}
+# variable "restaurant_password" {
+#   type      = string
+#   sensitive = true
+# }
 
 # ---- Auth ----
 variable "auth_secret" {
