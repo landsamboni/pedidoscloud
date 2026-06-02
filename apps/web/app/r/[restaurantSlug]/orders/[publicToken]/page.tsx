@@ -54,7 +54,7 @@ export default async function PublicOrderPage({ params }: { params: Promise<{ re
   return (
     <main className="mx-auto max-w-2xl p-4 sm:p-6">
       <header className="py-5">
-        <p className="text-sm font-bold uppercase tracking-wide text-rose-600">{order.restaurant.name}</p>
+        <p className="text-sm font-bold uppercase tracking-wide text-teal-600">{order.restaurant.name}</p>
         <h1 className="mt-1 text-3xl font-bold">Pedido {formatOrderNumber(order.orderNumber)}</h1>
       </header>
 
@@ -95,8 +95,8 @@ export default async function PublicOrderPage({ params }: { params: Promise<{ re
                   <Image alt={`QR Nequi de ${order.restaurant.name}`} className="h-auto w-full" height={320} src={nequiQrUrl} width={320} unoptimized />
                 </div>
               )}
-              <div className="mt-4 rounded-2xl bg-rose-50 p-4 text-base">
-                <p className="text-sm font-semibold uppercase tracking-wide text-rose-600">Celular o llave Nequi</p>
+              <div className="mt-4 rounded-2xl bg-purple-50 p-4 text-base">
+                <p className="text-sm font-semibold uppercase tracking-wide text-purple-700">Celular o llave Nequi</p>
                 <p className="mt-1 text-2xl font-bold tracking-wide">{order.restaurant.nequiPhone}</p>
                 <p className="mt-2"><strong>Titular:</strong> {order.restaurant.nequiAccountName}</p>
               </div>
@@ -141,17 +141,32 @@ export default async function PublicOrderPage({ params }: { params: Promise<{ re
 
       {/* Waiting for verification — below proof confirmation, above WhatsApp */}
       {isWaiting && order.paymentProofPath && (
-        <section className="card mt-4 border-rose-200 bg-rose-50">
+        <section className="card mt-4 border-amber-200 bg-amber-50">
           <div className="flex items-start gap-4">
             <div className="relative mt-1 flex h-10 w-10 shrink-0 items-center justify-center">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-300 opacity-60" />
-              <span className="relative inline-flex h-6 w-6 rounded-full bg-rose-400" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-300 opacity-60" />
+              <span className="relative inline-flex h-6 w-6 rounded-full bg-amber-500" />
             </div>
             <div>
-              <p className="text-base font-bold text-rose-900">Verificando tu pago…</p>
-              <p className="mt-1 text-sm leading-relaxed text-rose-800">
+              <p className="text-base font-bold text-amber-900">Verificando tu pago…</p>
+              <p className="mt-1 text-sm leading-relaxed text-amber-800">
                 El restaurante está revisando tu comprobante. Esta página se actualiza sola cada 20 segundos — no la cierres.
                 Cuando el pago sea confirmado, el estado cambiará automáticamente.
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Payment confirmed — prominent green box */}
+      {order.status === "PAYMENT_CONFIRMED" && (
+        <section className="card mt-4 border-emerald-400 bg-emerald-50">
+          <div className="flex items-start gap-4">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-3xl font-bold text-white shadow-sm">✓</div>
+            <div>
+              <h2 className="text-2xl font-bold text-emerald-900">¡Tu pago fue confirmado!</h2>
+              <p className="mt-2 text-base leading-relaxed text-emerald-800">
+                El restaurante verificó tu comprobante y está preparando tu pedido. ¡Gracias por tu compra!
               </p>
             </div>
           </div>
@@ -191,7 +206,7 @@ export default async function PublicOrderPage({ params }: { params: Promise<{ re
       )}
 
       <section className="mt-5">
-        <Link className="block rounded-xl bg-rose-500 px-4 py-3 text-center text-base font-bold text-white shadow-sm transition hover:bg-rose-600" href={`/r/${restaurantSlug}`}>
+        <Link className="block rounded-xl bg-teal-600 px-4 py-3 text-center text-base font-bold text-white shadow-sm transition hover:bg-teal-700" href={`/r/${restaurantSlug}`}>
           Hacer otro pedido
         </Link>
       </section>

@@ -13,7 +13,7 @@ export default async function RestaurantMenuPage({ params }: { params: Promise<{
   return (
     <main className="mx-auto max-w-2xl p-4 sm:p-6">
       <header className="py-5">
-        <p className="text-sm font-semibold uppercase tracking-wide text-rose-600">Menú del día</p>
+        <p className="text-sm font-semibold uppercase tracking-wide text-teal-600">Menú del día</p>
         <h1 className="mt-1 text-3xl font-bold">{restaurant.name}</h1>
         <p className="mt-2 text-stone-600">Arma tu almuerzo desde {formatMoney(Number(restaurant.basePrice))}.</p>
       </header>

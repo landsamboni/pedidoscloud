@@ -135,15 +135,15 @@ export function CustomerOrderForm({ restaurantSlug, basePrice, menu }: Props) {
           <div className="flex shrink-0 items-center gap-3">
             <button aria-label="Quitar un almuerzo" className="h-12 w-12 rounded-xl border border-stone-300 bg-white text-2xl font-bold" disabled={items.length === 1} onClick={() => resizeItems(items.length - 1)} type="button">−</button>
             <span className="min-w-6 text-center text-2xl font-bold">{items.length}</span>
-            <button aria-label="Agregar un almuerzo" className="h-12 w-12 rounded-xl bg-rose-500 text-2xl font-bold text-white" disabled={items.length === 6} onClick={() => resizeItems(items.length + 1)} type="button">+</button>
+            <button aria-label="Agregar un almuerzo" className="h-12 w-12 rounded-xl bg-teal-600 text-2xl font-bold text-white" disabled={items.length === 6} onClick={() => resizeItems(items.length + 1)} type="button">+</button>
           </div>
         </div>
         <div className="mt-4 space-y-5">
           {items.map((item, index) => (
-            <div className="overflow-hidden rounded-2xl border-2 border-rose-200 bg-white shadow-sm" key={index}>
-              <div className="border-b border-rose-200 bg-rose-50 px-4 py-3">
-                <p className="text-sm font-bold uppercase tracking-wide text-rose-600">Configura tu selección</p>
-                <p className="mt-1 text-2xl font-bold text-rose-900">Almuerzo {index + 1} de {items.length}</p>
+            <div className="overflow-hidden rounded-2xl border-2 border-teal-200 bg-white shadow-sm" key={index}>
+              <div className="border-b border-teal-200 bg-teal-50 px-4 py-3">
+                <p className="text-sm font-bold uppercase tracking-wide text-teal-600">Configura tu selección</p>
+                <p className="mt-1 text-2xl font-bold text-teal-900">Almuerzo {index + 1} de {items.length}</p>
               </div>
               <div className="space-y-5 p-4">
                 {index > 0 && <p className="rounded-xl bg-amber-50 p-3 text-sm font-semibold text-amber-900">Este es un nuevo almuerzo. Revisa sus opciones antes de continuar.</p>}
@@ -215,11 +215,11 @@ export function CustomerOrderForm({ restaurantSlug, basePrice, menu }: Props) {
       </section>
 
       {showFloatingTotal && (
-        <aside className="fixed inset-x-0 bottom-0 z-20 border-t border-rose-600 bg-rose-500 px-4 py-3 text-white shadow-[0_-6px_18px_rgba(0,0,0,0.16)] sm:hidden">
+        <aside className="fixed inset-x-0 bottom-0 z-20 border-t border-teal-700 bg-teal-600 px-4 py-3 text-white shadow-[0_-6px_18px_rgba(0,0,0,0.16)] sm:hidden">
           <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
             <div>
               <p className="text-sm font-semibold">{items.length} {items.length === 1 ? "almuerzo" : "almuerzos"}</p>
-              <p className="text-xs text-rose-100">Total de tu pedido</p>
+              <p className="text-xs text-teal-100">Total de tu pedido</p>
             </div>
             <p className="text-2xl font-bold">{formatMoney(total)}</p>
           </div>
@@ -241,8 +241,8 @@ function Option({ label, options, value, onChange }: { label: string; options: s
               aria-pressed={selected}
               className={`min-h-14 rounded-xl border px-4 py-3 text-left text-base font-semibold transition ${
                 selected
-                  ? "border-rose-500 bg-rose-500 text-white ring-2 ring-rose-200"
-                  : "border-stone-300 bg-white text-stone-800 hover:border-rose-400"
+                  ? "border-teal-600 bg-teal-600 text-white ring-2 ring-teal-200"
+                  : "border-stone-300 bg-white text-stone-800 hover:border-teal-400"
               }`}
               key={option}
               onClick={() => onChange(option)}

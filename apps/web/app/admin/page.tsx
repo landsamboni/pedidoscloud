@@ -9,7 +9,7 @@ export default async function AdminPage() {
   return (
     <main className="mx-auto max-w-6xl p-4 sm:p-6">
       <header className="py-5">
-        <p className="text-sm font-semibold uppercase tracking-wide text-rose-600">Administración</p>
+        <p className="text-sm font-semibold uppercase tracking-wide text-teal-600">Administración</p>
         <h1 className="mt-1 text-3xl font-bold">Restaurantes</h1>
       </header>
 
