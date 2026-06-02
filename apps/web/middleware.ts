@@ -52,10 +52,24 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const header = request.headers.get("authorization");
 
+  // Next.js prefetches linked pages in the background. If a prefetch for a
+  // protected route returns 401 + WWW-Authenticate, the browser shows a native
+  // auth dialog for the entire domain — even on public pages like /. For
+  // prefetch requests, return a silent 401 (no WWW-Authenticate) so the browser
+  // discards the prefetch without prompting. The actual auth challenge fires
+  // only when the user navigates to the protected route.
+  const isPrefetch =
+    request.headers.get("next-router-prefetch") === "1" ||
+    request.headers.get("purpose") === "prefetch";
+
   if (pathname.startsWith("/admin")) {
-    if (!isAuthorized(header, process.env.ADMIN_USER, process.env.ADMIN_PASSWORD)) return unauthorized();
+    if (!isAuthorized(header, process.env.ADMIN_USER, process.env.ADMIN_PASSWORD)) {
+      return isPrefetch ? new NextResponse(null, { status: 401 }) : unauthorized();
+    }
   } else if (pathname.startsWith("/restaurant")) {
-    if (!isAuthorized(header, process.env.RESTAURANT_USER, process.env.RESTAURANT_PASSWORD)) return unauthorized();
+    if (!isAuthorized(header, process.env.RESTAURANT_USER, process.env.RESTAURANT_PASSWORD)) {
+      return isPrefetch ? new NextResponse(null, { status: 401 }) : unauthorized();
+    }
   }
 
   return NextResponse.next();
