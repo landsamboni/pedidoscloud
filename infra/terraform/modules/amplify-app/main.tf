@@ -10,6 +10,13 @@ resource "aws_amplify_app" "this" {
   access_token = var.github_access_token
   platform     = "WEB_COMPUTE"
 
+  # AMPLIFY_MONOREPO_APP_ROOT must live at the APP level.
+  # Amplify reads it during repo checkout — before branch-level vars are loaded —
+  # to locate package.json. All other vars go to the branch (see below).
+  environment_variables = {
+    AMPLIFY_MONOREPO_APP_ROOT = var.monorepo_app_root
+  }
+
   # Next.js SPA-style rewrite so client-side routes resolve. Amplify adds the
   # SSR routing automatically for WEB_COMPUTE; this is a safe catch-all.
   custom_rule {
@@ -34,9 +41,8 @@ resource "aws_amplify_branch" "this" {
 
   enable_auto_build = var.enable_auto_build
 
-  # Set env vars at the BRANCH level, not the app level.
-  # Amplify WEB_COMPUTE SSR compute reads env vars from the branch configuration;
-  # app-level vars reach CodeBuild (build time) but not the SSR compute (runtime).
+  # All runtime vars go at the BRANCH level so they reach the SSR compute.
+  # AMPLIFY_MONOREPO_APP_ROOT is intentionally excluded — it lives at app level.
   environment_variables = var.environment_variables
 
   tags = var.tags

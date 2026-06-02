@@ -60,10 +60,8 @@ module "amplify" {
 
   # NOTE: Amplify rejects env var names starting with "AWS"; S3 credentials use
   # S3_-prefixed names that the app reads in lib/storage.ts.
-  # AMPLIFY_MONOREPO_APP_ROOT is required for Amplify to locate package.json
-  # in a monorepo — appRoot in amplify.yml alone is not enough.
+  # AMPLIFY_MONOREPO_APP_ROOT is handled by the module at the app level (not here).
   environment_variables = {
-    AMPLIFY_MONOREPO_APP_ROOT = "apps/web"
     DATABASE_URL              = module.rds.database_url
     STORAGE_DRIVER            = "s3"
     S3_REGION                 = var.aws_region

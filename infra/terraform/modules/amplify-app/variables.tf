@@ -19,6 +19,12 @@ variable "branch_name" {
   type        = string
 }
 
+variable "monorepo_app_root" {
+  description = "Path to the app within the monorepo (e.g. apps/web). Set at app level so Amplify detects it before branch vars are loaded. Leave empty for non-monorepo apps."
+  type        = string
+  default     = "apps/web"
+}
+
 variable "environment_variables" {
   description = "Environment variables passed to the build and SSR runtime (DATABASE_URL, S3_BUCKET, auth passwords, etc)."
   type        = map(string)
