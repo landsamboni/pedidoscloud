@@ -458,7 +458,9 @@ export async function setRestaurantSubscription(formData: FormData) {
   });
 
   const { calculateNewSubscriptionEnd } = await import("@/lib/subscription");
-  const newEndsAt = calculateNewSubscriptionEnd(restaurant?.subscriptionEndsAt, paymentDate);
+  // Always computes from paymentDate, ignoring current endsAt.
+  // This prevents the "keeps adding 30 days on each click" bug.
+  const newEndsAt = calculateNewSubscriptionEnd(paymentDate);
 
   await prisma.restaurant.update({
     where: { id: restaurantId },
@@ -517,17 +519,20 @@ export async function deleteRestaurant(formData: FormData) {
   revalidatePath("/admin");
 }
 
-/** Admin: immediately deactivate a restaurant's subscription. */
+/** Admin: immediately deactivate a restaurant's subscription (no grace period). */
 export async function deactivateRestaurantSubscription(formData: FormData) {
   const { getSession } = await import("@/lib/auth");
   const session = await getSession();
   if (!session || session.role !== "admin") throw new Error("No autorizado.");
 
   const restaurantId = String(formData.get("restaurantId"));
-  // Set endsAt to right now so middleware blocks access immediately on next request
+  // Set endsAt to one day in the past — guaranteed to be in the past regardless
+  // of any clock skew, and the middleware check (now > endsAt) fires immediately.
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
   await prisma.restaurant.update({
     where: { id: restaurantId },
-    data: { subscriptionEndsAt: new Date() },
+    data: { subscriptionEndsAt: yesterday },
   });
   revalidatePath("/admin");
 }

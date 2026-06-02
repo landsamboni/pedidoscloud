@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 import { COOKIE_NAME } from "@/lib/auth";
-import { GRACE_HOURS } from "@/lib/subscription";
 
 export const config = {
   matcher: ["/admin/:path*", "/restaurant/:path*"],
@@ -22,11 +21,10 @@ async function getSession(token: string | undefined) {
   }
 }
 
+/** Immediate suspension — no grace period. */
 function isSubscriptionSuspended(subscriptionEndsAt: string | undefined): boolean {
-  if (!subscriptionEndsAt) return false; // no subscription = allow (no-subscription state)
-  const endsAt = new Date(subscriptionEndsAt);
-  const graceCutoff = new Date(endsAt.getTime() + GRACE_HOURS * 60 * 60 * 1000);
-  return new Date() > graceCutoff;
+  if (!subscriptionEndsAt) return false; // no subscription set = allow (pending setup)
+  return new Date() > new Date(subscriptionEndsAt);
 }
 
 export async function middleware(request: NextRequest) {
@@ -59,9 +57,8 @@ export async function middleware(request: NextRequest) {
       return redirectToLogin();
     }
 
-    // Check subscription — suspended restaurants are blocked (grace period still allowed)
+    // Immediate suspension check — if endsAt is in the past, block.
     if (isSubscriptionSuspended(session.subscriptionEndsAt)) {
-      // Allow access to the /suspended page itself to avoid redirect loop
       if (!pathname.includes("/suspended")) {
         return NextResponse.redirect(new URL(`/restaurant/${slug}/suspended`, request.url));
       }

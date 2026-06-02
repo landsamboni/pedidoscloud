@@ -37,11 +37,9 @@ export default async function RestaurantConsolePage({ params }: { params: Promis
       {subStatus !== "no-subscription" && subStatus !== "active" && (
         <div className={`mb-4 rounded-xl border px-4 py-3 text-sm font-medium ${
           subStatus === "expiring-soon" ? "border-amber-300 bg-amber-50 text-amber-800" :
-          subStatus === "grace" ? "border-orange-400 bg-orange-50 text-orange-900" :
           "border-red-400 bg-red-50 text-red-900"
         }`}>
           {subStatus === "expiring-soon" && `⏰ Tu suscripción vence en ${daysLeft} día${daysLeft !== 1 ? "s" : ""} (${restaurant.subscriptionEndsAt!.toLocaleDateString("es-CO", { day: "numeric", month: "long" })}). Contáctanos para renovar.`}
-          {subStatus === "grace" && "⚠ Tu suscripción venció hoy. Tienes 24 horas de gracia. Realiza el pago para continuar sin interrupciones."}
           {subStatus === "suspended" && "🔒 Suscripción suspendida. Contacta al administrador para reactivar."}
         </div>
       )}

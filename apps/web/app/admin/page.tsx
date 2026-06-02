@@ -155,8 +155,6 @@ export default async function AdminPage() {
                           `¡Hola ${restaurant.name}! 😊 Todo está en orden con tu suscripción de PedidosCloud, que renueva el ${endDate}. Cuando llegue la fecha, recuerda hacer tu pago para seguir sin interrupciones. ¡Gracias por confiar en nosotros! 🙌`,
                         "expiring-soon":
                           `¡Hola ${restaurant.name}! ⏰ Te recordamos que tu suscripción de PedidosCloud vence el ${endDate}. Para seguir recibiendo pedidos sin interrupciones, realiza tu pago antes de esa fecha. ¡Contamos contigo! 💪`,
-                        "grace":
-                          `¡Hola ${restaurant.name}! ⚠️ Tu suscripción de PedidosCloud venció recientemente y estás en tu día de gracia. Tienes hasta mañana para renovar y evitar que tu acceso sea suspendido. ¡Anímate a renovar y sigamos creciendo juntos! 🙏`,
                         "suspended":
                           `¡Hola ${restaurant.name}! Tu cuenta en PedidosCloud está suspendida por falta de pago. Para reactivarla, realiza tu pago de renovación y avísanos. ¡Te esperamos de vuelta pronto! 😊`,
                       };
@@ -177,11 +175,9 @@ export default async function AdminPage() {
                       );
                     })()}
 
-                    {(status === "grace" || status === "expiring-soon") && (
+                    {status === "expiring-soon" && (
                       <p className="mt-2 text-xs text-amber-700">
-                        {status === "grace"
-                          ? "⚠ En período de gracia. Al renovar, el nuevo ciclo empieza desde la fecha de vencimiento original."
-                          : "⏰ Próximo a vencer. Recuerda confirmar el pago antes de la fecha de corte."}
+                        ⏰ Próximo a vencer. Recuerda confirmar el pago antes de la fecha de corte.
                       </p>
                     )}
                   </div>
