@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateOrderStatus } from "@/app/actions";
-import { formatOrderNumber } from "@/lib/format";
+import { formatMoney, formatOrderNumber } from "@/lib/format";
+import { parseItemName } from "@/lib/menu";
 
 type Order = {
   id: string;
@@ -40,13 +41,12 @@ const statusColors: Record<string, string> = {
 
 const PENDING = new Set(["NEW", "PAYMENT_PENDING", "PAYMENT_REVIEW"]);
 
-// Groups shown in the dashboard, in display order.
-const GROUPS: { key: string; label: string; statuses: string[] }[] = [
-  { key: "review",    label: "Revisar comprobante",  statuses: ["PAYMENT_REVIEW"] },
-  { key: "pending",   label: "Pendientes de pago",   statuses: ["PAYMENT_PENDING", "NEW"] },
-  { key: "rejected",  label: "Comprobante rechazado", statuses: ["PAYMENT_REJECTED"] },
-  { key: "confirmed", label: "Confirmados",           statuses: ["PAYMENT_CONFIRMED"] },
-  { key: "cancelled", label: "Cancelados",            statuses: ["CANCELLED"] },
+const GROUPS = [
+  { key: "review",    label: "Revisar comprobante",   statuses: ["PAYMENT_REVIEW"],            accent: "text-purple-700 bg-purple-50 border-purple-200" },
+  { key: "pending",   label: "Pendientes de pago",    statuses: ["PAYMENT_PENDING", "NEW"],    accent: "text-amber-700 bg-amber-50 border-amber-200" },
+  { key: "rejected",  label: "Comprobante rechazado", statuses: ["PAYMENT_REJECTED"],          accent: "text-red-700 bg-red-50 border-red-200" },
+  { key: "confirmed", label: "Confirmados",           statuses: ["PAYMENT_CONFIRMED"],         accent: "text-emerald-700 bg-emerald-50 border-emerald-200" },
+  { key: "cancelled", label: "Cancelados",            statuses: ["CANCELLED"],                 accent: "text-stone-600 bg-stone-50 border-stone-200" },
 ];
 
 function urgencyBorder(order: Order, now: number | null): string {
@@ -77,37 +77,74 @@ export function RestaurantOrders({ restaurantSlug, orders, readOnly = false }: P
     return () => { window.clearInterval(refresh); window.clearInterval(tick); };
   }, [router, readOnly]);
 
+  const byStatus = useMemo(() => {
+    const map: Record<string, Order[]> = {};
+    for (const o of orders) (map[o.status] ??= []).push(o);
+    return map;
+  }, [orders]);
+
+  const stats = useMemo(() => {
+    const pending   = (byStatus.PAYMENT_REVIEW?.length ?? 0) + (byStatus.PAYMENT_PENDING?.length ?? 0) + (byStatus.NEW?.length ?? 0);
+    const confirmed = byStatus.PAYMENT_CONFIRMED?.length ?? 0;
+    const rejected  = byStatus.PAYMENT_REJECTED?.length ?? 0;
+    const cancelled = byStatus.CANCELLED?.length ?? 0;
+    return { pending, confirmed, rejected, cancelled };
+  }, [byStatus]);
+
   if (!orders.length) {
     return <section className="card text-stone-600">Todavía no hay pedidos para hoy.</section>;
   }
 
-  // Build a map for fast lookup
-  const byStatus: Record<string, Order[]> = {};
-  for (const o of orders) {
-    (byStatus[o.status] ??= []).push(o);
-  }
-
-  const renderedGroups = GROUPS.filter((g) =>
-    g.statuses.some((s) => (byStatus[s]?.length ?? 0) > 0),
-  );
+  const visibleGroups = GROUPS.filter((g) => g.statuses.some((s) => (byStatus[s]?.length ?? 0) > 0));
 
   return (
     <>
+      {/* Stats bar */}
+      <div className="mb-4 flex flex-wrap gap-2 text-sm font-semibold">
+        {stats.pending > 0 && (
+          <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-800">⏳ {stats.pending} pendiente{stats.pending > 1 ? "s" : ""}</span>
+        )}
+        <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-800">✓ {stats.confirmed} confirmado{stats.confirmed !== 1 ? "s" : ""}</span>
+        {stats.rejected > 0 && (
+          <span className="rounded-full bg-red-100 px-3 py-1 text-red-800">✕ {stats.rejected} rechazado{stats.rejected > 1 ? "s" : ""}</span>
+        )}
+        {stats.cancelled > 0 && (
+          <span className="rounded-full bg-stone-200 px-3 py-1 text-stone-600">⊘ {stats.cancelled} cancelado{stats.cancelled > 1 ? "s" : ""}</span>
+        )}
+        <span className="rounded-full bg-stone-100 px-3 py-1 text-stone-500">Total: {orders.length}</span>
+      </div>
+
+      {/* Section quick-nav (visible when there are 2+ sections) */}
+      {visibleGroups.length > 1 && (
+        <nav aria-label="Ir a sección" className="mb-5 flex gap-2 overflow-x-auto pb-1">
+          {visibleGroups.map((g) => {
+            const count = g.statuses.reduce((n, s) => n + (byStatus[s]?.length ?? 0), 0);
+            return (
+              <a
+                className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition hover:opacity-80 ${g.accent}`}
+                href={`#section-${g.key}`}
+                key={g.key}
+              >
+                {g.label} ({count})
+              </a>
+            );
+          })}
+        </nav>
+      )}
+
+      {/* Sections */}
       <div className="space-y-8">
-        {renderedGroups.map((group) => {
+        {visibleGroups.map((group) => {
           const groupOrders = group.statuses.flatMap((s) => byStatus[s] ?? []);
-          const isActionGroup = group.key === "review";
           return (
-            <section key={group.key}>
-              <div className="mb-3 flex items-center gap-3">
-                <h2 className={`text-sm font-bold uppercase tracking-wider ${isActionGroup ? "text-purple-700" : "text-stone-500"}`}>
-                  {group.label}
+            <section id={`section-${group.key}`} key={group.key}>
+              <div className="mb-3 flex items-center gap-3 scroll-mt-4">
+                <h2 className={`rounded-full border px-3 py-1 text-sm font-bold ${group.accent}`}>
+                  {group.label} · {groupOrders.length}
                 </h2>
-                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${isActionGroup ? "bg-purple-100 text-purple-700" : "bg-stone-100 text-stone-600"}`}>
-                  {groupOrders.length}
-                </span>
               </div>
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 xl:items-start">
+              {/* Wider grid: 1 → 2 → 3 → 4 → 5 columns across screen sizes */}
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5 4xl:grid-cols-6 xl:items-start">
                 {groupOrders.map((order) => (
                   <OrderCard
                     key={order.id}
@@ -124,29 +161,15 @@ export function RestaurantOrders({ restaurantSlug, orders, readOnly = false }: P
         })}
       </div>
 
-      {/* In-app proof viewer modal */}
+      {/* In-app proof modal */}
       {proofUrl && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-          onClick={() => setProofUrl(null)}
-        >
-          <div
-            className="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setProofUrl(null)}>
+          <div className="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex shrink-0 items-center justify-between border-b border-stone-200 px-5 py-4">
-              <p className="font-semibold text-stone-900">Comprobante de pago</p>
+              <p className="font-semibold">Comprobante de pago</p>
               <div className="flex items-center gap-3">
-                <a className="text-sm font-medium text-teal-600 hover:underline" download href={proofUrl}>
-                  Descargar
-                </a>
-                <button
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100"
-                  onClick={() => setProofUrl(null)}
-                  type="button"
-                >
-                  ✕
-                </button>
+                <a className="text-sm font-medium text-teal-600 hover:underline" download href={proofUrl}>Descargar</a>
+                <button className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100" onClick={() => setProofUrl(null)} type="button">✕</button>
               </div>
             </div>
             <div className="overflow-auto p-4">
@@ -163,18 +186,8 @@ export function RestaurantOrders({ restaurantSlug, orders, readOnly = false }: P
   );
 }
 
-function OrderCard({
-  order,
-  restaurantSlug,
-  now,
-  readOnly,
-  onViewProof,
-}: {
-  order: Order;
-  restaurantSlug: string;
-  now: number | null;
-  readOnly: boolean;
-  onViewProof: (url: string) => void;
+function OrderCard({ order, restaurantSlug, now, readOnly, onViewProof }: {
+  order: Order; restaurantSlug: string; now: number | null; readOnly: boolean; onViewProof: (url: string) => void;
 }) {
   const border = urgencyBorder(order, now);
   return (
@@ -199,14 +212,12 @@ function OrderCard({
       <div className="mt-4 space-y-2">
         {order.items.map((item, index) => (
           <div className="rounded-xl bg-stone-50 p-3" key={item.id}>
-            {order.items.length > 1 && (
-              <p className="mb-2 text-xs font-bold uppercase tracking-wider text-stone-400">Almuerzo {index + 1}</p>
-            )}
+            {order.items.length > 1 && <p className="mb-2 text-xs font-bold uppercase tracking-wider text-stone-400">Almuerzo {index + 1}</p>}
             <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-base">
-              <dt className="text-stone-500">Sopa</dt>      <dd className="font-medium">{item.soup}</dd>
-              <dt className="text-stone-500">Proteína</dt>  <dd className="font-medium">{item.protein}</dd>
-              <dt className="text-stone-500">Principio</dt> <dd className="font-medium">{item.side}</dd>
-              <dt className="text-stone-500">Bebida</dt>    <dd className="font-medium">{item.drink}</dd>
+              <dt className="text-stone-500">Sopa</dt>      <dd className="font-medium">{parseItemName(item.soup)}</dd>
+              <dt className="text-stone-500">Proteína</dt>  <dd className="font-medium">{parseItemName(item.protein)}</dd>
+              <dt className="text-stone-500">Principio</dt> <dd className="font-medium">{parseItemName(item.side)}</dd>
+              <dt className="text-stone-500">Bebida</dt>    <dd className="font-medium">{parseItemName(item.drink)}</dd>
             </dl>
           </div>
         ))}
@@ -217,12 +228,7 @@ function OrderCard({
           <p className="text-sm font-semibold text-purple-800">
             Comprobante recibido{order.paymentSubmittedAtLabel ? ` · ${order.paymentSubmittedAtLabel}` : ""}
           </p>
-          {/* Opens in-app modal instead of new tab */}
-          <button
-            className="button-secondary mt-2 border-purple-300 text-purple-800"
-            onClick={() => onViewProof(order.paymentProofPath!)}
-            type="button"
-          >
+          <button className="button-secondary mt-2 border-purple-300 text-purple-800" onClick={() => onViewProof(order.paymentProofPath!)} type="button">
             Ver comprobante
           </button>
         </div>

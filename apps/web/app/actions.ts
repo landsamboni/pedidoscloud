@@ -4,6 +4,7 @@ import { OrderStatus, Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { dateKeyToUtcDate, localDateKey } from "@/lib/format";
+import { parseItemName, parseSurcharge, SIN_SOPA } from "@/lib/menu";
 import { prisma } from "@/lib/prisma";
 import { saveUpload } from "@/lib/storage";
 
@@ -84,12 +85,18 @@ export async function createOrder(input: CreateOrderInput) {
     const menu = restaurant.menus[0];
     if (!menu) throw new Error("El restaurante no tiene menú para hoy.");
 
+    const soupNames    = menu.soups.map(parseItemName);
+    const proteinNames = menu.proteins.map(parseItemName);
+    const sideNames    = menu.sides.map(parseItemName);
+    const drinkNames   = menu.drinks.map(parseItemName);
+
     for (const item of input.items) {
+      const soupOk = item.soup === SIN_SOPA || soupNames.includes(parseItemName(item.soup));
       if (
-        !menu.soups.includes(item.soup) ||
-        !menu.proteins.includes(item.protein) ||
-        !menu.sides.includes(item.side) ||
-        !menu.drinks.includes(item.drink)
+        !soupOk ||
+        !proteinNames.includes(parseItemName(item.protein)) ||
+        !sideNames.includes(parseItemName(item.side)) ||
+        !drinkNames.includes(parseItemName(item.drink))
       ) {
         throw new Error("Una selección ya no está disponible. Actualiza el menú.");
       }
@@ -112,7 +119,16 @@ export async function createOrder(input: CreateOrderInput) {
       create: { restaurantId: restaurant.id, date: orderDate, lastNumber: 1 },
     });
 
-    const total = new Prisma.Decimal(restaurant.basePrice).mul(input.items.length);
+    // Total = sum of (basePrice + individual surcharges) for each lunch
+    const total = input.items.reduce((sum, item) => {
+      const extra =
+        parseSurcharge(item.soup) +
+        parseSurcharge(item.protein) +
+        parseSurcharge(item.side) +
+        parseSurcharge(item.drink);
+      return sum + Number(restaurant.basePrice) + extra;
+    }, 0);
+
     return tx.order.create({
       data: {
         restaurantId: restaurant.id,
@@ -120,13 +136,20 @@ export async function createOrder(input: CreateOrderInput) {
         orderDate,
         orderNumber: counter.lastNumber,
         status: OrderStatus.PAYMENT_PENDING,
-        total,
+        total: new Prisma.Decimal(total),
         address,
         items: {
-          create: input.items.map((item) => ({
-            ...item,
-            price: restaurant.basePrice,
-          })),
+          create: input.items.map((item) => {
+            const extra =
+              parseSurcharge(item.soup) +
+              parseSurcharge(item.protein) +
+              parseSurcharge(item.side) +
+              parseSurcharge(item.drink);
+            return {
+              ...item,
+              price: new Prisma.Decimal(Number(restaurant.basePrice) + extra),
+            };
+          }),
         },
       },
     });

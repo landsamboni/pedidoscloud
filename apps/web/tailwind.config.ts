@@ -6,8 +6,12 @@ export default {
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      screens: {
+        "3xl": "1920px", // large monitors / widescreen
+        "4xl": "2560px", // 27-32" monitors
+      },
+    },
   },
   plugins: [],
 } satisfies Config;
-

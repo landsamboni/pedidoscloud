@@ -134,8 +134,11 @@ export function RestaurantSettings({ menu, restaurant, returnPath }: { menu: Men
 function MenuTextarea({ label, name, options = [] }: { label: string; name: string; options?: string[] }) {
   return (
     <label className="text-sm font-medium text-stone-700">
-      {label} <span className="font-normal text-stone-400">(una opción por línea)</span>
-      <textarea className="input mt-1 min-h-28" defaultValue={options.join("\n")} name={name} required />
+      {label}{" "}
+      <span className="font-normal text-stone-400">
+        (una por línea · precio extra: <code className="text-xs">Costilla BBQ|3000</code>)
+      </span>
+      <textarea className="input mt-1 min-h-28 font-mono text-sm" defaultValue={options.join("\n")} name={name} required />
     </label>
   );
 }
