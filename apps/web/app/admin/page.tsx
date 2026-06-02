@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { createRestaurant, deleteRestaurantOrders, deleteRestaurantOrdersByDate, setRestaurantPassword } from "@/app/actions";
+import { deleteRestaurantOrders, deleteRestaurantOrdersByDate, setRestaurantPassword } from "@/app/actions";
+import { CreateRestaurantForm } from "@/components/create-restaurant-form";
 import { RestaurantSettings } from "@/components/restaurant-settings";
 import { formatMoney, formatOrderNumber } from "@/lib/format";
 import { getAdminRestaurants } from "@/lib/data";
@@ -14,14 +15,8 @@ export default async function AdminPage() {
       </header>
 
       <section className="card">
-        <h2 className="text-lg font-bold">Crear restaurante</h2>
-        <form action={createRestaurant} className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <input className="input" name="name" placeholder="Nombre del restaurante" required />
-          <input className="input" name="slug" placeholder="slug-del-restaurante" required />
-          <input className="input" min="1" name="basePrice" placeholder="Precio base" required type="number" />
-          <input className="input" minLength={8} name="password" placeholder="Contraseña inicial (mín. 8 chars)" type="password" />
-          <button className="button-primary">Crear</button>
-        </form>
+        <h2 className="mb-4 text-lg font-bold">Crear restaurante</h2>
+        <CreateRestaurantForm />
       </section>
 
       <div className="mt-6 space-y-6">

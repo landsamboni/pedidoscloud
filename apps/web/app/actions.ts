@@ -202,23 +202,38 @@ export async function updateOrderStatus(formData: FormData) {
   revalidatePath("/admin");
 }
 
-export async function createRestaurant(formData: FormData) {
-  const name = required(String(formData.get("name") ?? ""), "nombre");
-  const slug = required(String(formData.get("slug") ?? ""), "slug")
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, "-");
-  const basePrice = Number(formData.get("basePrice"));
-  if (!Number.isFinite(basePrice) || basePrice <= 0) throw new Error("Precio inválido.");
+export type CreateRestaurantState = { error: string; success: boolean; createdName?: string };
 
-  const rawPassword = String(formData.get("password") ?? "").trim();
-  let passwordHash: string | undefined;
-  if (rawPassword.length >= 8) {
-    const { hash } = await import("bcryptjs");
-    passwordHash = await hash(rawPassword, 12);
+export async function createRestaurant(
+  _: CreateRestaurantState,
+  formData: FormData,
+): Promise<CreateRestaurantState> {
+  try {
+    const name = required(String(formData.get("name") ?? ""), "nombre");
+    const slug = required(String(formData.get("slug") ?? ""), "slug")
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+    const basePrice = Number(formData.get("basePrice"));
+    if (!Number.isFinite(basePrice) || basePrice <= 0) return { error: "El precio base debe ser mayor a 0.", success: false };
+
+    const existing = await prisma.restaurant.findUnique({ where: { slug } });
+    if (existing) return { error: `El slug "${slug}" ya está en uso. Elige otro.`, success: false };
+
+    const rawPassword = String(formData.get("password") ?? "").trim();
+    let passwordHash: string | undefined;
+    if (rawPassword.length >= 8) {
+      const { hash } = await import("bcryptjs");
+      passwordHash = await hash(rawPassword, 12);
+    }
+
+    await prisma.restaurant.create({ data: { name, slug, basePrice, ...(passwordHash ? { passwordHash } : {}) } });
+    revalidatePath("/admin");
+    return { error: "", success: true, createdName: name };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "No se pudo crear el restaurante.", success: false };
   }
-
-  await prisma.restaurant.create({ data: { name, slug, basePrice, ...(passwordHash ? { passwordHash } : {}) } });
-  revalidatePath("/admin");
 }
 
 /**
