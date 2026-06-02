@@ -290,6 +290,22 @@ export async function deleteRestaurantOrdersByDate(formData: FormData) {
   revalidatePath(`/restaurant/${restaurant.slug}/analytics`);
 }
 
+/** Admin: permanently delete a restaurant and ALL its data. Requires slug confirmation. */
+export async function deleteRestaurant(formData: FormData) {
+  const { getSession } = await import("@/lib/auth");
+  const session = await getSession();
+  if (!session || session.role !== "admin") throw new Error("No autorizado.");
+
+  const restaurantId = String(formData.get("restaurantId"));
+  const confirmation = String(formData.get("confirmation") ?? "").trim();
+  const slug = String(formData.get("slug") ?? "").trim();
+
+  if (confirmation !== slug) throw new Error("La confirmación no coincide con el slug.");
+
+  await prisma.restaurant.delete({ where: { id: restaurantId } });
+  revalidatePath("/admin");
+}
+
 /** Admin: set or reset a restaurant's password. */
 export async function setRestaurantPassword(formData: FormData) {
   const restaurantId = String(formData.get("restaurantId"));

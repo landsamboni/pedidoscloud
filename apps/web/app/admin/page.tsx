@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { deleteRestaurantOrders, deleteRestaurantOrdersByDate, setRestaurantPassword } from "@/app/actions";
+import { deleteRestaurant, deleteRestaurantOrders, deleteRestaurantOrdersByDate, setRestaurantPassword } from "@/app/actions";
+import { logoutAction } from "@/app/login/actions";
 import { CreateRestaurantForm } from "@/components/create-restaurant-form";
 import { RestaurantSettings } from "@/components/restaurant-settings";
 import { formatMoney, formatOrderNumber } from "@/lib/format";
@@ -9,9 +10,16 @@ export default async function AdminPage() {
   const restaurants = await getAdminRestaurants();
   return (
     <main className="mx-auto max-w-6xl p-4 sm:p-6">
-      <header className="py-5">
-        <p className="text-sm font-semibold uppercase tracking-wide text-teal-600">Administración</p>
-        <h1 className="mt-1 text-3xl font-bold">Restaurantes</h1>
+      <header className="flex flex-wrap items-start justify-between gap-4 py-5">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-wide text-teal-600">Administración</p>
+          <h1 className="mt-1 text-3xl font-bold">Restaurantes</h1>
+        </div>
+        <form action={logoutAction}>
+          <button className="rounded-xl border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-600 transition hover:bg-stone-50" type="submit">
+            Cerrar sesión
+          </button>
+        </form>
       </header>
 
       <section className="card">
@@ -86,6 +94,29 @@ export default async function AdminPage() {
                       </label>
                       <button className="w-full rounded-xl border border-red-400 bg-white px-3 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50" type="submit">
                         Eliminar órdenes del día
+                      </button>
+                    </form>
+                  </div>
+                  {/* Delete restaurant */}
+                  <div className="rounded-xl border-2 border-red-400 bg-white p-4">
+                    <p className="text-sm font-semibold text-red-900">Eliminar restaurante permanentemente</p>
+                    <p className="mt-1 text-xs text-red-600">
+                      Borra el restaurante, todas sus órdenes, menús, clientes y configuración. Irreversible.
+                    </p>
+                    <form action={deleteRestaurant} className="mt-3 space-y-2">
+                      <input name="restaurantId" type="hidden" value={restaurant.id} />
+                      <input name="slug" type="hidden" value={restaurant.slug} />
+                      <label className="block text-xs font-medium text-red-700">
+                        Escribe <strong>{restaurant.slug}</strong> para confirmar:
+                        <input
+                          className="input mt-1 text-sm"
+                          name="confirmation"
+                          placeholder={restaurant.slug}
+                          required
+                        />
+                      </label>
+                      <button className="w-full rounded-xl border-2 border-red-500 bg-red-500 px-3 py-2 text-sm font-bold text-white transition hover:bg-red-600" type="submit">
+                        Eliminar restaurante
                       </button>
                     </form>
                   </div>

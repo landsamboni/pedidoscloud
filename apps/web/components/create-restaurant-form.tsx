@@ -51,7 +51,7 @@ export function CreateRestaurantForm() {
           <input
             className="input"
             name="name"
-            placeholder="Martica la Bonita"
+            placeholder="Panza Feliz"
             required
             onChange={handleNameChange}
           />
@@ -65,7 +65,7 @@ export function CreateRestaurantForm() {
             ref={slugRef}
             className="input font-mono text-sm"
             name="slug"
-            placeholder="martica-la-bonita"
+            placeholder="panza-feliz"
             required
             onChange={() => setSlugEdited(true)}
           />
