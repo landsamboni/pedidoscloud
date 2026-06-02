@@ -72,7 +72,7 @@ export default async function PublicOrderPage({ params }: { params: Promise<{ re
         <p className="text-sm font-bold uppercase tracking-wide text-stone-500">Estado actual</p>
         <h2 className="mt-2 text-2xl font-bold text-stone-900">{statusLabels[order.status]}</h2>
         <p className="mt-2 text-base leading-relaxed text-stone-600">{statusMessages[order.status]}</p>
-        <AutoRefresh active={isWaiting} intervalMs={20000} />
+        <AutoRefresh active={isWaiting} intervalMs={10000} />
         <div className="mt-4 flex items-center justify-between border-t border-stone-100 pt-4 text-xl font-bold">
           <span>Total a pagar</span>
           <span>{formatMoney(Number(order.total))}</span>
@@ -240,7 +240,7 @@ export default async function PublicOrderPage({ params }: { params: Promise<{ re
             <div>
               <p className="text-base font-bold text-amber-900">Verificando tu pago…</p>
               <p className="mt-1 text-sm leading-relaxed text-amber-800">
-                El restaurante está revisando tu comprobante. Esta página se actualiza cada 20 segundos — no la cierres.
+                El restaurante está revisando tu comprobante. Esta página se actualiza cada 10 segundos — no la cierres.
               </p>
             </div>
           </div>
