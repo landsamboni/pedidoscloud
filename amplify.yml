@@ -1,8 +1,12 @@
 # AWS Amplify Hosting build settings (monorepo).
 #
 # AMPLIFY_MONOREPO_APP_ROOT=apps/web is set as an Amplify environment variable
-# (via Terraform). Both the env var and the applications.appRoot below are
-# required together — one alone is not enough.
+# (via Terraform) at the APP level — Amplify reads it before branch vars load.
+# All other runtime vars are at the BRANCH level (set via Terraform).
+#
+# Amplify WEB_COMPUTE injects env vars into CodeBuild but NOT into the SSR
+# Lambda runtime. The write-runtime-env step bakes them into .next/.env.runtime
+# (deployed with the artifact) so lib/runtime-env.ts can load them at request time.
 #
 # Migrations are NOT run here — run `npm run db:deploy` against RDS manually
 # (see DEPLOYMENT.md). Build only generates the Prisma client + next build.
@@ -17,6 +21,18 @@ applications:
         build:
           commands:
             - npm run build
+            - |
+              node -e "
+              const fs = require('fs');
+              const vars = [
+                'DATABASE_URL','STORAGE_DRIVER',
+                'S3_REGION','S3_BUCKET','S3_ACCESS_KEY_ID','S3_SECRET_ACCESS_KEY',
+                'ADMIN_USER','ADMIN_PASSWORD','RESTAURANT_USER','RESTAURANT_PASSWORD'
+              ];
+              const lines = vars.filter(k => process.env[k]).map(k => k + '=' + process.env[k]);
+              fs.writeFileSync('.next/.env.runtime', lines.join('\n'));
+              console.log('Runtime env written for:', vars.filter(k => process.env[k]).join(', '));
+              "
       artifacts:
         baseDirectory: .next
         files:
