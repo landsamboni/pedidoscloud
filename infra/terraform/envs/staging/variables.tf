@@ -62,12 +62,13 @@ variable "db_allocated_storage" {
 }
 
 variable "db_publicly_accessible" {
-  type    = bool
-  default = true
+  description = "Keep true so migrations can be run from the laptop. The security group restricts actual access to known IPs + Amplify Lambda SG."
+  type        = bool
+  default     = true
 }
 
 variable "db_allowed_cidr_blocks" {
-  description = "CIDRs allowed to reach Postgres (e.g. your laptop IP /32)."
+  description = "CIDRs allowed to connect to RDS port 5432. Use only your laptop IP /32 for migrations. Amplify Lambda access is handled via VPC security group (not CIDR)."
   type        = list(string)
   default     = []
 }
@@ -91,6 +92,13 @@ variable "restaurant_user" {
 variable "restaurant_password" {
   type      = string
   sensitive = true
+}
+
+# ---- Monitoring ----
+variable "alert_email" {
+  description = "Email address for CloudWatch alarm notifications (RDS memory, connections). Leave empty to create alarms without email (visible in CloudWatch console only)."
+  type        = string
+  default     = ""
 }
 
 # ---- Optional ----

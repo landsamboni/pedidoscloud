@@ -78,7 +78,9 @@ terraform apply     # acepta con "yes"
 Terraform crea:
 - **S3**: bucket privado `pedidoscloud-staging-uploads` (cifrado, sin acceso público)
 - **IAM**: usuario `pedidoscloud-staging-app` con acceso mínimo al bucket
-- **RDS**: instancia PostgreSQL `pedidoscloud-staging` (db.t3.micro, cifrada)
+- **RDS**: instancia PostgreSQL `pedidoscloud-staging` + **alarmas CloudWatch** (memoria < 200 MB, conexiones > 40)
+- **SNS**: topic `pedidoscloud-staging-alerts` para notificaciones (si se configuró `alert_email`, confirmar el email que AWS envía)
+- **VPC**: security group `pedidoscloud-staging-amplify-lambda` + S3 Gateway endpoint (listos para VPC connectivity de Amplify)
 - **Amplify**: app `pedidoscloud-staging` + rama `staging-aws` con todas las env vars configuradas
 
 Outputs importantes:
@@ -93,12 +95,32 @@ terraform output amplify_branch_url     # URL pública de Amplify
 
 ### Nota de seguridad: conectividad RDS ⚠️
 
-**Decisión conocida del MVP**: el security group de RDS permite `0.0.0.0/0` en el puerto 5432
-para que Amplify SSR pueda conectarse (Amplify no tiene IPs de salida fijas).
+**Estado actual (staging)**: el security group de RDS permite conexiones desde tu laptop IP
+(`db_allowed_cidr_blocks`) + `0.0.0.0/0` si lo dejaste en tu `terraform.tfvars`.
 Mitigaciones activas: `sslmode=require` en `DATABASE_URL` y contraseña fuerte.
 
-**Mejora futura** (obligatoria antes de prod): subredes privadas + `vpc_config` en Amplify.
-Ver sección §7 checklist.
+**Para cerrar el `0.0.0.0/0` manualmente** (recomendado antes de clientes reales):
+1. Actualiza `db_allowed_cidr_blocks` en `terraform.tfvars` para que solo incluya tu laptop IP.
+2. `terraform apply` actualiza el SG de RDS.
+3. Configura VPC connectivity en Amplify (**App settings → Build settings → VPC configuration**):
+   - Selecciona las subredes del default VPC
+   - Selecciona el security group `pedidoscloud-staging-amplify-lambda` (creado por Terraform)
+4. Haz un nuevo deploy de Amplify. El Lambda SSR correrá en el VPC y alcanzará RDS sin `0.0.0.0/0`.
+
+> El Terraform AWS provider (5.x) aún no expone `vpc_config` para `aws_amplify_app`.
+> La infra VPC ya está creada (SG, S3 endpoint); solo falta el paso manual de la consola.
+> Se actualizará automáticamente cuando el provider lo soporte.
+
+### Nota: migraciones ya no son automáticas en el build
+
+Con el SG restringido, CodeBuild (que corre fuera del VPC) no puede alcanzar RDS.
+Las migraciones se ejecutan **manualmente desde el laptop** antes de cada deploy que cambie el schema:
+
+```bash
+cd apps/web
+export DATABASE_URL="$(cd ../../infra/terraform/envs/staging && terraform output -raw database_url)"
+npm run db:deploy
+```
 
 ---
 
@@ -110,7 +132,7 @@ Tras `terraform apply`, Amplify ya tiene la app y la rama creadas. Para verifica
 2. Confirma que la rama `staging-aws` está conectada a GitHub y detecta el `amplify.yml`.
 3. Lanza el primer build: **Run build** (o haz push a `staging-aws`).
 
-El primer build correrá automáticamente:
+El primer build correrá:
 ```
 npm ci
 npx prisma migrate deploy   ← crea el schema en RDS

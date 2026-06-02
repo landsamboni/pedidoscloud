@@ -9,14 +9,18 @@ amplify_branch        = "staging-aws"
 
 # Database
 db_password = "change-me-strong-password"
-# Your laptop's public IP so you can run Prisma migrations. Find it with:
-#   curl -s https://checkip.amazonaws.com
-# For Amplify SSR to also reach RDS you may need to widen this — see DEPLOYMENT.md.
+# Only your laptop IP for manual migrations. Amplify SSR reaches RDS via VPC SG.
+# Find your current IP: curl -s https://checkip.amazonaws.com
 db_allowed_cidr_blocks = ["203.0.113.10/32"]
 
 # Operator auth (HTTP Basic Auth)
 admin_password      = "change-me-admin"
 restaurant_password = "change-me-restaurant"
+
+# Monitoring — email for CloudWatch alarm notifications.
+# Leave empty ("") to see alarms in CloudWatch console only (no email).
+# After first apply you must confirm the subscription in the email AWS sends.
+alert_email = "tu-email@ejemplo.com"
 
 # Optional
 enable_secrets_manager = false

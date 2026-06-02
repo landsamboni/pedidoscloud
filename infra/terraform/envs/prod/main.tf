@@ -62,16 +62,16 @@ module "amplify" {
   # Amplify rejects env var names starting with "AWS"; see lib/storage.ts.
   # AMPLIFY_MONOREPO_APP_ROOT is handled by the module at the app level (not here).
   environment_variables = {
-    DATABASE_URL              = module.rds.database_url
-    STORAGE_DRIVER            = "s3"
-    S3_REGION                 = var.aws_region
-    S3_BUCKET                 = module.s3_uploads.bucket_name
-    S3_ACCESS_KEY_ID          = module.iam.access_key_id
-    S3_SECRET_ACCESS_KEY      = module.iam.secret_access_key
-    ADMIN_USER                = var.admin_user
-    ADMIN_PASSWORD            = var.admin_password
-    RESTAURANT_USER           = var.restaurant_user
-    RESTAURANT_PASSWORD       = var.restaurant_password
+    DATABASE_URL         = module.rds.database_url
+    STORAGE_DRIVER       = "s3"
+    S3_REGION            = var.aws_region
+    S3_BUCKET            = module.s3_uploads.bucket_name
+    S3_ACCESS_KEY_ID     = module.iam.access_key_id
+    S3_SECRET_ACCESS_KEY = module.iam.secret_access_key
+    ADMIN_USER           = var.admin_user
+    ADMIN_PASSWORD       = var.admin_password
+    RESTAURANT_USER      = var.restaurant_user
+    RESTAURANT_PASSWORD  = var.restaurant_password
   }
 
   tags = local.tags

@@ -1,27 +1,35 @@
 # Single-instance Amazon RDS PostgreSQL for the MVP.
-# Lives in the default VPC to keep networking trivial. SSL is enforced at the
-# connection string level (sslmode=require) in the DATABASE_URL output.
+# Security: ingress limited to known CIDR blocks (laptop) + Amplify Lambda SG
+# (added as aws_vpc_security_group_ingress_rule from the env, not inline here,
+# to avoid circular dependencies). SSL enforced via sslmode=require in DATABASE_URL.
 
 data "aws_vpc" "default" {
   default = true
 }
 
 locals {
-  vpc_id = var.vpc_id != "" ? var.vpc_id : data.aws_vpc.default.id
+  vpc_id        = var.vpc_id != "" ? var.vpc_id : data.aws_vpc.default.id
+  alarm_actions = var.alarm_topic_arn != "" ? [var.alarm_topic_arn] : []
 }
 
 resource "aws_security_group" "db" {
   name        = "${var.identifier}-db"
-  description = "Allow PostgreSQL access for ${var.identifier}"
+  description = "PostgreSQL access for ${var.identifier} — laptop CIDRs + Amplify Lambda SG (added via aws_vpc_security_group_ingress_rule)"
   vpc_id      = local.vpc_id
   tags        = var.tags
 
-  ingress {
-    description = "PostgreSQL"
-    from_port   = 5432
-    to_port     = 5432
-    protocol    = "tcp"
-    cidr_blocks = var.allowed_cidr_blocks
+  # CIDR-based ingress for manual migrations from known IPs (e.g. laptop).
+  # Amplify Lambda ingress is added externally as aws_vpc_security_group_ingress_rule
+  # to avoid the circular dependency: Lambda SG ↔ RDS SG.
+  dynamic "ingress" {
+    for_each = length(var.allowed_cidr_blocks) > 0 ? [1] : []
+    content {
+      description = "PostgreSQL from allowed CIDRs (migrations)"
+      from_port   = 5432
+      to_port     = 5432
+      protocol    = "tcp"
+      cidr_blocks = var.allowed_cidr_blocks
+    }
   }
 
   egress {
@@ -58,4 +66,48 @@ resource "aws_db_instance" "this" {
 
   apply_immediately = true
   tags              = var.tags
+}
+
+# ---- CloudWatch alarms ----
+
+resource "aws_cloudwatch_metric_alarm" "freeable_memory" {
+  alarm_name          = "${var.identifier}-low-memory"
+  comparison_operator = "LessThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "FreeableMemory"
+  namespace           = "AWS/RDS"
+  period              = 300 # 5 min average
+  statistic           = "Average"
+  threshold           = var.alarm_memory_threshold_bytes
+  alarm_description   = "${var.identifier}: FreeableMemory below ${var.alarm_memory_threshold_bytes / 1048576} MB — consider upgrading to db.t3.small"
+  alarm_actions       = local.alarm_actions
+  ok_actions          = local.alarm_actions
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    DBInstanceIdentifier = aws_db_instance.this.id
+  }
+
+  tags = var.tags
+}
+
+resource "aws_cloudwatch_metric_alarm" "database_connections" {
+  alarm_name          = "${var.identifier}-high-connections"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "DatabaseConnections"
+  namespace           = "AWS/RDS"
+  period              = 300
+  statistic           = "Average"
+  threshold           = var.alarm_connections_threshold
+  alarm_description   = "${var.identifier}: DatabaseConnections above ${var.alarm_connections_threshold} — check for connection leaks or scale up"
+  alarm_actions       = local.alarm_actions
+  ok_actions          = local.alarm_actions
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    DBInstanceIdentifier = aws_db_instance.this.id
+  }
+
+  tags = var.tags
 }

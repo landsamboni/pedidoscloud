@@ -1,20 +1,19 @@
 # AWS Amplify Hosting build settings (monorepo).
 #
-# AMPLIFY_MONOREPO_APP_ROOT=apps/web is set as an Amplify environment variable
-# at the APP level (via Terraform). Amplify reads it during repo checkout —
-# before branch-level vars are loaded — to locate package.json. All runtime
+# AMPLIFY_MONOREPO_APP_ROOT=apps/web is set at the APP level (via Terraform).
+# Amplify reads it before branch vars load to locate package.json. All runtime
 # vars (DATABASE_URL, S3, auth) are at the BRANCH level.
 #
-# Build notes:
-# - prisma migrate deploy runs in preBuild so the schema is ready before
-#   Next.js tries to prerender static pages (e.g. /admin). It is idempotent:
-#   safe to run on every build, only unapplied migrations are executed.
-#   This also means a `terraform destroy + apply` cycle requires no manual
-#   migration step — the first build creates the schema automatically.
-# - npm run build = prisma generate && next build (see package.json).
-# - The node -e step writes runtime env vars to .next/.env.runtime (deployed
-#   with the artifact) so lib/runtime-env.ts can load them in the SSR Lambda,
-#   which does not receive Amplify branch-level env vars directly.
+# MIGRATIONS: prisma migrate deploy is NOT run here. With VPC connectivity
+# enabled, the RDS security group restricts access to the Amplify Lambda SG
+# + laptop CIDRs only — CodeBuild runs outside the VPC and cannot reach RDS.
+# Run migrations manually from your laptop before deploying a new schema:
+#   cd apps/web && export DATABASE_URL=$(terraform output -raw database_url) && npm run db:deploy
+# See DEPLOYMENT.md §4.
+#
+# npm run build = prisma generate && next build (see package.json).
+# The node -e step bakes runtime vars into .next/.env.runtime (deployed with
+# the artifact) so lib/runtime-env.ts can load them in the SSR Lambda.
 version: 1
 applications:
   - appRoot: apps/web
@@ -23,7 +22,6 @@ applications:
         preBuild:
           commands:
             - npm ci
-            - npx prisma migrate deploy
         build:
           commands:
             - npm run build

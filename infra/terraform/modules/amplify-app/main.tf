@@ -25,6 +25,12 @@ resource "aws_amplify_app" "this" {
     status = "404-200"
   }
 
+  # NOTE: Amplify WEB_COMPUTE VPC connectivity (vpc_config) is not yet supported
+  # by the Terraform AWS provider. Configure it manually via the Amplify console:
+  # App settings → Build settings → VPC configuration. The security groups and
+  # VPC resources are created by the staging/prod env Terraform and are ready to
+  # be associated here once Terraform provider support lands.
+
   tags = var.tags
 
   lifecycle {

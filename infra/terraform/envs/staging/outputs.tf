@@ -39,3 +39,13 @@ output "s3_secret_access_key" {
   description = "Secret access key for the app's IAM user (sensitive)."
   sensitive   = true
 }
+
+output "alerts_topic_arn" {
+  value       = aws_sns_topic.alerts.arn
+  description = "SNS topic ARN for CloudWatch alarms. Subscribe additional endpoints here."
+}
+
+output "amplify_lambda_sg_id" {
+  value       = aws_security_group.amplify_lambda.id
+  description = "Security group ID of the Amplify SSR Lambda (for reference/debugging)."
+}

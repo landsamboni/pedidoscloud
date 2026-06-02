@@ -20,6 +20,11 @@ output "database_url" {
 }
 
 output "security_group_id" {
-  description = "ID of the DB security group (add ingress rules here if needed)."
+  description = "ID of the DB security group. Used by the env to add aws_vpc_security_group_ingress_rule from Amplify Lambda."
   value       = aws_security_group.db.id
+}
+
+output "vpc_id" {
+  description = "VPC ID where RDS lives. Used by the env to create the Amplify Lambda SG in the same VPC."
+  value       = local.vpc_id
 }
