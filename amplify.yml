@@ -4,10 +4,8 @@
 # (via Terraform). Both the env var and the applications.appRoot below are
 # required together — one alone is not enough.
 #
-# next.config.ts uses output: 'standalone', so Next.js bundles the server and
-# a minimal node_modules (including Prisma's native binary) into .next/standalone.
-# Static and public assets are copied there before packaging so the server
-# can serve them at runtime. Migrations are NOT run here (see DEPLOYMENT.md).
+# Migrations are NOT run here — run `npm run db:deploy` against RDS manually
+# (see DEPLOYMENT.md). Build only generates the Prisma client + next build.
 version: 1
 applications:
   - appRoot: apps/web
@@ -19,12 +17,8 @@ applications:
         build:
           commands:
             - npm run build
-            # Copy static assets and public folder into the standalone bundle
-            # so the Next.js server can serve them from the expected locations.
-            - cp -r .next/static .next/standalone/.next/static
-            - cp -r public .next/standalone/public
       artifacts:
-        baseDirectory: .next/standalone
+        baseDirectory: .next
         files:
           - "**/*"
       cache:

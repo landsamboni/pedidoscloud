@@ -1,11 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Standalone output bundles the Next.js server + a minimal node_modules
-  // (including Prisma's native binary) into .next/standalone. This is
-  // required for Amplify WEB_COMPUTE SSR — without it, node_modules are not
-  // available at runtime and Prisma fails on dynamic/SSR routes.
-  output: "standalone",
   experimental: {
     serverActions: {
       bodySizeLimit: "15mb",
