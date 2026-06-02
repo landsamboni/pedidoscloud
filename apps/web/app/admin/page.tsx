@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createRestaurant, setRestaurantPassword } from "@/app/actions";
+import { createRestaurant, deleteRestaurantOrders, deleteRestaurantOrdersByDate, setRestaurantPassword } from "@/app/actions";
 import { RestaurantSettings } from "@/components/restaurant-settings";
 import { formatMoney, formatOrderNumber } from "@/lib/format";
 import { getAdminRestaurants } from "@/lib/data";
@@ -47,6 +47,55 @@ export default async function AdminPage() {
               <div className="mt-5">
                 <RestaurantSettings menu={menu} restaurant={restaurant} returnPath="/admin" />
               </div>
+
+              {/* Danger zone — order cleanup */}
+              <details className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4">
+                <summary className="cursor-pointer text-sm font-semibold text-red-700">
+                  ⚠ Zona peligrosa — eliminar órdenes
+                </summary>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  {/* Delete all orders */}
+                  <div className="rounded-xl border border-red-300 bg-white p-4">
+                    <p className="text-sm font-semibold text-red-800">Eliminar TODO el historial</p>
+                    <p className="mt-1 text-xs text-red-600">
+                      Borra todas las órdenes y contadores de este restaurante. No se puede deshacer.
+                    </p>
+                    <form action={deleteRestaurantOrders} className="mt-3 space-y-2">
+                      <input name="restaurantId" type="hidden" value={restaurant.id} />
+                      <input name="slug" type="hidden" value={restaurant.slug} />
+                      <label className="block text-xs font-medium text-red-700">
+                        Escribe <strong>{restaurant.slug}</strong> para confirmar:
+                        <input
+                          className="input mt-1 text-sm"
+                          name="confirmation"
+                          placeholder={restaurant.slug}
+                          required
+                        />
+                      </label>
+                      <button className="w-full rounded-xl border border-red-400 bg-white px-3 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50" type="submit">
+                        Eliminar todo el historial
+                      </button>
+                    </form>
+                  </div>
+                  {/* Delete by date */}
+                  <div className="rounded-xl border border-red-300 bg-white p-4">
+                    <p className="text-sm font-semibold text-red-800">Eliminar órdenes de un día</p>
+                    <p className="mt-1 text-xs text-red-600">
+                      Borra solo las órdenes de la fecha seleccionada.
+                    </p>
+                    <form action={deleteRestaurantOrdersByDate} className="mt-3 space-y-2">
+                      <input name="restaurantId" type="hidden" value={restaurant.id} />
+                      <label className="block text-xs font-medium text-red-700">
+                        Fecha (YYYY-MM-DD):
+                        <input className="input mt-1 text-sm" name="date" required type="date" />
+                      </label>
+                      <button className="w-full rounded-xl border border-red-400 bg-white px-3 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50" type="submit">
+                        Eliminar órdenes del día
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </details>
 
               <div className="mt-5">
                 <h3 className="font-semibold">Pedidos de hoy ({restaurant.orders.length})</h3>

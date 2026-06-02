@@ -221,6 +221,60 @@ export async function createRestaurant(formData: FormData) {
   revalidatePath("/admin");
 }
 
+/**
+ * Admin: delete all orders (and daily counters) for a restaurant.
+ * Requires the admin to type the restaurant slug as confirmation to prevent
+ * accidental data loss. OrderItems are cascade-deleted by the DB constraint.
+ */
+export async function deleteRestaurantOrders(formData: FormData) {
+  const { getSession } = await import("@/lib/auth");
+  const session = await getSession();
+  if (!session || session.role !== "admin") throw new Error("No autorizado.");
+
+  const restaurantId = String(formData.get("restaurantId"));
+  const confirmation = String(formData.get("confirmation") ?? "").trim();
+  const slug = String(formData.get("slug") ?? "").trim();
+
+  if (confirmation !== slug) throw new Error("La confirmación no coincide con el slug del restaurante.");
+
+  const restaurant = await prisma.restaurant.findUnique({ where: { id: restaurantId } });
+  if (!restaurant) throw new Error("Restaurante no encontrado.");
+
+  await prisma.$transaction([
+    prisma.order.deleteMany({ where: { restaurantId } }),
+    prisma.dailyOrderCounter.deleteMany({ where: { restaurantId } }),
+  ]);
+
+  revalidatePath("/admin");
+  revalidatePath(`/restaurant/${restaurant.slug}`);
+  revalidatePath(`/restaurant/${restaurant.slug}/orders`);
+  revalidatePath(`/restaurant/${restaurant.slug}/analytics`);
+  revalidatePath(`/restaurant/${restaurant.slug}/history`);
+}
+
+/** Admin: delete orders for a restaurant on a specific date. */
+export async function deleteRestaurantOrdersByDate(formData: FormData) {
+  const { getSession } = await import("@/lib/auth");
+  const session = await getSession();
+  if (!session || session.role !== "admin") throw new Error("No autorizado.");
+
+  const restaurantId = String(formData.get("restaurantId"));
+  const date = String(formData.get("date") ?? "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Fecha inválida.");
+
+  const restaurant = await prisma.restaurant.findUnique({ where: { id: restaurantId } });
+  if (!restaurant) throw new Error("Restaurante no encontrado.");
+
+  await prisma.$transaction([
+    prisma.order.deleteMany({ where: { restaurantId, orderDate: date } }),
+    prisma.dailyOrderCounter.deleteMany({ where: { restaurantId, date } }),
+  ]);
+
+  revalidatePath("/admin");
+  revalidatePath(`/restaurant/${restaurant.slug}/history`);
+  revalidatePath(`/restaurant/${restaurant.slug}/analytics`);
+}
+
 /** Admin: set or reset a restaurant's password. */
 export async function setRestaurantPassword(formData: FormData) {
   const restaurantId = String(formData.get("restaurantId"));
