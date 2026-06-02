@@ -70,16 +70,32 @@ terraform output amplify_branch_url    # URL pública de Amplify (para Cloudflar
 > El `terraform.tfstate` queda local y **contiene secretos**; está en `.gitignore`. Guárdalo
 > a buen recaudo. Para estado remoto/compartido, ver `backend.tf`.
 
-### Nota de conectividad RDS ⚠️
+### Nota de conectividad RDS ⚠️ — Riesgo conocido y documentado
 
-Amplify (SSR) no tiene IPs de salida fijas, así que el *security group* de RDS no puede
-limitarse solo a tu laptop si quieres que la app conecte. Para el MVP hay dos caminos:
+Amplify SSR no tiene IPs de salida fijas, así que el *security group* de RDS usa:
 
-- **Demo rápido**: pon `db_allowed_cidr_blocks = ["0.0.0.0/0"]`. La instancia es pública
-  pero el `DATABASE_URL` exige `sslmode=require` y la contraseña es fuerte. Es el patrón
-  típico para una demo; endurécelo después.
-- **Más estricto**: deja solo tu IP para correr migraciones y, para la app, integra Amplify
-  con una VPC más adelante (fuera del alcance del MVP).
+```hcl
+db_allowed_cidr_blocks = ["31.59.107.23/32", "0.0.0.0/0"]
+```
+
+**¿Por qué es un riesgo?** El puerto 5432 queda accesible desde cualquier IP en internet.
+Bots de escaneo lo detectan en minutos e intentan conectarse.
+
+**Mitigaciones activas que reducen el riesgo:**
+- `sslmode=require` en `DATABASE_URL` — conexiones sin TLS son rechazadas por RDS.
+- Contraseña fuerte (passphrase larga generada aleatoriamente).
+- Es staging: sin datos reales de clientes todavía.
+
+**Decisión tomada:** aceptable para staging/demo MVP. **No usar en producción.**
+
+**Mejora futura (obligatoria antes de prod):** Amplify WEB_COMPUTE soporta conectarse a
+recursos dentro de una VPC. La solución correcta es:
+1. Crear subredes privadas en la VPC + NAT Gateway.
+2. Configurar `vpc_config` en el recurso `aws_amplify_app` de Terraform.
+3. Poner RDS en las subredes privadas con un security group que solo acepte el SG de Amplify.
+4. Eliminar `0.0.0.0/0` del ingress de RDS.
+
+Esto requiere ~50 líneas adicionales de Terraform. Está registrado en el checklist §7.
 
 ---
 
@@ -183,8 +199,9 @@ Para desplegar prod, repite el paso 1 en `infra/terraform/envs/prod` con su prop
 
 ## 7. Checklist de salida a producción (post-MVP)
 
+- [ ] **VPC connectivity** — subredes privadas + `vpc_config` en Amplify + cerrar `0.0.0.0/0`
+      en el SG de RDS. **Obligatorio antes de prod** (ver nota §1 para el diseño).
 - [ ] Reemplazar Basic Auth por auth real con cuentas por restaurante (NextAuth/Cognito).
-- [ ] Mover RDS a subredes privadas + integración VPC de Amplify (cerrar el `0.0.0.0/0`).
 - [ ] Estado remoto de Terraform (S3 + DynamoDB lock) — ver `backend.tf`.
 - [ ] Rotar las llaves del usuario IAM o migrar al rol de cómputo de Amplify.
 - [ ] Activar logs/alarmas en CloudWatch (RDS, Amplify) y backups verificados.
