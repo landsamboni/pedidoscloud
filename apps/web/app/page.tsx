@@ -13,10 +13,10 @@ export default function Home() {
           <Link className="button-primary" href="/r/martica-la-bonita">
             Pedir en Martica la Bonita
           </Link>
-          <Link className="button-secondary" href="/restaurant/martica-la-bonita/orders">
+          <Link className="button-secondary" href="/restaurant/martica-la-bonita/orders" prefetch={false}>
             Ver tablero
           </Link>
-          <Link className="button-secondary" href="/admin">
+          <Link className="button-secondary" href="/admin" prefetch={false}>
             Abrir admin
           </Link>
         </div>
