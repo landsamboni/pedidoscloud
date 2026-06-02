@@ -291,6 +291,141 @@ export async function deleteRestaurantOrdersByDate(formData: FormData) {
   revalidatePath(`/restaurant/${restaurant.slug}/analytics`);
 }
 
+/** Admin: populate realistic demo orders for the last N days (for demos/sales presentations). */
+export async function populateDemoData(formData: FormData) {
+  const { getSession } = await import("@/lib/auth");
+  const session = await getSession();
+  if (!session || session.role !== "admin") throw new Error("No autorizado.");
+
+  const restaurantId = String(formData.get("restaurantId"));
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { id: restaurantId },
+    select: { id: true, slug: true, basePrice: true },
+  });
+  if (!restaurant) throw new Error("Restaurante no encontrado.");
+
+  const DEMO_MENU = {
+    soups: ["Sopa de lentejas", "Sancocho de pollo", "Crema de zanahoria", "Sopa de arvejas"],
+    proteins: ["Chuleta de pollo", "Carne asada", "Mojarra frita", "Costilla BBQ +3000", "Pollo apanado"],
+    sides: ["Frijoles", "Lentejas", "Papa salada", "Ensalada de papa"],
+    drinks: ["Jugo de lulo", "Limonada de coco", "Jugo de maracuyá", "Agua"],
+  };
+
+  const CUSTOMERS = [
+    { name: "Carlos Rodríguez", phone: "3001234567", address: "Cra 7 #45-23" },
+    { name: "María García", phone: "3112345678", address: "Cll 50 #12-34 apto 301" },
+    { name: "Andrés Martínez", phone: "3203456789", address: "Cra 15 #80-10" },
+    { name: "Laura Sánchez", phone: "3154567890", address: "Cll 100 #22-15 apto 501" },
+    { name: "Juan Pérez", phone: "3005678901", address: "Cra 30 #63-40" },
+    { name: "Valentina López", phone: "3166789012", address: "Cll 72 #48-20" },
+    { name: "Diego Castro", phone: "3217890123", address: "Cra 24 #55-67 of 202" },
+    { name: "Camila Torres", phone: "3008901234", address: "Cll 85 #11-32" },
+    { name: "Felipe Vargas", phone: "3159012345", address: "Cra 45 #90-15" },
+    { name: "Ana Moreno", phone: "3020123456", address: "Cll 35 #28-50 apto 104" },
+    { name: "Santiago Jiménez", phone: "3171234567", address: "Cra 9 #72-18" },
+    { name: "Isabella Herrera", phone: "3082345678", address: "Cll 60 #35-25" },
+  ];
+
+  const rand = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+  const randInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+  let totalCreated = 0;
+  const DAYS = 15;
+
+  for (let daysAgo = DAYS; daysAgo >= 0; daysAgo--) {
+    const date = new Date();
+    date.setDate(date.getDate() - daysAgo);
+    const dateKey = localDateKey(date);
+    const isToday = daysAgo === 0;
+    const ordersCount = isToday ? randInt(3, 5) : randInt(5, 10);
+
+    // Ensure menu exists for this day
+    await prisma.menu.upsert({
+      where: { restaurantId_date: { restaurantId: restaurant.id, date: dateKeyToUtcDate(dateKey) } },
+      update: {},
+      create: { restaurantId: restaurant.id, date: dateKeyToUtcDate(dateKey), ...DEMO_MENU },
+    });
+
+    // Get or reset counter for this day
+    const existingCounter = await prisma.dailyOrderCounter.findUnique({
+      where: { restaurantId_date: { restaurantId: restaurant.id, date: dateKey } },
+    });
+    let orderNum = existingCounter?.lastNumber ?? 0;
+
+    for (let j = 0; j < ordersCount; j++) {
+      const cust = rand(CUSTOMERS);
+      const numItems = Math.random() < 0.2 ? 2 : 1;
+
+      // Upsert customer
+      const customer = await prisma.customer.upsert({
+        where: { restaurantId_phone: { restaurantId: restaurant.id, phone: cust.phone } },
+        update: { name: cust.name, lastAddress: cust.address },
+        create: { restaurantId: restaurant.id, name: cust.name, phone: cust.phone, lastAddress: cust.address },
+      });
+
+      orderNum++;
+
+      // Status distribution: today = mix; past = mostly confirmed
+      let status: "PAYMENT_CONFIRMED" | "CANCELLED" | "PAYMENT_PENDING";
+      if (isToday) {
+        status = j < 2 ? "PAYMENT_PENDING" : j === 2 ? "CANCELLED" : "PAYMENT_CONFIRMED";
+      } else {
+        const r = Math.random();
+        status = r < 0.82 ? "PAYMENT_CONFIRMED" : r < 0.92 ? "CANCELLED" : "PAYMENT_PENDING";
+      }
+
+      const items = Array.from({ length: numItems }, () => ({
+        soup: rand(DEMO_MENU.soups),
+        protein: rand(DEMO_MENU.proteins),
+        side: rand(DEMO_MENU.sides),
+        drink: rand(DEMO_MENU.drinks),
+      }));
+
+      const { parseSurcharge } = await import("@/lib/menu");
+      const total = items.reduce((sum, item) => {
+        return sum + Number(restaurant.basePrice) + parseSurcharge(item.protein) + parseSurcharge(item.soup);
+      }, 0);
+
+      // Set a realistic createdAt (10am-2pm Bogota = 3pm-7pm UTC)
+      const orderCreatedAt = new Date(date);
+      orderCreatedAt.setUTCHours(15 + j % 4, j * 7 % 60, 0, 0);
+
+      await prisma.order.create({
+        data: {
+          restaurantId: restaurant.id,
+          customerId: customer.id,
+          customerName: cust.name,
+          orderDate: dateKey,
+          orderNumber: orderNum,
+          status: status as never,
+          total: new Prisma.Decimal(total),
+          address: cust.address,
+          createdAt: orderCreatedAt,
+          ...(status !== "PAYMENT_PENDING" ? { paymentSubmittedAt: orderCreatedAt } : {}),
+          items: {
+            create: items.map((item) => ({
+              ...item,
+              price: new Prisma.Decimal(Number(restaurant.basePrice) + parseSurcharge(item.protein)),
+            })),
+          },
+        },
+      });
+
+      totalCreated++;
+    }
+
+    // Update/create counter for this day
+    await prisma.dailyOrderCounter.upsert({
+      where: { restaurantId_date: { restaurantId: restaurant.id, date: dateKey } },
+      update: { lastNumber: orderNum },
+      create: { restaurantId: restaurant.id, date: dateKey, lastNumber: orderNum },
+    });
+  }
+
+  revalidatePath("/admin");
+  revalidatePath(`/restaurant/${restaurant.slug}`);
+}
+
 /** Admin: activate or renew a restaurant's subscription. */
 export async function setRestaurantSubscription(formData: FormData) {
   const { getSession } = await import("@/lib/auth");

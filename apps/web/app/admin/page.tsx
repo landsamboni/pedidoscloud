@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { deleteRestaurant, deleteRestaurantOrders, deleteRestaurantOrdersByDate, setRestaurantPassword, setRestaurantSubscription } from "@/app/actions";
+import { deleteRestaurant, deleteRestaurantOrders, deleteRestaurantOrdersByDate, populateDemoData, setRestaurantPassword, setRestaurantSubscription } from "@/app/actions";
 import { getDaysRemaining, getSubscriptionStatus, STATUS_COLORS, STATUS_LABELS } from "@/lib/subscription";
 import { logoutAction } from "@/app/login/actions";
 import { CreateRestaurantForm } from "@/components/create-restaurant-form";
@@ -146,6 +146,22 @@ export default async function AdminPage() {
               <div className="mt-5">
                 <RestaurantSettings menu={menu} restaurant={restaurant} returnPath="/admin" />
               </div>
+
+              {/* Demo data generator — populate for sales presentations */}
+              <details className="mt-5 rounded-xl border border-teal-200 bg-teal-50 p-4">
+                <summary className="cursor-pointer text-sm font-semibold text-teal-800">
+                  🎬 Poblar datos demo (últimos 15 días)
+                </summary>
+                <p className="mt-2 text-xs text-teal-700">
+                  Genera órdenes y clientes ficticios de los últimos 15 días para mostrar el dashboard en presentaciones de ventas. Se agregan a los datos existentes.
+                </p>
+                <form action={populateDemoData} className="mt-3">
+                  <input name="restaurantId" type="hidden" value={restaurant.id} />
+                  <button className="button-primary text-sm" type="submit">
+                    Generar datos demo
+                  </button>
+                </form>
+              </details>
 
               {/* Danger zone — order cleanup */}
               <details className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4">

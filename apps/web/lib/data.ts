@@ -117,6 +117,58 @@ export async function getOrdersByDate(slug: string, date: string) {
   });
 }
 
+// ---- Ingredient analytics ----
+
+export async function getRestaurantIngredientAnalytics(slug: string, monthOffset = 0) {
+  const restaurant = await prisma.restaurant.findUnique({ where: { slug }, select: { id: true, name: true } });
+  if (!restaurant) return null;
+
+  const now = new Date();
+  const year = now.getMonth() - monthOffset < 0
+    ? now.getFullYear() - 1
+    : now.getFullYear();
+  const month = ((now.getMonth() - monthOffset) % 12 + 12) % 12;
+
+  const startDate = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+  const endDate = month === 11
+    ? `${year + 1}-01-01`
+    : `${year}-${String(month + 2).padStart(2, "0")}-01`;
+
+  const items = await prisma.orderItem.findMany({
+    where: {
+      order: {
+        restaurantId: restaurant.id,
+        status: "PAYMENT_CONFIRMED",
+        orderDate: { gte: startDate, lt: endDate },
+      },
+    },
+    select: { soup: true, protein: true, side: true, drink: true },
+  });
+
+  const tally = (field: keyof typeof items[0]) => {
+    const map: Record<string, number> = {};
+    for (const item of items) {
+      // Strip surcharge notation before counting
+      const raw = item[field] as string;
+      const name = raw.replace(/\s*\+\d+$/, "").replace(/\|.*$/, "").trim();
+      map[name] = (map[name] ?? 0) + 1;
+    }
+    return Object.entries(map).sort(([, a], [, b]) => b - a);
+  };
+
+  const monthLabel = new Date(year, month, 1).toLocaleDateString("es-CO", { month: "long", year: "numeric" });
+
+  return {
+    restaurant,
+    monthLabel,
+    total: items.length,
+    soups: tally("soup"),
+    proteins: tally("protein"),
+    sides: tally("side"),
+    drinks: tally("drink"),
+  };
+}
+
 // ---- Analytics ----
 
 export async function getRestaurantAnalytics(slug: string) {

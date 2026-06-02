@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getRestaurantAnalytics } from "@/lib/data";
+import { getRestaurantAnalytics, getRestaurantIngredientAnalytics } from "@/lib/data";
 import { formatDateKey, formatMoney, localDateKey } from "@/lib/format";
 
 function buildWeeks(daily: { orderDate: string; revenue: number; count: number }[]) {
@@ -23,7 +23,10 @@ function buildWeeks(daily: { orderDate: string; revenue: number; count: number }
 
 export default async function AnalyticsPage({ params }: { params: Promise<{ restaurantSlug: string }> }) {
   const { restaurantSlug } = await params;
-  const data = await getRestaurantAnalytics(restaurantSlug);
+  const [data, ingredients] = await Promise.all([
+    getRestaurantAnalytics(restaurantSlug),
+    getRestaurantIngredientAnalytics(restaurantSlug),
+  ]);
   if (!data) notFound();
 
   const today = localDateKey();
@@ -69,6 +72,22 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ rest
         <StatCard label="Últimos 30 días" revenue={monthRevenue} count={monthCount} />
         <StatCard label="Total histórico" revenue={allTimeRevenue} count={allTimeCount} />
       </div>
+
+      {/* Ingredient analytics — most sold this month */}
+      {ingredients && ingredients.total > 0 && (
+        <section className="card mt-6">
+          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-lg font-bold">Ingredientes más vendidos</h2>
+            <span className="text-sm text-stone-500 capitalize">{ingredients.monthLabel} · {ingredients.total} almuerzos confirmados</span>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <IngredientCard label="Sopas" items={ingredients.soups} total={ingredients.total} />
+            <IngredientCard label="Proteínas" items={ingredients.proteins} total={ingredients.total} />
+            <IngredientCard label="Principios" items={ingredients.sides} total={ingredients.total} />
+            <IngredientCard label="Bebidas" items={ingredients.drinks} total={ingredients.total} />
+          </div>
+        </section>
+      )}
 
       {/* Daily chart — last 30 days */}
       <section className="card mt-6">
@@ -170,6 +189,32 @@ function BarChart({ bars }: {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function IngredientCard({ label, items, total }: { label: string; items: [string, number][]; total: number }) {
+  const max = items[0]?.[1] ?? 1;
+  return (
+    <div>
+      <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-stone-500">{label}</p>
+      <div className="space-y-2">
+        {items.slice(0, 6).map(([name, count]) => (
+          <div key={name}>
+            <div className="flex items-center justify-between gap-2 text-sm">
+              <span className="truncate font-medium text-stone-900">{name}</span>
+              <span className="shrink-0 text-xs text-stone-500">{count} ({Math.round((count / total) * 100)}%)</span>
+            </div>
+            <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-stone-100">
+              <div
+                className="h-full rounded-full bg-teal-400"
+                style={{ width: `${(count / max) * 100}%` }}
+              />
+            </div>
+          </div>
+        ))}
+        {items.length === 0 && <p className="text-sm text-stone-400">Sin datos este mes.</p>}
+      </div>
     </div>
   );
 }
