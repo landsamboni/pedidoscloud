@@ -1,5 +1,8 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // "native" covers the CodeBuild build machine.
+  // "rhel-openssl-3.0.x" covers Amplify's SSR compute (Amazon Linux 2023 / Lambda).
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
