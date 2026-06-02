@@ -1,26 +1,27 @@
-# AWS Amplify Hosting build settings.
+# AWS Amplify Hosting build settings (monorepo).
 #
 # AMPLIFY_MONOREPO_APP_ROOT=apps/web is set as an Amplify environment variable
-# (via Terraform). Amplify navigates to that directory before running this spec,
-# so the build commands run from apps/web — no `applications:` wrapper needed.
+# (via Terraform). Both the env var and the applications.appRoot below are
+# required together — one alone is not enough.
 #
 # Migrations are NOT run here — run `npm run db:deploy` against RDS manually
 # (see DEPLOYMENT.md). Build only generates the Prisma client + next build.
 version: 1
-frontend:
-  phases:
-    preBuild:
-      commands:
-        - npm ci
-    build:
-      commands:
-        # package.json "build" runs `prisma generate && next build`
-        - npm run build
-  artifacts:
-    baseDirectory: .next
-    files:
-      - "**/*"
-  cache:
-    paths:
-      - node_modules/**/*
-      - .next/cache/**/*
+applications:
+  - appRoot: apps/web
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm ci
+        build:
+          commands:
+            - npm run build
+      artifacts:
+        baseDirectory: .next
+        files:
+          - "**/*"
+      cache:
+        paths:
+          - node_modules/**/*
+          - .next/cache/**/*
