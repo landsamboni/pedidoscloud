@@ -86,6 +86,7 @@ model Order {
   status       OrderStatus @default(NEW)
   total        Decimal     @db.Decimal(12, 2)
   address      String
+  customerName String   // snapshot of customer name at order creation time
   paymentProofPath String?
   paymentSubmittedAt DateTime?
   createdAt    DateTime    @default(now())

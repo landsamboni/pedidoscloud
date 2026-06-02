@@ -133,6 +133,7 @@ export async function createOrder(input: CreateOrderInput) {
       data: {
         restaurantId: restaurant.id,
         customerId: customer.id,
+        customerName: name, // snapshot — name won't change even if customer upserts later
         orderDate,
         orderNumber: counter.lastNumber,
         status: OrderStatus.PAYMENT_PENDING,

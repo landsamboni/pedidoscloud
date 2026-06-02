@@ -24,7 +24,7 @@ function LoginForm() {
           className="input mt-1 text-base"
           id="username"
           name="username"
-          placeholder="martica-la-bonita"
+          placeholder=""
           required
           type="text"
         />
