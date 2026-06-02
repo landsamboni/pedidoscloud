@@ -34,6 +34,20 @@ model Restaurant {
   customers     Customer[]
   orders        Order[]
   dailyCounters DailyOrderCounter[]
+  paymentMethods PaymentMethod[]
+}
+
+model PaymentMethod {
+  id           String     @id @default(cuid())
+  restaurantId String
+  label        String     // e.g. "Daviplata", "Nequi secundario", "Bancolombia"
+  phone        String     // number or key to display and copy
+  accountName  String     // account holder name
+  position     Int        @default(0)
+  createdAt    DateTime   @default(now())
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
 }
 
 model Menu {

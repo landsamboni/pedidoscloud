@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import { CopyPaymentNumber } from "@/components/payment-instructions";
 import { PaymentProofForm } from "@/components/payment-proof-form";
 import { AutoRefresh } from "@/components/auto-refresh";
-import { ShareOrderLink } from "@/components/share-order-link";
 import { formatMoney, formatOrderNumber } from "@/lib/format";
 import { getPublicOrder } from "@/lib/data";
 import { resolveFileUrl } from "@/lib/file-url";
@@ -20,7 +19,7 @@ const statusLabels: Record<string, string> = {
 
 const statusMessages: Record<string, string> = {
   NEW: "Tu pedido fue recibido por el restaurante.",
-  PAYMENT_PENDING: "Realiza el pago y envía tu comprobante.",
+  PAYMENT_PENDING: "Sigue los pasos a continuación para completar tu pago.",
   PAYMENT_REVIEW: "El restaurante está revisando tu comprobante. Te avisamos aquí cuando confirmen.",
   PAYMENT_CONFIRMED: "Tu pago fue confirmado. El restaurante está preparando tu pedido.",
   PAYMENT_REJECTED: "El restaurante no pudo validar el comprobante. Puedes enviar uno nuevo.",
@@ -44,12 +43,11 @@ export default async function PublicOrderPage({ params }: { params: Promise<{ re
 
   const canUpload = ["PAYMENT_PENDING", "PAYMENT_REJECTED", "PAYMENT_REVIEW"].includes(order.status);
   const isWaiting = order.status === "PAYMENT_REVIEW";
-  const isNew = ["NEW", "PAYMENT_PENDING"].includes(order.status);
   const paymentConfigured = order.restaurant.nequiAccountName && order.restaurant.nequiPhone;
   const nequiQrUrl = resolveFileUrl(order.restaurant.nequiQrPath);
-  // Use dedicated whatsappPhone if set, otherwise fall back to nequiPhone
   const waPhone = order.restaurant.whatsappPhone ?? order.restaurant.nequiPhone;
   const whatsAppUrl = buildWhatsAppUrl(waPhone, order.restaurant.name, order.orderNumber);
+  const additionalMethods = order.restaurant.paymentMethods ?? [];
 
   return (
     <main className="mx-auto max-w-2xl p-4 sm:p-6">
@@ -65,59 +63,109 @@ export default async function PublicOrderPage({ params }: { params: Promise<{ re
         <p className="mt-2 text-base leading-relaxed text-stone-600">{statusMessages[order.status]}</p>
         <AutoRefresh active={isWaiting} intervalMs={20000} />
         <div className="mt-4 flex items-center justify-between border-t border-stone-100 pt-4 text-xl font-bold">
-          <span>Total</span>
+          <span>Total a pagar</span>
           <span>{formatMoney(Number(order.total))}</span>
         </div>
       </section>
 
-      {/* Save order link — show right after creating the order */}
-      {isNew && (
-        <section className="card mt-4 border-stone-200 bg-stone-50">
-          <p className="text-sm font-semibold text-stone-700">Guarda el enlace de tu pedido</p>
-          <p className="mt-1 text-sm text-stone-500">
-            Desde aquí puedes ver el estado de tu pago en cualquier momento.
-          </p>
-          <ShareOrderLink
-            restaurantName={order.restaurant.name}
-            orderNumber={formatOrderNumber(order.orderNumber)}
-          />
+      {/* Step-by-step guide — only when payment is pending */}
+      {canUpload && !isWaiting && (
+        <section className="card mt-4 border-teal-200 bg-teal-50">
+          <h2 className="text-lg font-bold text-teal-900">Cómo completar tu pago</h2>
+          <ol className="mt-3 space-y-3">
+            <li className="flex gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-teal-600 text-sm font-bold text-white">1</span>
+              <p className="text-base text-teal-900">Copia el número o escanea el QR de abajo.</p>
+            </li>
+            <li className="flex gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-teal-600 text-sm font-bold text-white">2</span>
+              <p className="text-base text-teal-900">
+                Abre tu app de pagos (Nequi, Daviplata, etc.) y transfiere exactamente{" "}
+                <strong>{formatMoney(Number(order.total))}</strong>.
+              </p>
+            </li>
+            <li className="flex gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-teal-600 text-sm font-bold text-white">3</span>
+              <p className="text-base text-teal-900">Regresa aquí y adjunta el comprobante de pago para que el restaurante lo verifique.</p>
+            </li>
+          </ol>
         </section>
       )}
 
-      {/* Payment instructions */}
-      {canUpload && (
+      {/* Payment methods */}
+      {canUpload && paymentConfigured && (
         <section className="card mt-4">
-          <h2 className="text-2xl font-bold">Paga por Nequi</h2>
-          {paymentConfigured ? (
-            <>
+          <h2 className="text-2xl font-bold">Realiza el pago</h2>
+
+          {/* Primary Nequi */}
+          <div className="mt-4 rounded-2xl bg-purple-50 p-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-purple-500">Nequi</p>
+            <div className="mt-1 flex flex-wrap items-baseline gap-2">
+              <p className="text-2xl font-bold tracking-wide">{order.restaurant.nequiPhone}</p>
+              <p className="text-sm text-purple-700">{order.restaurant.nequiAccountName}</p>
+            </div>
+            <div className="mt-3 space-y-2">
+              <CopyPaymentNumber label="Copiar número Nequi" value={order.restaurant.nequiPhone!} />
               {nequiQrUrl && (
-                <div className="mx-auto mt-4 max-w-xs overflow-hidden rounded-2xl border border-stone-200 bg-white p-3">
-                  <Image alt={`QR Nequi de ${order.restaurant.name}`} className="h-auto w-full" height={320} src={nequiQrUrl} width={320} unoptimized />
-                </div>
+                <>
+                  <div className="mx-auto max-w-xs overflow-hidden rounded-2xl border border-stone-200 bg-white p-3">
+                    <Image
+                      alt={`QR Nequi de ${order.restaurant.name}`}
+                      className="h-auto w-full"
+                      height={320}
+                      src={nequiQrUrl}
+                      unoptimized
+                      width={320}
+                    />
+                  </div>
+                  <a
+                    className="button-secondary block w-full text-center text-base"
+                    download="qr-nequi.jpg"
+                    href={nequiQrUrl}
+                  >
+                    Guardar QR en galería
+                  </a>
+                  <p className="text-center text-xs text-stone-400">
+                    En iPhone: abre el QR y mantén presionado para guardarlo.
+                  </p>
+                </>
               )}
-              <div className="mt-4 rounded-2xl bg-purple-50 p-4 text-base">
-                <p className="text-sm font-semibold uppercase tracking-wide text-purple-700">Celular o llave Nequi</p>
-                <p className="mt-1 text-2xl font-bold tracking-wide">{order.restaurant.nequiPhone}</p>
-                <p className="mt-2"><strong>Titular:</strong> {order.restaurant.nequiAccountName}</p>
+            </div>
+          </div>
+
+          {/* Additional payment methods */}
+          {additionalMethods.map((m) => (
+            <div className="mt-3 rounded-2xl bg-stone-50 p-4" key={m.id}>
+              <p className="text-xs font-bold uppercase tracking-wider text-stone-500">{m.label}</p>
+              <div className="mt-1 flex flex-wrap items-baseline gap-2">
+                <p className="text-2xl font-bold tracking-wide">{m.phone}</p>
+                <p className="text-sm text-stone-600">{m.accountName}</p>
               </div>
               <div className="mt-3">
-                <CopyPaymentNumber value={order.restaurant.nequiPhone!} />
+                <CopyPaymentNumber label={`Copiar número ${m.label}`} value={m.phone} />
               </div>
-              <p className="mt-4 text-base leading-relaxed text-stone-600">
-                Paga exactamente <strong>{formatMoney(Number(order.total))}</strong>. Si usas el QR desde este celular, guarda la imagen y selecciónala desde la galería en tu app bancaria.
-              </p>
-            </>
-          ) : (
-            <p className="mt-3 text-base text-stone-600">Comunícate con el restaurante para recibir las instrucciones de pago.</p>
-          )}
+            </div>
+          ))}
+
+          <p className="mt-4 text-sm leading-relaxed text-stone-500">
+            Transfiere exactamente <strong>{formatMoney(Number(order.total))}</strong> y regresa aquí para adjuntar el comprobante.
+          </p>
         </section>
       )}
 
-      {/* Upload proof form */}
+      {canUpload && !paymentConfigured && (
+        <section className="card mt-4">
+          <p className="text-base text-stone-600">Comunícate con el restaurante para recibir las instrucciones de pago.</p>
+        </section>
+      )}
+
+      {/* Upload proof */}
       {canUpload && !order.paymentProofPath && (
         <section className="card mt-4">
-          <h2 className="text-2xl font-bold">Envía tu comprobante</h2>
-          <p className="mt-2 text-base leading-relaxed text-stone-600">Toma una foto o elige una captura de pantalla. También puedes adjuntar un PDF.</p>
+          <h2 className="text-2xl font-bold">Adjunta tu comprobante</h2>
+          <p className="mt-2 text-base leading-relaxed text-stone-600">
+            Toma una foto o captura de pantalla del comprobante de pago y súbela aquí.
+          </p>
           <PaymentProofForm publicToken={publicToken} restaurantSlug={restaurantSlug} />
         </section>
       )}
@@ -134,12 +182,12 @@ export default async function PublicOrderPage({ params }: { params: Promise<{ re
           <p className={`mt-2 text-base leading-relaxed ${order.status === "PAYMENT_REJECTED" ? "text-amber-950" : "text-emerald-900"}`}>
             {order.status === "PAYMENT_REJECTED"
               ? "El restaurante no pudo validar el archivo anterior. Reemplázalo por el comprobante correcto."
-              : "El restaurante recibió tu comprobante y lo revisará pronto. Tu pedido permanece en seguimiento en esta página."}
+              : "El restaurante recibió tu comprobante y lo revisará pronto. Esta página se actualiza automáticamente."}
           </p>
         </section>
       )}
 
-      {/* Waiting for verification — below proof confirmation, above WhatsApp */}
+      {/* Waiting indicator */}
       {isWaiting && order.paymentProofPath && (
         <section className="card mt-4 border-amber-200 bg-amber-50">
           <div className="flex items-start gap-4">
@@ -150,15 +198,14 @@ export default async function PublicOrderPage({ params }: { params: Promise<{ re
             <div>
               <p className="text-base font-bold text-amber-900">Verificando tu pago…</p>
               <p className="mt-1 text-sm leading-relaxed text-amber-800">
-                El restaurante está revisando tu comprobante. Esta página se actualiza sola cada 20 segundos — no la cierres.
-                Cuando el pago sea confirmado, el estado cambiará automáticamente.
+                El restaurante está revisando tu comprobante. Esta página se actualiza cada 20 segundos — no la cierres.
               </p>
             </div>
           </div>
         </section>
       )}
 
-      {/* Payment confirmed — prominent green box */}
+      {/* Payment confirmed */}
       {order.status === "PAYMENT_CONFIRMED" && (
         <section className="card mt-4 border-emerald-400 bg-emerald-50">
           <div className="flex items-start gap-4">
@@ -166,14 +213,14 @@ export default async function PublicOrderPage({ params }: { params: Promise<{ re
             <div>
               <h2 className="text-2xl font-bold text-emerald-900">¡Tu pago fue confirmado!</h2>
               <p className="mt-2 text-base leading-relaxed text-emerald-800">
-                El restaurante verificó tu comprobante y está preparando tu pedido. ¡Gracias por tu compra!
+                El restaurante verificó tu comprobante y está preparando tu pedido. ¡Gracias!
               </p>
             </div>
           </div>
         </section>
       )}
 
-      {/* WhatsApp support button — only when waiting for review */}
+      {/* WhatsApp support */}
       {isWaiting && whatsAppUrl && (
         <section className="card mt-4 border-stone-200 bg-stone-50">
           <p className="text-sm font-semibold text-stone-700">¿Sin novedades?</p>
@@ -194,7 +241,7 @@ export default async function PublicOrderPage({ params }: { params: Promise<{ re
         </section>
       )}
 
-      {/* Correct proof form */}
+      {/* Correct proof */}
       {canUpload && order.paymentProofPath && (
         <details className="card mt-4" open={order.status === "PAYMENT_REJECTED"}>
           <summary className="cursor-pointer text-base font-semibold text-stone-700">Corregir comprobante</summary>

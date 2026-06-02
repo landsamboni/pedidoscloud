@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export function CopyPaymentNumber({ value }: { value: string }) {
+export function CopyPaymentNumber({ value, label = "Copiar número para transferir" }: { value: string; label?: string }) {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState(false);
 
@@ -19,9 +19,9 @@ export function CopyPaymentNumber({ value }: { value: string }) {
         document.body.appendChild(textarea);
         textarea.focus();
         textarea.select();
-        const copied = document.execCommand("copy");
+        const ok = document.execCommand("copy");
         textarea.remove();
-        if (!copied) throw new Error("Copy unavailable");
+        if (!ok) throw new Error("Copy unavailable");
       }
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
@@ -33,9 +33,13 @@ export function CopyPaymentNumber({ value }: { value: string }) {
   return (
     <>
       <button className="button-secondary w-full text-base" onClick={copy} type="button">
-        {copied ? "Número copiado" : "Copiar número"}
+        {copied ? "✓ Número copiado" : label}
       </button>
-      {error && <p className="mt-2 text-sm font-medium text-red-700">No se pudo copiar automáticamente. Mantén presionado el número para copiarlo.</p>}
+      {error && (
+        <p className="mt-2 text-sm font-medium text-red-700">
+          No se pudo copiar. Mantén presionado el número para copiarlo manualmente.
+        </p>
+      )}
     </>
   );
 }

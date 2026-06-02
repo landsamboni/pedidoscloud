@@ -263,6 +263,35 @@ export async function updatePaymentSettings(formData: FormData) {
   redirect(returnPath);
 }
 
+export async function createPaymentMethod(formData: FormData) {
+  const restaurantId = String(formData.get("restaurantId"));
+  const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
+  const label = required(String(formData.get("label") ?? ""), "tipo de pago");
+  const phone = required(String(formData.get("phone") ?? ""), "número o llave");
+  const accountName = required(String(formData.get("accountName") ?? ""), "titular");
+
+  const count = await prisma.paymentMethod.count({ where: { restaurantId } });
+  await prisma.paymentMethod.create({
+    data: { restaurantId, label, phone, accountName, position: count },
+  });
+  revalidatePath("/admin");
+  revalidatePath(returnPath);
+  redirect(returnPath);
+}
+
+export async function deletePaymentMethod(formData: FormData) {
+  const id = String(formData.get("id"));
+  const restaurantId = String(formData.get("restaurantId"));
+  const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
+
+  const method = await prisma.paymentMethod.findFirst({ where: { id, restaurantId } });
+  if (!method) throw new Error("Método de pago no encontrado.");
+  await prisma.paymentMethod.delete({ where: { id } });
+  revalidatePath("/admin");
+  revalidatePath(returnPath);
+  redirect(returnPath);
+}
+
 export type PaymentProofState = { error: string; success: boolean };
 
 export async function uploadPaymentProof(_: PaymentProofState, formData: FormData): Promise<PaymentProofState> {

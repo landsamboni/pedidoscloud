@@ -22,6 +22,7 @@ export async function getTodayOrders(slug: string) {
         include: { customer: true, items: true },
         orderBy: { createdAt: "asc" },
       },
+      paymentMethods: { orderBy: { position: "asc" } },
     },
   });
 }
@@ -38,6 +39,7 @@ export async function getAdminRestaurants() {
         include: { customer: true, items: true },
         orderBy: { createdAt: "asc" },
       },
+      paymentMethods: { orderBy: { position: "asc" } },
     },
     orderBy: { createdAt: "asc" },
   });
@@ -55,6 +57,10 @@ export async function getPublicOrder(slug: string, publicToken: string) {
           nequiPhone: true,
           nequiQrPath: true,
           whatsappPhone: true,
+          paymentMethods: {
+            select: { id: true, label: true, phone: true, accountName: true },
+            orderBy: { position: "asc" },
+          },
         },
       },
       items: true,
@@ -74,7 +80,7 @@ export async function getRestaurantOrderDates(slug: string) {
     _count: { id: true },
     _sum: { total: true },
     orderBy: { orderDate: "desc" },
-    take: 60, // last ~2 months of operating days
+    take: 60,
   });
 
   return { restaurant, dates: groups };
@@ -99,9 +105,8 @@ export async function getRestaurantAnalytics(slug: string) {
   const restaurant = await prisma.restaurant.findUnique({ where: { slug }, select: { id: true, name: true } });
   if (!restaurant) return null;
 
-  const since = dateKeyDaysAgo(89); // last 90 days (index 0 = 89 days ago)
+  const since = dateKeyDaysAgo(89);
 
-  // Daily aggregates for confirmed orders (revenue)
   const daily = await prisma.order.groupBy({
     by: ["orderDate"],
     where: {
@@ -114,7 +119,6 @@ export async function getRestaurantAnalytics(slug: string) {
     orderBy: { orderDate: "asc" },
   });
 
-  // All-time totals across all statuses
   const totals = await prisma.order.groupBy({
     by: ["status"],
     where: { restaurantId: restaurant.id },

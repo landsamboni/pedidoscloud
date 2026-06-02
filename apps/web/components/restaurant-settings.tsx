@@ -1,4 +1,4 @@
-import { updateBasePrice, updatePaymentSettings, updateTodayMenu } from "@/app/actions";
+import { createPaymentMethod, deletePaymentMethod, updateBasePrice, updatePaymentSettings, updateTodayMenu } from "@/app/actions";
 
 type Menu = {
   soups: string[];
@@ -7,6 +7,8 @@ type Menu = {
   drinks: string[];
 } | undefined;
 
+type PaymentMethod = { id: string; label: string; phone: string; accountName: string };
+
 type Restaurant = {
   id: string;
   basePrice: { toString(): string };
@@ -14,6 +16,7 @@ type Restaurant = {
   nequiAccountName: string | null;
   nequiQrPath: string | null;
   whatsappPhone: string | null;
+  paymentMethods: PaymentMethod[];
 };
 
 export function RestaurantSettings({ menu, restaurant, returnPath }: { menu: Menu; restaurant: Restaurant; returnPath: string }) {
@@ -46,7 +49,7 @@ export function RestaurantSettings({ menu, restaurant, returnPath }: { menu: Men
       </details>
 
       <details className="rounded-xl border border-stone-200 p-4">
-        <summary className="cursor-pointer text-lg font-semibold">Configurar pagos Nequi</summary>
+        <summary className="cursor-pointer text-lg font-semibold">Nequi principal y WhatsApp</summary>
         <form action={updatePaymentSettings} className="mt-4 grid gap-3 sm:grid-cols-2">
           <input name="restaurantId" type="hidden" value={restaurant.id} />
           <input name="returnPath" type="hidden" value={returnPath} />
@@ -60,14 +63,14 @@ export function RestaurantSettings({ menu, restaurant, returnPath }: { menu: Men
           </label>
           <label className="text-sm font-medium text-stone-700 sm:col-span-2">
             WhatsApp del restaurante{" "}
-            <span className="font-normal text-stone-400">(para el botón "Preguntar por WhatsApp" en el seguimiento del cliente)</span>
+            <span className="font-normal text-stone-400">(para el botón "Preguntar por WhatsApp" del cliente)</span>
             <input
               className="input mt-1"
               defaultValue={restaurant.whatsappPhone ?? ""}
               inputMode="tel"
               maxLength={10}
               name="whatsappPhone"
-              placeholder="3001234567 (10 dígitos, dejar vacío para usar el Nequi)"
+              placeholder="3001234567 (dejar vacío para usar el Nequi)"
             />
           </label>
           <label className="text-sm font-medium text-stone-700 sm:col-span-2">
@@ -75,7 +78,53 @@ export function RestaurantSettings({ menu, restaurant, returnPath }: { menu: Men
             <input accept="image/jpeg,image/png,image/webp" className="input mt-1" name="nequiQr" type="file" />
           </label>
           {restaurant.nequiQrPath && <p className="text-sm text-teal-600 sm:col-span-2">QR configurado actualmente.</p>}
-          <button className="button-primary sm:col-span-2">Guardar datos de pago</button>
+          <button className="button-primary sm:col-span-2">Guardar datos de Nequi</button>
+        </form>
+      </details>
+
+      <details className="rounded-xl border border-stone-200 p-4" open={restaurant.paymentMethods.length > 0}>
+        <summary className="cursor-pointer text-lg font-semibold">
+          Otros medios de pago{" "}
+          <span className="ml-1 text-sm font-normal text-stone-400">(Daviplata, segunda llave, Bancolombia…)</span>
+        </summary>
+
+        {restaurant.paymentMethods.length > 0 && (
+          <ul className="mt-4 space-y-2">
+            {restaurant.paymentMethods.map((m) => (
+              <li className="flex items-center justify-between rounded-xl border border-stone-200 bg-stone-50 p-3" key={m.id}>
+                <div className="text-sm">
+                  <p className="font-semibold">{m.label}</p>
+                  <p className="text-stone-600">{m.phone} · {m.accountName}</p>
+                </div>
+                <form action={deletePaymentMethod}>
+                  <input name="id" type="hidden" value={m.id} />
+                  <input name="restaurantId" type="hidden" value={restaurant.id} />
+                  <input name="returnPath" type="hidden" value={returnPath} />
+                  <button className="rounded-lg px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50" type="submit">
+                    Eliminar
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <form action={createPaymentMethod} className="mt-4 grid gap-3 sm:grid-cols-3">
+          <input name="restaurantId" type="hidden" value={restaurant.id} />
+          <input name="returnPath" type="hidden" value={returnPath} />
+          <label className="text-sm font-medium text-stone-700">
+            Tipo <span className="font-normal text-stone-400">(ej. Daviplata)</span>
+            <input className="input mt-1" name="label" placeholder="Daviplata" required />
+          </label>
+          <label className="text-sm font-medium text-stone-700">
+            Número o llave
+            <input className="input mt-1" inputMode="tel" name="phone" placeholder="3001234567" required />
+          </label>
+          <label className="text-sm font-medium text-stone-700">
+            Titular
+            <input className="input mt-1" name="accountName" placeholder="Nombre" required />
+          </label>
+          <button className="button-secondary sm:col-span-3">+ Agregar método de pago</button>
         </form>
       </details>
     </div>

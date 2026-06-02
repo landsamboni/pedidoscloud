@@ -52,7 +52,10 @@ export default async function RestaurantOrdersPage({ params }: { params: Promise
               : "Todo al día · se actualiza cada 10 s"}
           </p>
         </div>
-        <Link className="button-secondary" href={`/restaurant/${restaurantSlug}`}>Consola</Link>
+        <div className="flex gap-2">
+          <Link className="button-secondary" href={`/restaurant/${restaurantSlug}/history`}>Historial</Link>
+          <Link className="button-secondary" href={`/restaurant/${restaurantSlug}`}>Consola</Link>
+        </div>
       </header>
       <RestaurantOrders restaurantSlug={restaurantSlug} orders={orders} />
     </main>
