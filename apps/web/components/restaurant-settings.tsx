@@ -13,6 +13,7 @@ type Restaurant = {
   nequiPhone: string | null;
   nequiAccountName: string | null;
   nequiQrPath: string | null;
+  whatsappPhone: string | null;
 };
 
 export function RestaurantSettings({ menu, restaurant, returnPath }: { menu: Menu; restaurant: Restaurant; returnPath: string }) {
@@ -56,6 +57,18 @@ export function RestaurantSettings({ menu, restaurant, returnPath }: { menu: Men
           <label className="text-sm font-medium text-stone-700">
             Nombre del titular
             <input className="input mt-1" defaultValue={restaurant.nequiAccountName ?? ""} name="nequiAccountName" placeholder="Nombre o negocio" required />
+          </label>
+          <label className="text-sm font-medium text-stone-700 sm:col-span-2">
+            WhatsApp del restaurante{" "}
+            <span className="font-normal text-stone-400">(para el botón "Preguntar por WhatsApp" en el seguimiento del cliente)</span>
+            <input
+              className="input mt-1"
+              defaultValue={restaurant.whatsappPhone ?? ""}
+              inputMode="tel"
+              maxLength={10}
+              name="whatsappPhone"
+              placeholder="3001234567 (10 dígitos, dejar vacío para usar el Nequi)"
+            />
           </label>
           <label className="text-sm font-medium text-stone-700 sm:col-span-2">
             QR Nequi <span className="font-normal text-stone-400">(opcional, deja vacío para conservar el actual)</span>

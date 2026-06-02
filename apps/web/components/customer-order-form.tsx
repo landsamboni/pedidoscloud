@@ -31,10 +31,36 @@ function firstLunch(menu: Props["menu"]): Lunch {
   };
 }
 
+function validateName(value: string): string | null {
+  const clean = value.trim();
+  if (!clean) return "Escribe tu nombre y apellido.";
+  if (clean.length < 5) return "El nombre debe tener al menos 5 caracteres.";
+  const parts = clean.split(" ").filter(Boolean);
+  if (parts.length < 2) return "Incluye nombre y apellido completos.";
+  return null;
+}
+
+function validatePhone(value: string): string | null {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length !== 10) return "El teléfono debe tener 10 dígitos (ej. 3001234567).";
+  if (!digits.startsWith("3")) return "Ingresa un celular colombiano válido (comienza con 3).";
+  return null;
+}
+
+function validateAddress(value: string): string | null {
+  const clean = value.trim();
+  if (!clean) return "Escribe tu dirección de entrega.";
+  if (clean.length < 10) return "La dirección debe ser más específica (mínimo 10 caracteres).";
+  return null;
+}
+
 export function CustomerOrderForm({ restaurantSlug, basePrice, menu }: Props) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [addressError, setAddressError] = useState<string | null>(null);
   const [items, setItems] = useState<Lunch[]>([firstLunch(menu)]);
   const [error, setError] = useState("");
   const [showFloatingTotal, setShowFloatingTotal] = useState(true);
@@ -68,10 +94,21 @@ export function CustomerOrderForm({ restaurantSlug, basePrice, menu }: Props) {
     );
   }
 
+  function handlePhoneChange(value: string) {
+    // Only allow digits, max 10 chars
+    const digits = value.replace(/\D/g, "").slice(0, 10);
+    setPhone(digits);
+  }
+
   function submit() {
     setError("");
-    if (!name.trim() || !phone.trim() || !address.trim()) {
-      setError("Completa tu nombre, teléfono y dirección antes de confirmar.");
+    const ne = validateName(name);
+    const pe = validatePhone(phone);
+    const ae = validateAddress(address);
+    setNameError(ne);
+    setPhoneError(pe);
+    setAddressError(ae);
+    if (ne || pe || ae) {
       deliveryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
@@ -80,7 +117,7 @@ export function CustomerOrderForm({ restaurantSlug, basePrice, menu }: Props) {
 
     startTransition(async () => {
       try {
-        const result = await createOrder({ restaurantSlug, name, phone, address, items });
+        const result = await createOrder({ restaurantSlug, name: name.trim(), phone, address: address.trim(), items });
         if (!result.publicToken) throw new Error("No pudimos abrir el pago de tu pedido.");
         window.location.assign(`/r/${restaurantSlug}/orders/${result.publicToken}`);
       } catch (cause) {
@@ -123,9 +160,47 @@ export function CustomerOrderForm({ restaurantSlug, basePrice, menu }: Props) {
       <section className="card scroll-mt-4 space-y-3" ref={deliveryRef}>
         <h2 className="text-2xl font-bold">Datos para la entrega</h2>
         <p className="text-base leading-relaxed text-stone-600">Ya casi terminas. Indícanos dónde entregar tu pedido.</p>
-        <input className="input text-base" placeholder="Nombre" value={name} onChange={(event) => setName(event.target.value)} />
-        <input className="input text-base" inputMode="tel" placeholder="Teléfono" value={phone} onChange={(event) => setPhone(event.target.value)} />
-        <textarea className="input min-h-24 text-base" placeholder="Dirección de entrega" value={address} onChange={(event) => setAddress(event.target.value)} />
+
+        <div>
+          <input
+            aria-describedby={nameError ? "name-error" : undefined}
+            aria-invalid={!!nameError}
+            className={`input text-base ${nameError ? "border-red-400 focus:border-red-400 focus:ring-red-100" : ""}`}
+            placeholder="Nombre y Apellido"
+            value={name}
+            onBlur={() => setNameError(validateName(name))}
+            onChange={(e) => { setName(e.target.value); if (nameError) setNameError(validateName(e.target.value)); }}
+          />
+          {nameError && <p className="mt-1 text-sm text-red-600" id="name-error">{nameError}</p>}
+        </div>
+
+        <div>
+          <input
+            aria-describedby={phoneError ? "phone-error" : undefined}
+            aria-invalid={!!phoneError}
+            className={`input text-base ${phoneError ? "border-red-400 focus:border-red-400 focus:ring-red-100" : ""}`}
+            inputMode="tel"
+            maxLength={10}
+            placeholder="Teléfono celular (10 dígitos)"
+            value={phone}
+            onBlur={() => setPhoneError(validatePhone(phone))}
+            onChange={(e) => { handlePhoneChange(e.target.value); if (phoneError) setPhoneError(validatePhone(e.target.value.replace(/\D/g, "").slice(0, 10))); }}
+          />
+          {phoneError && <p className="mt-1 text-sm text-red-600" id="phone-error">{phoneError}</p>}
+        </div>
+
+        <div>
+          <textarea
+            aria-describedby={addressError ? "address-error" : undefined}
+            aria-invalid={!!addressError}
+            className={`input min-h-24 text-base ${addressError ? "border-red-400 focus:border-red-400 focus:ring-red-100" : ""}`}
+            placeholder="Dirección de entrega (ej. Cra 5 #12-34, apto 301)"
+            value={address}
+            onBlur={() => setAddressError(validateAddress(address))}
+            onChange={(e) => { setAddress(e.target.value); if (addressError) setAddressError(validateAddress(e.target.value)); }}
+          />
+          {addressError && <p className="mt-1 text-sm text-red-600" id="address-error">{addressError}</p>}
+        </div>
       </section>
 
       <section className="card" ref={finalTotalRef}>

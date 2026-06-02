@@ -70,25 +70,6 @@ export default async function PublicOrderPage({ params }: { params: Promise<{ re
         </div>
       </section>
 
-      {/* Waiting for verification — prominent animated container */}
-      {isWaiting && (
-        <section className="card mt-4 border-rose-200 bg-rose-50">
-          <div className="flex items-start gap-4">
-            <div className="relative mt-1 flex h-10 w-10 shrink-0 items-center justify-center">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-300 opacity-60" />
-              <span className="relative inline-flex h-6 w-6 rounded-full bg-rose-400" />
-            </div>
-            <div>
-              <p className="text-base font-bold text-rose-900">Verificando tu pago…</p>
-              <p className="mt-1 text-sm leading-relaxed text-rose-800">
-                El restaurante está revisando tu comprobante. Esta página se actualiza sola cada 20 segundos — no la cierres.
-                Cuando el pago sea confirmado, el estado cambiará automáticamente.
-              </p>
-            </div>
-          </div>
-        </section>
-      )}
-
       {/* Save order link — show right after creating the order */}
       {isNew && (
         <section className="card mt-4 border-stone-200 bg-stone-50">
@@ -155,6 +136,25 @@ export default async function PublicOrderPage({ params }: { params: Promise<{ re
               ? "El restaurante no pudo validar el archivo anterior. Reemplázalo por el comprobante correcto."
               : "El restaurante recibió tu comprobante y lo revisará pronto. Tu pedido permanece en seguimiento en esta página."}
           </p>
+        </section>
+      )}
+
+      {/* Waiting for verification — below proof confirmation, above WhatsApp */}
+      {isWaiting && order.paymentProofPath && (
+        <section className="card mt-4 border-rose-200 bg-rose-50">
+          <div className="flex items-start gap-4">
+            <div className="relative mt-1 flex h-10 w-10 shrink-0 items-center justify-center">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-300 opacity-60" />
+              <span className="relative inline-flex h-6 w-6 rounded-full bg-rose-400" />
+            </div>
+            <div>
+              <p className="text-base font-bold text-rose-900">Verificando tu pago…</p>
+              <p className="mt-1 text-sm leading-relaxed text-rose-800">
+                El restaurante está revisando tu comprobante. Esta página se actualiza sola cada 20 segundos — no la cierres.
+                Cuando el pago sea confirmado, el estado cambiará automáticamente.
+              </p>
+            </div>
+          </div>
         </section>
       )}
 

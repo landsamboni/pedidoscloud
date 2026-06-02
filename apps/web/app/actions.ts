@@ -28,6 +28,28 @@ function required(value: string, field: string) {
   return clean;
 }
 
+function validateFullName(value: string) {
+  const clean = value.trim();
+  if (!clean) throw new Error("Escribe tu nombre y apellido.");
+  if (clean.length < 5) throw new Error("El nombre debe tener al menos 5 caracteres.");
+  if (clean.split(" ").filter(Boolean).length < 2) throw new Error("Incluye nombre y apellido completos.");
+  return clean;
+}
+
+function validatePhone(value: string) {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length !== 10) throw new Error("El teléfono debe tener 10 dígitos (ej. 3001234567).");
+  if (!digits.startsWith("3")) throw new Error("Ingresa un celular colombiano válido (comienza con 3).");
+  return digits;
+}
+
+function validateAddress(value: string) {
+  const clean = value.trim();
+  if (!clean) throw new Error("Escribe tu dirección de entrega.");
+  if (clean.length < 10) throw new Error("La dirección debe ser más específica (mínimo 10 caracteres).");
+  return clean;
+}
+
 function splitOptions(value: FormDataEntryValue | null) {
   return String(value ?? "")
     .split("\n")
@@ -42,9 +64,9 @@ function safeReturnPath(value: FormDataEntryValue | null, fallback: string) {
 
 
 export async function createOrder(input: CreateOrderInput) {
-  const name = required(input.name, "nombre");
-  const phone = required(input.phone, "teléfono");
-  const address = required(input.address, "dirección");
+  const name = validateFullName(input.name);
+  const phone = validatePhone(input.phone);
+  const address = validateAddress(input.address);
   if (!input.items.length) throw new Error("Agrega al menos un almuerzo.");
 
   const order = await prisma.$transaction(async (tx) => {
@@ -223,6 +245,7 @@ export async function updatePaymentSettings(formData: FormData) {
   const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
   const nequiAccountName = required(String(formData.get("nequiAccountName") ?? ""), "titular");
   const nequiPhone = required(String(formData.get("nequiPhone") ?? ""), "celular o llave Nequi");
+  const whatsappPhone = String(formData.get("whatsappPhone") ?? "").replace(/\D/g, "").slice(0, 15) || null;
   const file = formData.get("nequiQr");
   const nequiQrPath = file instanceof File ? await saveUpload(file, "nequi-qr") : null;
 
@@ -231,6 +254,7 @@ export async function updatePaymentSettings(formData: FormData) {
     data: {
       nequiAccountName,
       nequiPhone,
+      whatsappPhone,
       ...(nequiQrPath ? { nequiQrPath } : {}),
     },
   });
