@@ -27,6 +27,7 @@ model Restaurant {
   nequiAccountName String?
   nequiPhone       String?
   nequiQrPath      String?
+  whatsappPhone    String?
   active        Boolean             @default(true)
   createdAt     DateTime            @default(now())
   menus         Menu[]

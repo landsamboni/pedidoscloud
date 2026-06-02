@@ -26,14 +26,16 @@ async function main() {
       slug: "martica-la-bonita",
       basePrice: 14000,
       nequiAccountName: "Martica la Bonita",
-      nequiPhone: "3001234567",
+      nequiPhone: "3186673967",
+      whatsappPhone: "3186673967",
     },
     {
       name: "Sazón de Casa",
       slug: "sazon-de-casa",
       basePrice: 16000,
       nequiAccountName: "Sazón de Casa",
-      nequiPhone: "3007654321",
+      nequiPhone: "3186673967",
+      whatsappPhone: "3186673967",
     },
   ];
 

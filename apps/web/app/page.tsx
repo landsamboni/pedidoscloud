@@ -4,7 +4,7 @@ export default function Home() {
   return (
     <main className="mx-auto max-w-3xl p-6">
       <section className="card mt-10">
-        <p className="text-sm font-semibold uppercase tracking-wide text-violet-700">Demo local</p>
+        <p className="text-sm font-semibold uppercase tracking-wide text-rose-600">Demo local</p>
         <h1 className="mt-2 text-3xl font-bold">Pedidos de almuerzo</h1>
         <p className="mt-3 text-stone-600">
           Un flujo simple para enviar un enlace por WhatsApp y recibir pedidos ordenados.

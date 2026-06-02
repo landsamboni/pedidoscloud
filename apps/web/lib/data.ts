@@ -47,7 +47,16 @@ export async function getPublicOrder(slug: string, publicToken: string) {
   return prisma.order.findFirst({
     where: { publicToken, restaurant: { slug } },
     include: {
-      restaurant: true,
+      restaurant: {
+        select: {
+          name: true,
+          slug: true,
+          nequiAccountName: true,
+          nequiPhone: true,
+          nequiQrPath: true,
+          whatsappPhone: true,
+        },
+      },
       items: true,
     },
   });
