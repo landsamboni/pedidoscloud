@@ -1,15 +1,20 @@
 # AWS Amplify Hosting build settings (monorepo).
 #
 # AMPLIFY_MONOREPO_APP_ROOT=apps/web is set as an Amplify environment variable
-# (via Terraform) at the APP level — Amplify reads it before branch vars load.
-# All other runtime vars are at the BRANCH level (set via Terraform).
+# at the APP level (via Terraform). Amplify reads it during repo checkout —
+# before branch-level vars are loaded — to locate package.json. All runtime
+# vars (DATABASE_URL, S3, auth) are at the BRANCH level.
 #
-# Amplify WEB_COMPUTE injects env vars into CodeBuild but NOT into the SSR
-# Lambda runtime. The write-runtime-env step bakes them into .next/.env.runtime
-# (deployed with the artifact) so lib/runtime-env.ts can load them at request time.
-#
-# Migrations are NOT run here — run `npm run db:deploy` against RDS manually
-# (see DEPLOYMENT.md). Build only generates the Prisma client + next build.
+# Build notes:
+# - prisma migrate deploy runs in preBuild so the schema is ready before
+#   Next.js tries to prerender static pages (e.g. /admin). It is idempotent:
+#   safe to run on every build, only unapplied migrations are executed.
+#   This also means a `terraform destroy + apply` cycle requires no manual
+#   migration step — the first build creates the schema automatically.
+# - npm run build = prisma generate && next build (see package.json).
+# - The node -e step writes runtime env vars to .next/.env.runtime (deployed
+#   with the artifact) so lib/runtime-env.ts can load them in the SSR Lambda,
+#   which does not receive Amplify branch-level env vars directly.
 version: 1
 applications:
   - appRoot: apps/web
@@ -18,6 +23,7 @@ applications:
         preBuild:
           commands:
             - npm ci
+            - npx prisma migrate deploy
         build:
           commands:
             - npm run build
