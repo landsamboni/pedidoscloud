@@ -24,7 +24,7 @@ const statusLabels: Record<string, string> = {
   PAYMENT_PENDING: "Pago pendiente",
   PAYMENT_REVIEW: "Revisar comprobante",
   PAYMENT_CONFIRMED: "Pago confirmado",
-  PAYMENT_REJECTED: "Comprobante rechazado",
+  PAYMENT_REJECTED: "Rechazado",
   CANCELLED: "Cancelado",
 };
 
@@ -49,69 +49,141 @@ export function RestaurantOrders({ restaurantSlug, orders }: { restaurantSlug: s
   }
 
   return (
-    <div className="space-y-4">
+    // Mobile: single column. Desktop (md+): 2 columns. Large (xl+): 3 columns.
+    // items-start prevents cards from stretching to match the tallest in the row.
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 xl:items-start">
       {orders.map((order) => (
-        <article className={`card ${order.status === "PAYMENT_REVIEW" ? "border-purple-300 ring-2 ring-purple-100" : ""}`} key={order.id}>
-          <div className="flex flex-wrap items-start justify-between gap-3">
+        <article
+          className={`card flex flex-col gap-0 ${
+            order.status === "PAYMENT_REVIEW"
+              ? "border-purple-400 ring-2 ring-purple-100"
+              : ""
+          }`}
+          key={order.id}
+        >
+          {/* Header: order number + status badge */}
+          <div className="flex items-start justify-between gap-2">
             <div>
-              <p className="text-2xl font-bold">{formatOrderNumber(order.orderNumber)}</p>
-              <p className="text-sm text-stone-500">{order.createdAtLabel}</p>
+              <p className="text-3xl font-black tracking-tight">
+                {formatOrderNumber(order.orderNumber)}
+              </p>
+              <p className="mt-0.5 text-sm text-stone-400">{order.createdAtLabel}</p>
             </div>
-            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusColors[order.status]}`}>
+            <span
+              className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold ${statusColors[order.status]}`}
+            >
               {statusLabels[order.status]}
             </span>
           </div>
 
-          <div className="mt-4 grid gap-1 text-sm sm:grid-cols-2">
-            <p><strong>Cliente:</strong> {order.customer.name}</p>
-            <p><strong>Teléfono:</strong> {order.customer.phone}</p>
-            <p className="sm:col-span-2"><strong>Dirección:</strong> {order.address}</p>
-            <p><strong>Total:</strong> {order.totalLabel}</p>
+          {/* Customer info */}
+          <div className="mt-4 space-y-1.5 text-base">
+            <p>
+              <span className="text-stone-500">Cliente</span>{" "}
+              <strong>{order.customer.name}</strong>
+            </p>
+            <p>
+              <span className="text-stone-500">Tel.</span>{" "}
+              <strong>{order.customer.phone}</strong>
+            </p>
+            <p className="text-stone-700">
+              <span className="text-stone-500">Dirección</span>{" "}
+              {order.address}
+            </p>
+            <p>
+              <span className="text-stone-500">Total</span>{" "}
+              <strong>{order.totalLabel}</strong>
+            </p>
           </div>
 
+          {/* Lunch items — one ingredient per row with label */}
           <div className="mt-4 space-y-2">
             {order.items.map((item, index) => (
-              <div className="rounded-xl bg-stone-50 p-3 text-sm" key={item.id}>
-                <strong>Almuerzo {index + 1}:</strong> {item.soup}, {item.protein}, {item.side}, {item.drink}
+              <div className="rounded-xl bg-stone-50 p-3" key={item.id}>
+                {order.items.length > 1 && (
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wider text-stone-400">
+                    Almuerzo {index + 1}
+                  </p>
+                )}
+                <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-base">
+                  <dt className="text-stone-500">Sopa</dt>
+                  <dd className="font-medium text-stone-900">{item.soup}</dd>
+                  <dt className="text-stone-500">Proteína</dt>
+                  <dd className="font-medium text-stone-900">{item.protein}</dd>
+                  <dt className="text-stone-500">Principio</dt>
+                  <dd className="font-medium text-stone-900">{item.side}</dd>
+                  <dt className="text-stone-500">Bebida</dt>
+                  <dd className="font-medium text-stone-900">{item.drink}</dd>
+                </dl>
               </div>
             ))}
           </div>
 
+          {/* Payment proof */}
           {order.paymentProofPath && (
             <div className="mt-4 rounded-xl bg-purple-50 p-3">
               <p className="text-sm font-semibold text-purple-800">
-                Comprobante recibido{order.paymentSubmittedAtLabel ? ` · ${order.paymentSubmittedAtLabel}` : ""}
+                Comprobante recibido
+                {order.paymentSubmittedAtLabel ? ` · ${order.paymentSubmittedAtLabel}` : ""}
               </p>
-              <a className="button-secondary mt-3 inline-block border-purple-300 text-purple-800" href={order.paymentProofPath} rel="noreferrer" target="_blank">
+              <a
+                className="button-secondary mt-2 inline-block border-purple-300 text-purple-800"
+                href={order.paymentProofPath}
+                rel="noreferrer"
+                target="_blank"
+              >
                 Ver comprobante
               </a>
             </div>
           )}
 
-          {order.status !== "CANCELLED" && (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {order.status !== "PAYMENT_CONFIRMED" && (
-                <StatusButton id={order.id} slug={restaurantSlug} status="PAYMENT_CONFIRMED">
-                  Confirmar pago
-                </StatusButton>
-              )}
-              {order.paymentProofPath && order.status !== "PAYMENT_REJECTED" && order.status !== "PAYMENT_CONFIRMED" && (
-                <StatusButton id={order.id} slug={restaurantSlug} status="PAYMENT_REJECTED" secondary>
-                  Rechazar comprobante
-                </StatusButton>
-              )}
+          {/* Action buttons */}
+          {order.status !== "CANCELLED" && order.status !== "PAYMENT_CONFIRMED" ? (
+            <div className="mt-4 flex flex-wrap gap-2 border-t border-stone-100 pt-4">
+              <StatusButton id={order.id} slug={restaurantSlug} status="PAYMENT_CONFIRMED">
+                Confirmar pago
+              </StatusButton>
+              {order.paymentProofPath &&
+                order.status !== "PAYMENT_REJECTED" && (
+                  <StatusButton
+                    id={order.id}
+                    slug={restaurantSlug}
+                    status="PAYMENT_REJECTED"
+                    secondary
+                  >
+                    Rechazar
+                  </StatusButton>
+                )}
+              <StatusButton id={order.id} slug={restaurantSlug} status="CANCELLED" secondary>
+                Cancelar
+              </StatusButton>
+            </div>
+          ) : order.status === "PAYMENT_CONFIRMED" ? (
+            <div className="mt-4 border-t border-stone-100 pt-4">
               <StatusButton id={order.id} slug={restaurantSlug} status="CANCELLED" secondary>
                 Cancelar pedido
               </StatusButton>
             </div>
-          )}
+          ) : null}
         </article>
       ))}
     </div>
   );
 }
 
-function StatusButton({ id, slug, status, secondary, children }: { id: string; slug: string; status: string; secondary?: boolean; children: React.ReactNode }) {
+function StatusButton({
+  id,
+  slug,
+  status,
+  secondary,
+  children,
+}: {
+  id: string;
+  slug: string;
+  status: string;
+  secondary?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <form action={updateOrderStatus}>
       <input name="id" type="hidden" value={id} />

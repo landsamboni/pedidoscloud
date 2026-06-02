@@ -21,7 +21,7 @@ export default async function RestaurantOrdersPage({ params }: { params: Promise
   }));
 
   return (
-    <main className="mx-auto max-w-4xl p-4 sm:p-6">
+    <main className="mx-auto max-w-7xl p-4 sm:p-6">
       <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-teal-600">Pedidos de hoy</p>
