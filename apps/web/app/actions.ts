@@ -210,8 +210,72 @@ export async function createRestaurant(formData: FormData) {
   const basePrice = Number(formData.get("basePrice"));
   if (!Number.isFinite(basePrice) || basePrice <= 0) throw new Error("Precio inválido.");
 
-  await prisma.restaurant.create({ data: { name, slug, basePrice } });
+  const rawPassword = String(formData.get("password") ?? "").trim();
+  let passwordHash: string | undefined;
+  if (rawPassword.length >= 8) {
+    const { hash } = await import("bcryptjs");
+    passwordHash = await hash(rawPassword, 12);
+  }
+
+  await prisma.restaurant.create({ data: { name, slug, basePrice, ...(passwordHash ? { passwordHash } : {}) } });
   revalidatePath("/admin");
+}
+
+/** Admin: set or reset a restaurant's password. */
+export async function setRestaurantPassword(formData: FormData) {
+  const restaurantId = String(formData.get("restaurantId"));
+  const password = String(formData.get("password") ?? "").trim();
+  if (password.length < 8) throw new Error("La contraseña debe tener al menos 8 caracteres.");
+
+  const { hash } = await import("bcryptjs");
+  const passwordHash = await hash(password, 12);
+  await prisma.restaurant.update({ where: { id: restaurantId }, data: { passwordHash } });
+  revalidatePath("/admin");
+}
+
+/** Restaurant: change their own password (requires current password). */
+export type ChangePasswordState = { error: string; success: boolean };
+export async function changePasswordAction(
+  _: ChangePasswordState,
+  formData: FormData,
+): Promise<ChangePasswordState> {
+  try {
+    const { getSession } = await import("@/lib/auth");
+    const session = await getSession();
+    if (!session || session.role !== "restaurant" || !session.restaurantSlug) {
+      return { error: "No autorizado.", success: false };
+    }
+
+    const current  = String(formData.get("currentPassword") ?? "");
+    const next     = String(formData.get("newPassword") ?? "").trim();
+    const confirm  = String(formData.get("confirmPassword") ?? "").trim();
+
+    if (next.length < 8) return { error: "La nueva contraseña debe tener al menos 8 caracteres.", success: false };
+    if (next !== confirm)  return { error: "Las contraseñas no coinciden.", success: false };
+
+    const restaurant = await prisma.restaurant.findUnique({
+      where: { slug: session.restaurantSlug },
+      select: { id: true, passwordHash: true },
+    });
+    if (!restaurant) return { error: "Restaurante no encontrado.", success: false };
+
+    if (restaurant.passwordHash) {
+      const { compare } = await import("bcryptjs");
+      if (!(await compare(current, restaurant.passwordHash))) {
+        return { error: "La contraseña actual es incorrecta.", success: false };
+      }
+    }
+
+    const { hash } = await import("bcryptjs");
+    await prisma.restaurant.update({
+      where: { id: restaurant.id },
+      data: { passwordHash: await hash(next, 12) },
+    });
+    revalidatePath(`/restaurant/${session.restaurantSlug}`);
+    return { error: "", success: true };
+  } catch {
+    return { error: "No se pudo cambiar la contraseña.", success: false };
+  }
 }
 
 export async function updateTodayMenu(formData: FormData) {

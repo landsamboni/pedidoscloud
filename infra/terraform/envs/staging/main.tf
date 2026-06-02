@@ -171,6 +171,7 @@ module "amplify" {
   # S3_-prefixed names that the app reads in lib/storage.ts.
   # AMPLIFY_MONOREPO_APP_ROOT is handled by the module at the app level (not here).
   environment_variables = {
+    AUTH_SECRET          = var.auth_secret
     DATABASE_URL         = module.rds.database_url
     STORAGE_DRIVER       = "s3"
     S3_REGION            = var.aws_region
@@ -179,8 +180,10 @@ module "amplify" {
     S3_SECRET_ACCESS_KEY = module.iam.secret_access_key
     ADMIN_USER           = var.admin_user
     ADMIN_PASSWORD       = var.admin_password
-    RESTAURANT_USER      = var.restaurant_user
-    RESTAURANT_PASSWORD  = var.restaurant_password
+    # RESTAURANT_USER / RESTAURANT_PASSWORD kept for backward compat but no longer
+    # used for auth (replaced by per-restaurant passwordHash in the database).
+    RESTAURANT_USER     = var.restaurant_user
+    RESTAURANT_PASSWORD = var.restaurant_password
   }
 
   tags = local.tags

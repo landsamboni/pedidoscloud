@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createRestaurant } from "@/app/actions";
+import { createRestaurant, setRestaurantPassword } from "@/app/actions";
 import { RestaurantSettings } from "@/components/restaurant-settings";
 import { formatMoney, formatOrderNumber } from "@/lib/format";
 import { getAdminRestaurants } from "@/lib/data";
@@ -15,10 +15,11 @@ export default async function AdminPage() {
 
       <section className="card">
         <h2 className="text-lg font-bold">Crear restaurante</h2>
-        <form action={createRestaurant} className="mt-4 grid gap-3 sm:grid-cols-4">
-          <input className="input" name="name" placeholder="Nombre" required />
+        <form action={createRestaurant} className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <input className="input" name="name" placeholder="Nombre del restaurante" required />
           <input className="input" name="slug" placeholder="slug-del-restaurante" required />
           <input className="input" min="1" name="basePrice" placeholder="Precio base" required type="number" />
+          <input className="input" minLength={8} name="password" placeholder="Contraseña inicial (mín. 8 chars)" type="password" />
           <button className="button-primary">Crear</button>
         </form>
       </section>
@@ -33,7 +34,10 @@ export default async function AdminPage() {
                   <h2 className="text-xl font-bold">{restaurant.name}</h2>
                   <p className="text-sm text-stone-500">/{restaurant.slug} · {formatMoney(Number(restaurant.basePrice))}</p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${restaurant.passwordHash ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                    {restaurant.passwordHash ? "Contraseña configurada" : "Sin contraseña"}
+                  </span>
                   <Link className="button-secondary" href={`/r/${restaurant.slug}`}>Página cliente</Link>
                   <Link className="button-secondary" href={`/restaurant/${restaurant.slug}/orders`}>Tablero</Link>
                   <Link className="button-secondary" href={`/restaurant/${restaurant.slug}`}>Consola restaurante</Link>

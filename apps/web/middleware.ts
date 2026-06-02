@@ -1,75 +1,71 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { jwtVerify } from "jose";
+import { COOKIE_NAME } from "@/lib/auth";
 
 /**
- * Minimal HTTP Basic Auth gate for the operator areas of the app.
+ * JWT-based session middleware for operator areas of the app.
  *
- * This is an MVP-grade stopgap, NOT a real auth system. Credentials come from
- * environment variables so they can be set per-environment in Amplify:
- *   - /admin            -> ADMIN_USER / ADMIN_PASSWORD
- *   - /restaurant/...   -> RESTAURANT_USER / RESTAURANT_PASSWORD (shared)
+ * Replaces the previous HTTP Basic Auth approach with proper per-restaurant
+ * sessions. Sessions are stored in an HttpOnly cookie signed with AUTH_SECRET.
  *
- * If the password for an area is not set, that area is left OPEN — this keeps
- * local development frictionless. Always set the passwords in staging/prod.
+ * Public routes (customer-facing) are NOT listed in the matcher and are
+ * therefore never touched by this middleware.
  *
- * Public customer routes (/r/..., /api/files, /) are never gated here.
- *
- * Next step beyond the MVP: replace with per-restaurant accounts via NextAuth
- * or Amazon Cognito.
+ * Auth flow:
+ *   /admin/*       → requires role=admin
+ *   /restaurant/[slug]/* → requires role=restaurant AND slug matches the path
+ *   Unauthenticated or wrong role → redirect to /login?from=current_path
  */
 export const config = {
   matcher: ["/admin/:path*", "/restaurant/:path*"],
 };
 
-const REALM = 'Basic realm="PedidosCloud", charset="UTF-8"';
-
-function unauthorized() {
-  return new NextResponse("Autenticación requerida.", {
-    status: 401,
-    headers: { "WWW-Authenticate": REALM },
-  });
+function getSecret() {
+  const s = process.env.AUTH_SECRET ?? "dev-fallback-secret-change-me-in-production-32chars";
+  return new TextEncoder().encode(s);
 }
 
-function isAuthorized(header: string | null, expectedUser: string | undefined, expectedPassword: string | undefined) {
-  // No password configured for this area -> open (local dev convenience).
-  if (!expectedPassword) return true;
-  if (!header?.startsWith("Basic ")) return false;
-
-  let decoded: string;
+async function getSession(token: string | undefined) {
+  if (!token) return null;
   try {
-    decoded = atob(header.slice(6));
+    const { payload } = await jwtVerify(token, getSecret());
+    return payload as { role: string; restaurantSlug?: string };
   } catch {
-    return false;
+    return null;
   }
-
-  const separator = decoded.indexOf(":");
-  if (separator < 0) return false;
-  const user = decoded.slice(0, separator);
-  const password = decoded.slice(separator + 1);
-  return user === (expectedUser || "admin") && password === expectedPassword;
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const header = request.headers.get("authorization");
 
-  // Next.js prefetches linked pages in the background. If a prefetch for a
-  // protected route returns 401 + WWW-Authenticate, the browser shows a native
-  // auth dialog for the entire domain — even on public pages like /. For
-  // prefetch requests, return a silent 401 (no WWW-Authenticate) so the browser
-  // discards the prefetch without prompting. The actual auth challenge fires
-  // only when the user navigates to the protected route.
+  // Skip Next.js router prefetch requests — they shouldn't trigger auth challenges
   const isPrefetch =
     request.headers.get("next-router-prefetch") === "1" ||
     request.headers.get("purpose") === "prefetch";
+  if (isPrefetch) return new NextResponse(null, { status: 401 });
+
+  const token = request.cookies.get(COOKIE_NAME)?.value;
+  const session = await getSession(token);
+
+  function redirectToLogin() {
+    const url = new URL("/login", request.url);
+    url.searchParams.set("from", pathname);
+    return NextResponse.redirect(url);
+  }
+
+  if (!session) return redirectToLogin();
 
   if (pathname.startsWith("/admin")) {
-    if (!isAuthorized(header, process.env.ADMIN_USER, process.env.ADMIN_PASSWORD)) {
-      return isPrefetch ? new NextResponse(null, { status: 401 }) : unauthorized();
+    if (session.role !== "admin") return redirectToLogin();
+    return NextResponse.next();
+  }
+
+  if (pathname.startsWith("/restaurant")) {
+    const slug = pathname.split("/")[2]; // /restaurant/[slug]/...
+    if (session.role !== "restaurant" || session.restaurantSlug !== slug) {
+      return redirectToLogin();
     }
-  } else if (pathname.startsWith("/restaurant")) {
-    if (!isAuthorized(header, process.env.RESTAURANT_USER, process.env.RESTAURANT_PASSWORD)) {
-      return isPrefetch ? new NextResponse(null, { status: 401 }) : unauthorized();
-    }
+    return NextResponse.next();
   }
 
   return NextResponse.next();

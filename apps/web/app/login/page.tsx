@@ -1,0 +1,92 @@
+"use client";
+
+import { useActionState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+import { loginAction } from "./actions";
+
+function LoginForm() {
+  const searchParams = useSearchParams();
+  const from = searchParams.get("from") ?? "";
+  const [state, action, pending] = useActionState(loginAction, { error: "" });
+
+  return (
+    <form action={action} className="space-y-4">
+      <input name="from" type="hidden" value={from} />
+
+      <div>
+        <label className="text-sm font-semibold text-stone-700" htmlFor="username">
+          Usuario
+        </label>
+        <input
+          autoCapitalize="none"
+          autoComplete="username"
+          className="input mt-1 text-base"
+          id="username"
+          name="username"
+          placeholder="martica-la-bonita"
+          required
+          type="text"
+        />
+        <p className="mt-1 text-xs text-stone-400">
+          El identificador de tu restaurante (ej. martica-la-bonita)
+        </p>
+      </div>
+
+      <div>
+        <label className="text-sm font-semibold text-stone-700" htmlFor="password">
+          Contraseña
+        </label>
+        <input
+          autoComplete="current-password"
+          className="input mt-1 text-base"
+          id="password"
+          name="password"
+          required
+          type="password"
+        />
+      </div>
+
+      {state.error && (
+        <p className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+          {state.error}
+        </p>
+      )}
+
+      <button className="button-primary w-full py-3 text-base" disabled={pending} type="submit">
+        {pending ? "Ingresando…" : "Ingresar"}
+      </button>
+    </form>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-stone-100 p-4">
+      <div className="w-full max-w-sm">
+        {/* Brand */}
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-black tracking-tight text-teal-700">PedidosCloud</h1>
+          <p className="mt-1 text-sm text-stone-500">Gestión de pedidos para restaurantes</p>
+        </div>
+
+        <div className="card">
+          <h2 className="mb-5 text-xl font-bold text-stone-900">Acceso de operadores</h2>
+
+          <Suspense fallback={<div className="space-y-4 animate-pulse"><div className="h-10 rounded-xl bg-stone-100"/><div className="h-10 rounded-xl bg-stone-100"/><div className="h-10 rounded-xl bg-teal-100"/></div>}>
+            <LoginForm />
+          </Suspense>
+
+          <p className="mt-6 text-center text-xs text-stone-400">
+            ¿Problemas para ingresar?{" "}
+            <span className="text-stone-500">Contacta al administrador de la plataforma.</span>
+          </p>
+        </div>
+
+        <p className="mt-6 text-center text-xs text-stone-400">
+          © {new Date().getFullYear()} PedidosCloud
+        </p>
+      </div>
+    </main>
+  );
+}

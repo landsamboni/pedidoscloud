@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RestaurantSettings } from "@/components/restaurant-settings";
+import { ChangePasswordForm } from "@/components/change-password-form";
+import { logoutAction } from "@/app/login/actions";
 import { formatMoney, formatOrderNumber } from "@/lib/format";
 import { getTodayOrders } from "@/lib/data";
 
@@ -14,10 +16,17 @@ export default async function RestaurantConsolePage({ params }: { params: Promis
 
   return (
     <main className="mx-auto max-w-4xl p-4 sm:p-6">
-      <header className="py-5">
-        <p className="text-sm font-semibold uppercase tracking-wide text-teal-600">Consola del restaurante</p>
-        <h1 className="mt-1 text-3xl font-bold">{restaurant.name}</h1>
-        <p className="mt-2 text-stone-600">Administra tu menú, pagos Nequi y pedidos del día.</p>
+      <header className="flex flex-wrap items-start justify-between gap-4 py-5">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-wide text-teal-600">Consola del restaurante</p>
+          <h1 className="mt-1 text-3xl font-bold">{restaurant.name}</h1>
+          <p className="mt-2 text-stone-600">Administra tu menú, pagos Nequi y pedidos del día.</p>
+        </div>
+        <form action={logoutAction}>
+          <button className="rounded-xl border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-600 transition hover:bg-stone-50" type="submit">
+            Cerrar sesión
+          </button>
+        </form>
       </header>
 
       <section className="card">
@@ -35,13 +44,14 @@ export default async function RestaurantConsolePage({ params }: { params: Promis
       </section>
 
       <section className="card mt-4">
-        <h2 className="mb-4 text-xl font-bold">Configuración diaria</h2>
+        <h2 className="mb-4 text-xl font-bold">Configuración</h2>
         <RestaurantSettings menu={menu} restaurant={restaurant} returnPath={`/restaurant/${restaurantSlug}`} />
       </section>
 
-      <p className="mt-4 text-sm text-stone-500">
-        Demo local sin login: esta consola está separada por restaurante, pero requiere autenticación antes de publicarse en internet.
-      </p>
+      <section className="card mt-4">
+        <h2 className="mb-4 text-xl font-bold">Cambiar contraseña</h2>
+        <ChangePasswordForm />
+      </section>
     </main>
   );
 }

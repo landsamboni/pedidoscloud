@@ -13,6 +13,9 @@ db_password = "change-me-strong-password"
 # Find your current IP: curl -s https://checkip.amazonaws.com
 db_allowed_cidr_blocks = ["203.0.113.10/32"]
 
+# JWT session secret — generate with: openssl rand -base64 32
+auth_secret = "change-me-generate-with-openssl-rand-base64-32"
+
 # Operator auth (HTTP Basic Auth)
 admin_password      = "change-me-admin"
 restaurant_password = "change-me-restaurant"

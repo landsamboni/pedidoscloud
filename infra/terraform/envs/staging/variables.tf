@@ -94,6 +94,13 @@ variable "restaurant_password" {
   sensitive = true
 }
 
+# ---- Auth ----
+variable "auth_secret" {
+  description = "Secret key for signing JWT session cookies (32+ random chars). Generate with: openssl rand -base64 32"
+  type        = string
+  sensitive   = true
+}
+
 # ---- Monitoring ----
 variable "alert_email" {
   description = "Email address for CloudWatch alarm notifications (RDS memory, connections). Leave empty to create alarms without email (visible in CloudWatch console only)."
