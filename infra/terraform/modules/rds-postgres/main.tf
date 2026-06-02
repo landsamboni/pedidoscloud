@@ -14,9 +14,15 @@ locals {
 
 resource "aws_security_group" "db" {
   name        = "${var.identifier}-db"
-  description = "PostgreSQL access for ${var.identifier} — laptop CIDRs + Amplify Lambda SG (added via aws_vpc_security_group_ingress_rule)"
+  description = "Allow PostgreSQL access for ${var.identifier}"
   vpc_id      = local.vpc_id
   tags        = var.tags
+
+  lifecycle {
+    # AWS does not allow updating SG descriptions in-place (requires destroy+recreate).
+    # Ignore description changes to prevent accidentally destroying a live RDS SG.
+    ignore_changes = [description]
+  }
 
   # CIDR-based ingress for manual migrations from known IPs (e.g. laptop).
   # Amplify Lambda ingress is added externally as aws_vpc_security_group_ingress_rule

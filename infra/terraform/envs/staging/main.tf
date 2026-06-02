@@ -62,7 +62,7 @@ resource "aws_vpc_endpoint" "s3" {
 
 resource "aws_security_group" "amplify_lambda" {
   name        = "${local.name}-amplify-lambda"
-  description = "Amplify WEB_COMPUTE SSR Lambda — outbound to RDS and S3 endpoint"
+  description = "Amplify WEB_COMPUTE SSR Lambda - outbound to RDS and S3 endpoint"
   vpc_id      = data.aws_vpc.default.id
   tags        = local.tags
 
