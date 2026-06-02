@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateOrderStatus } from "@/app/actions";
-import { formatMoney, formatOrderNumber } from "@/lib/format";
+import { formatOrderNumber } from "@/lib/format";
 import { parseItemName } from "@/lib/menu";
 
 type Order = {
@@ -41,12 +41,13 @@ const statusColors: Record<string, string> = {
 
 const PENDING = new Set(["NEW", "PAYMENT_PENDING", "PAYMENT_REVIEW"]);
 
+// Sections always shown (even with count 0) — the accent applies to both nav pill and section title.
 const GROUPS = [
-  { key: "review",    label: "Revisar comprobante",   statuses: ["PAYMENT_REVIEW"],            accent: "text-purple-700 bg-purple-50 border-purple-200" },
-  { key: "pending",   label: "Pendientes de pago",    statuses: ["PAYMENT_PENDING", "NEW"],    accent: "text-amber-700 bg-amber-50 border-amber-200" },
-  { key: "rejected",  label: "Comprobante rechazado", statuses: ["PAYMENT_REJECTED"],          accent: "text-red-700 bg-red-50 border-red-200" },
-  { key: "confirmed", label: "Confirmados",           statuses: ["PAYMENT_CONFIRMED"],         accent: "text-emerald-700 bg-emerald-50 border-emerald-200" },
-  { key: "cancelled", label: "Cancelados",            statuses: ["CANCELLED"],                 accent: "text-stone-600 bg-stone-50 border-stone-200" },
+  { key: "review",    label: "Revisar comprobante",   statuses: ["PAYMENT_REVIEW"],         accent: "text-purple-700 bg-purple-100 border-purple-300" },
+  { key: "pending",   label: "Pendientes de pago",    statuses: ["PAYMENT_PENDING", "NEW"], accent: "text-amber-700 bg-amber-100 border-amber-300" },
+  { key: "rejected",  label: "Rechazados",            statuses: ["PAYMENT_REJECTED"],       accent: "text-red-700 bg-red-100 border-red-300" },
+  { key: "confirmed", label: "Confirmados",           statuses: ["PAYMENT_CONFIRMED"],      accent: "text-emerald-700 bg-emerald-100 border-emerald-300" },
+  { key: "cancelled", label: "Cancelados",            statuses: ["CANCELLED"],              accent: "text-stone-700 bg-stone-200 border-stone-300" },
 ];
 
 function urgencyBorder(order: Order, now: number | null): string {
@@ -58,13 +59,24 @@ function urgencyBorder(order: Order, now: number | null): string {
   return "";
 }
 
+function buildCustomerWaUrl(order: Order, restaurantName: string): string | null {
+  const digits = order.customer.phone.replace(/\D/g, "");
+  if (!digits) return null;
+  const waPhone = digits.startsWith("57") ? digits : `57${digits}`;
+  const message = encodeURIComponent(
+    `Hola ${order.customer.name}! Soy del restaurante ${restaurantName}. Te contactamos sobre tu pedido ${formatOrderNumber(order.orderNumber)}.`,
+  );
+  return `https://wa.me/${waPhone}?text=${message}`;
+}
+
 interface Props {
   restaurantSlug: string;
+  restaurantName?: string;
   orders: Order[];
   readOnly?: boolean;
 }
 
-export function RestaurantOrders({ restaurantSlug, orders, readOnly = false }: Props) {
+export function RestaurantOrders({ restaurantSlug, restaurantName = "", orders, readOnly = false }: Props) {
   const router = useRouter();
   const [now, setNow] = useState<number | null>(null);
   const [proofUrl, setProofUrl] = useState<string | null>(null);
@@ -83,79 +95,68 @@ export function RestaurantOrders({ restaurantSlug, orders, readOnly = false }: P
     return map;
   }, [orders]);
 
-  const stats = useMemo(() => {
-    const pending   = (byStatus.PAYMENT_REVIEW?.length ?? 0) + (byStatus.PAYMENT_PENDING?.length ?? 0) + (byStatus.NEW?.length ?? 0);
-    const confirmed = byStatus.PAYMENT_CONFIRMED?.length ?? 0;
-    const rejected  = byStatus.PAYMENT_REJECTED?.length ?? 0;
-    const cancelled = byStatus.CANCELLED?.length ?? 0;
-    return { pending, confirmed, rejected, cancelled };
-  }, [byStatus]);
-
   if (!orders.length) {
-    return <section className="card text-stone-600">Todavía no hay pedidos para hoy.</section>;
+    return (
+      <>
+        {/* Still show nav even when no orders */}
+        <nav aria-label="Ir a sección" className="mb-5 flex gap-2 overflow-x-auto pb-1">
+          {GROUPS.map((g) => (
+            <span className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold opacity-40 ${g.accent}`} key={g.key}>
+              {g.label} (0)
+            </span>
+          ))}
+        </nav>
+        <section className="card text-stone-600">Todavía no hay pedidos para hoy.</section>
+      </>
+    );
   }
-
-  const visibleGroups = GROUPS.filter((g) => g.statuses.some((s) => (byStatus[s]?.length ?? 0) > 0));
 
   return (
     <>
-      {/* Stats bar */}
-      <div className="mb-4 flex flex-wrap gap-2 text-sm font-semibold">
-        {stats.pending > 0 && (
-          <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-800">⏳ {stats.pending} pendiente{stats.pending > 1 ? "s" : ""}</span>
-        )}
-        <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-800">✓ {stats.confirmed} confirmado{stats.confirmed !== 1 ? "s" : ""}</span>
-        {stats.rejected > 0 && (
-          <span className="rounded-full bg-red-100 px-3 py-1 text-red-800">✕ {stats.rejected} rechazado{stats.rejected > 1 ? "s" : ""}</span>
-        )}
-        {stats.cancelled > 0 && (
-          <span className="rounded-full bg-stone-200 px-3 py-1 text-stone-600">⊘ {stats.cancelled} cancelado{stats.cancelled > 1 ? "s" : ""}</span>
-        )}
-        <span className="rounded-full bg-stone-100 px-3 py-1 text-stone-500">Total: {orders.length}</span>
-      </div>
-
-      {/* Section quick-nav (visible when there are 2+ sections) */}
-      {visibleGroups.length > 1 && (
-        <nav aria-label="Ir a sección" className="mb-5 flex gap-2 overflow-x-auto pb-1">
-          {visibleGroups.map((g) => {
-            const count = g.statuses.reduce((n, s) => n + (byStatus[s]?.length ?? 0), 0);
-            return (
-              <a
-                className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition hover:opacity-80 ${g.accent}`}
-                href={`#section-${g.key}`}
-                key={g.key}
-              >
-                {g.label} ({count})
-              </a>
-            );
-          })}
-        </nav>
-      )}
+      {/* Section quick-nav — ALWAYS shows all groups */}
+      <nav aria-label="Ir a sección" className="mb-5 flex gap-2 overflow-x-auto pb-1">
+        {GROUPS.map((g) => {
+          const count = g.statuses.reduce((n, s) => n + (byStatus[s]?.length ?? 0), 0);
+          return (
+            <a
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition hover:opacity-80 ${g.accent} ${count === 0 ? "opacity-40" : ""}`}
+              href={`#section-${g.key}`}
+              key={g.key}
+            >
+              {g.label} ({count})
+            </a>
+          );
+        })}
+      </nav>
 
       {/* Sections */}
       <div className="space-y-8">
-        {visibleGroups.map((group) => {
+        {GROUPS.map((group) => {
           const groupOrders = group.statuses.flatMap((s) => byStatus[s] ?? []);
           return (
             <section id={`section-${group.key}`} key={group.key}>
-              <div className="mb-3 flex items-center gap-3 scroll-mt-4">
-                <h2 className={`rounded-full border px-3 py-1 text-sm font-bold ${group.accent}`}>
+              <div className="mb-3 scroll-mt-4">
+                <span className={`rounded-full border px-3 py-1 text-sm font-bold ${group.accent}`}>
                   {group.label} · {groupOrders.length}
-                </h2>
+                </span>
               </div>
-              {/* Wider grid: 1 → 2 → 3 → 4 → 5 columns across screen sizes */}
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5 4xl:grid-cols-6 xl:items-start">
-                {groupOrders.map((order) => (
-                  <OrderCard
-                    key={order.id}
-                    now={now}
-                    onViewProof={setProofUrl}
-                    order={order}
-                    readOnly={readOnly}
-                    restaurantSlug={restaurantSlug}
-                  />
-                ))}
-              </div>
+              {groupOrders.length > 0 ? (
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5 4xl:grid-cols-6 xl:items-start">
+                  {groupOrders.map((order) => (
+                    <OrderCard
+                      key={order.id}
+                      now={now}
+                      onViewProof={setProofUrl}
+                      order={order}
+                      readOnly={readOnly}
+                      restaurantName={restaurantName}
+                      restaurantSlug={restaurantSlug}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-stone-400 italic">Sin pedidos en esta categoría.</p>
+              )}
             </section>
           );
         })}
@@ -186,10 +187,13 @@ export function RestaurantOrders({ restaurantSlug, orders, readOnly = false }: P
   );
 }
 
-function OrderCard({ order, restaurantSlug, now, readOnly, onViewProof }: {
-  order: Order; restaurantSlug: string; now: number | null; readOnly: boolean; onViewProof: (url: string) => void;
+function OrderCard({ order, restaurantSlug, restaurantName, now, readOnly, onViewProof }: {
+  order: Order; restaurantSlug: string; restaurantName: string; now: number | null; readOnly: boolean; onViewProof: (url: string) => void;
 }) {
+  const [confirmNoProof, setConfirmNoProof] = useState(false);
   const border = urgencyBorder(order, now);
+  const customerWaUrl = buildCustomerWaUrl(order, restaurantName);
+
   return (
     <article className={`card flex flex-col gap-0 ${border}`}>
       <div className="flex items-start justify-between gap-2">
@@ -204,7 +208,23 @@ function OrderCard({ order, restaurantSlug, now, readOnly, onViewProof }: {
 
       <div className="mt-4 space-y-1.5 text-base">
         <p><span className="text-stone-500">Cliente</span> <strong>{order.customer.name}</strong></p>
-        <p><span className="text-stone-500">Tel.</span> <strong>{order.customer.phone}</strong></p>
+        <div className="flex items-center gap-2">
+          <p><span className="text-stone-500">Tel.</span> <strong>{order.customer.phone}</strong></p>
+          {customerWaUrl && !readOnly && (
+            <a
+              aria-label={`WhatsApp con ${order.customer.name}`}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#25D366] text-white transition hover:bg-[#1ebe5d]"
+              href={customerWaUrl}
+              rel="noreferrer"
+              target="_blank"
+              title={`Contactar a ${order.customer.name} por WhatsApp`}
+            >
+              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+              </svg>
+            </a>
+          )}
+        </div>
         <p className="text-stone-700"><span className="text-stone-500">Dirección</span> {order.address}</p>
         <p><span className="text-stone-500">Total</span> <strong>{order.totalLabel}</strong></p>
       </div>
@@ -234,13 +254,45 @@ function OrderCard({ order, restaurantSlug, now, readOnly, onViewProof }: {
         </div>
       )}
 
+      {/* Action buttons */}
       {!readOnly && order.status !== "CANCELLED" && order.status !== "PAYMENT_CONFIRMED" && (
-        <div className="mt-4 flex flex-wrap gap-2 border-t border-stone-100 pt-4">
-          <StatusButton id={order.id} slug={restaurantSlug} status="PAYMENT_CONFIRMED">Confirmar pago</StatusButton>
-          {order.paymentProofPath && order.status !== "PAYMENT_REJECTED" && (
-            <StatusButton id={order.id} slug={restaurantSlug} status="PAYMENT_REJECTED" secondary>Rechazar</StatusButton>
+        <div className="mt-4 flex flex-col gap-2 border-t border-stone-100 pt-4">
+          {/* Confirm payment — requires proof OR explicit double-confirm */}
+          {confirmNoProof && !order.paymentProofPath ? (
+            <div className="rounded-xl bg-amber-50 p-3 text-sm">
+              <p className="font-semibold text-amber-900">⚠ El cliente no adjuntó comprobante</p>
+              <p className="mt-1 text-amber-800">¿Confirmar el pago de todas formas?</p>
+              <div className="mt-3 flex gap-2">
+                <ConfirmButton id={order.id} onCancel={() => setConfirmNoProof(false)} slug={restaurantSlug} />
+                <button className="button-secondary text-sm" onClick={() => setConfirmNoProof(false)} type="button">Cancelar</button>
+              </div>
+            </div>
+          ) : (
+            <button
+              className={`${order.paymentProofPath ? "button-primary" : "rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800 transition hover:bg-amber-100"} w-full`}
+              onClick={() => {
+                if (!order.paymentProofPath) { setConfirmNoProof(true); return; }
+                // Has proof — submit directly via hidden form
+                document.getElementById(`confirm-form-${order.id}`)?.dispatchEvent(new Event("submit", { bubbles: true }));
+              }}
+              type="button"
+            >
+              {order.paymentProofPath ? "Confirmar pago" : "⚠ Confirmar sin comprobante"}
+            </button>
           )}
-          <StatusButton id={order.id} slug={restaurantSlug} status="CANCELLED" secondary>Cancelar</StatusButton>
+          {/* Hidden form for direct confirmation when proof exists */}
+          <form id={`confirm-form-${order.id}`} action={updateOrderStatus} className="hidden">
+            <input name="id" type="hidden" value={order.id} />
+            <input name="slug" type="hidden" value={restaurantSlug} />
+            <input name="status" type="hidden" value="PAYMENT_CONFIRMED" />
+          </form>
+
+          <div className="flex flex-wrap gap-2">
+            {order.paymentProofPath && order.status !== "PAYMENT_REJECTED" && (
+              <StatusButton id={order.id} slug={restaurantSlug} status="PAYMENT_REJECTED" secondary>Rechazar</StatusButton>
+            )}
+            <StatusButton id={order.id} slug={restaurantSlug} status="CANCELLED" secondary>Cancelar</StatusButton>
+          </div>
         </div>
       )}
       {!readOnly && order.status === "PAYMENT_CONFIRMED" && (
@@ -249,6 +301,20 @@ function OrderCard({ order, restaurantSlug, now, readOnly, onViewProof }: {
         </div>
       )}
     </article>
+  );
+}
+
+function ConfirmButton({ id, slug, onCancel }: { id: string; slug: string; onCancel: () => void }) {
+  return (
+    <form
+      action={updateOrderStatus}
+      onSubmit={() => onCancel()}
+    >
+      <input name="id" type="hidden" value={id} />
+      <input name="slug" type="hidden" value={slug} />
+      <input name="status" type="hidden" value="PAYMENT_CONFIRMED" />
+      <button className="button-primary text-sm" type="submit">Sí, confirmar</button>
+    </form>
   );
 }
 

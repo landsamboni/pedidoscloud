@@ -57,7 +57,7 @@ export default async function RestaurantOrdersPage({ params }: { params: Promise
           <Link className="button-secondary" href={`/restaurant/${restaurantSlug}`}>Consola</Link>
         </div>
       </header>
-      <RestaurantOrders restaurantSlug={restaurantSlug} orders={orders} />
+      <RestaurantOrders restaurantName={restaurant.name} restaurantSlug={restaurantSlug} orders={orders} />
     </main>
   );
 }

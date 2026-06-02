@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { createOrder } from "@/app/actions";
 import { formatMoney } from "@/lib/format";
-import { parseItemName, parseSurcharge, SIN_SOPA } from "@/lib/menu";
+import { formatSurcharge, parseItemName, parseSurcharge, SIN_SOPA } from "@/lib/menu";
 
 type Lunch = { soup: string; protein: string; side: string; drink: string };
 
@@ -45,6 +45,7 @@ function validateAddress(value: string): string | null {
   const clean = value.trim();
   if (!clean) return "Escribe tu dirección de entrega.";
   if (clean.length < 10) return "La dirección debe ser más específica (mínimo 10 caracteres).";
+  if (!/\d/.test(clean)) return "La dirección debe incluir un número (ej. Cra 5 #12-34, apto 301).";
   return null;
 }
 
@@ -210,7 +211,7 @@ function Option({ label, options, value, onChange, withSinSopa = false }: {
               <span>{selected ? "✓ " : ""}{name}</span>
               {surcharge > 0 && (
                 <span className={`ml-1.5 text-sm font-medium ${selected ? "text-teal-100" : "text-amber-600"}`}>
-                  +{(surcharge / 1000).toFixed(0)}k
+                  {formatSurcharge(surcharge)}
                 </span>
               )}
             </button>

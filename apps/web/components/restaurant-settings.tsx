@@ -156,7 +156,7 @@ function MenuTextarea({ label, name, options = [] }: { label: string; name: stri
     <label className="text-sm font-medium text-stone-700">
       {label}{" "}
       <span className="font-normal text-stone-400">
-        (una por línea · precio extra: <code className="text-xs">Costilla BBQ|3000</code>)
+        (una por línea · precio extra: <code className="rounded bg-stone-100 px-1 text-xs">Costilla BBQ +3000</code>)
       </span>
       <textarea className="input mt-1 min-h-28 font-mono text-sm" defaultValue={options.join("\n")} name={name} required />
     </label>
