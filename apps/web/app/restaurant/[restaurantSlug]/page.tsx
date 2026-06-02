@@ -45,7 +45,7 @@ export default async function RestaurantConsolePage({ params }: { params: Promis
 
       <section className="card mt-4">
         <h2 className="mb-4 text-xl font-bold">Configuración</h2>
-        <RestaurantSettings menu={menu} restaurant={restaurant} returnPath={`/restaurant/${restaurantSlug}`} />
+        <RestaurantSettings hidePassword menu={menu} restaurant={restaurant} returnPath={`/restaurant/${restaurantSlug}`} />
       </section>
 
       <section className="card mt-4">
