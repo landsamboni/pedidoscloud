@@ -61,7 +61,7 @@ export function RestaurantSettings({ menu, restaurant, returnPath }: { menu: Men
             QR Nequi <span className="font-normal text-stone-400">(opcional, deja vacío para conservar el actual)</span>
             <input accept="image/jpeg,image/png,image/webp" className="input mt-1" name="nequiQr" type="file" />
           </label>
-          {restaurant.nequiQrPath && <p className="text-sm text-emerald-700 sm:col-span-2">QR configurado actualmente.</p>}
+          {restaurant.nequiQrPath && <p className="text-sm text-violet-700 sm:col-span-2">QR configurado actualmente.</p>}
           <button className="button-primary sm:col-span-2">Guardar datos de pago</button>
         </form>
       </details>

@@ -24,7 +24,7 @@ export default async function RestaurantOrdersPage({ params }: { params: Promise
     <main className="mx-auto max-w-4xl p-4 sm:p-6">
       <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Pedidos de hoy</p>
+          <p className="text-sm font-semibold uppercase tracking-wide text-violet-700">Pedidos de hoy</p>
           <h1 className="mt-1 text-3xl font-bold">{restaurant.name}</h1>
           <p className="mt-1 text-sm text-stone-500">Se actualiza automáticamente cada 10 segundos.</p>
         </div>
