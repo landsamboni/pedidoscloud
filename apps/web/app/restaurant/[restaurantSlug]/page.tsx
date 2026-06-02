@@ -22,8 +22,10 @@ export default async function RestaurantConsolePage({ params }: { params: Promis
 
       <section className="card">
         <div className="flex flex-wrap gap-3">
-          <Link className="button-primary" href={`/restaurant/${restaurantSlug}/orders`}>Ver pedidos de hoy</Link>
-          <Link className="button-secondary" href={`/r/${restaurantSlug}`}>Abrir página del cliente</Link>
+          <Link className="button-primary" href={`/restaurant/${restaurantSlug}/orders`}>Pedidos de hoy</Link>
+          <Link className="button-secondary" href={`/restaurant/${restaurantSlug}/history`}>Historial</Link>
+          <Link className="button-secondary" href={`/restaurant/${restaurantSlug}/analytics`}>Analíticas</Link>
+          <Link className="button-secondary" href={`/r/${restaurantSlug}`}>Página del cliente</Link>
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
           <Summary label="Pedidos de hoy" value={String(restaurant.orders.length)} />

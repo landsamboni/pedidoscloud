@@ -33,3 +33,20 @@ export function formatOrderNumber(value: number) {
   return `#${String(value).padStart(3, "0")}`;
 }
 
+export function dateKeyDaysAgo(days: number) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return localDateKey(d);
+}
+
+export function formatDateKey(dateKey: string) {
+  const [year, month, day] = dateKey.split("-");
+  return new Intl.DateTimeFormat("es-CO", {
+    timeZone: APP_TIME_ZONE,
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }).format(new Date(`${year}-${month}-${day}T12:00:00.000Z`));
+}
+
