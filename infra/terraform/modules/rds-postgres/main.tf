@@ -70,6 +70,11 @@ resource "aws_db_instance" "this" {
   skip_final_snapshot       = var.skip_final_snapshot
   final_snapshot_identifier = var.skip_final_snapshot ? null : "${var.identifier}-final"
 
+  # Ship PostgreSQL error and upgrade logs to CloudWatch for audit and debugging.
+  # "postgresql" captures connections, disconnections, errors, and slow queries
+  # (when log_min_duration_statement is set via a parameter group).
+  enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]
+
   apply_immediately = true
   tags              = var.tags
 }
@@ -86,6 +91,27 @@ resource "aws_cloudwatch_metric_alarm" "freeable_memory" {
   statistic           = "Average"
   threshold           = var.alarm_memory_threshold_bytes
   alarm_description   = "${var.identifier}: FreeableMemory below ${var.alarm_memory_threshold_bytes / 1048576} MB — consider upgrading to db.t3.small"
+  alarm_actions       = local.alarm_actions
+  ok_actions          = local.alarm_actions
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    DBInstanceIdentifier = aws_db_instance.this.id
+  }
+
+  tags = var.tags
+}
+
+resource "aws_cloudwatch_metric_alarm" "cpu_utilization" {
+  alarm_name          = "${var.identifier}-high-cpu"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 3
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/RDS"
+  period              = 300
+  statistic           = "Average"
+  threshold           = 80
+  alarm_description   = "${var.identifier}: CPU above 80% — check for missing indexes or runaway queries before scaling up"
   alarm_actions       = local.alarm_actions
   ok_actions          = local.alarm_actions
   treat_missing_data  = "notBreaching"
