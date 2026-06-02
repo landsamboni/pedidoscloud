@@ -1,6 +1,24 @@
 import { prisma } from "@/lib/prisma";
 import { dateKeyDaysAgo, dateKeyToUtcDate, localDateKey } from "@/lib/format";
 
+export async function getRestaurantCustomers(slug: string) {
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { slug },
+    select: { id: true, name: true, slug: true },
+  });
+  if (!restaurant) return null;
+
+  const customers = await prisma.customer.findMany({
+    where: { restaurantId: restaurant.id },
+    include: {
+      _count: { select: { orders: true } },
+    },
+    orderBy: { orders: { _count: "desc" } },
+  });
+
+  return { restaurant, customers };
+}
+
 export async function getRestaurantMenu(slug: string) {
   return prisma.restaurant.findFirst({
     where: { slug, active: true },

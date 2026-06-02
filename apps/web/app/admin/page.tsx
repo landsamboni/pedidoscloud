@@ -44,6 +44,7 @@ export default async function AdminPage() {
                   <Link className="button-secondary" href={`/r/${restaurant.slug}`}>Página cliente</Link>
                   <Link className="button-secondary" href={`/restaurant/${restaurant.slug}/orders`}>Tablero</Link>
                   <Link className="button-secondary" href={`/restaurant/${restaurant.slug}`}>Consola restaurante</Link>
+                  <Link className="button-secondary" href={`/admin/customers/${restaurant.slug}`}>Clientes</Link>
                 </div>
               </div>
 

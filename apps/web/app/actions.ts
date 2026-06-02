@@ -290,6 +290,40 @@ export async function deleteRestaurantOrdersByDate(formData: FormData) {
   revalidatePath(`/restaurant/${restaurant.slug}/analytics`);
 }
 
+/** Admin: update a customer's name, phone and last address. */
+export async function updateCustomer(formData: FormData) {
+  const { getSession } = await import("@/lib/auth");
+  const session = await getSession();
+  if (!session || session.role !== "admin") throw new Error("No autorizado.");
+
+  const id = String(formData.get("customerId"));
+  const name = required(String(formData.get("name") ?? ""), "nombre");
+  const phone = String(formData.get("phone") ?? "").replace(/\D/g, "").slice(0, 15);
+  if (!phone) throw new Error("Teléfono inválido.");
+  const lastAddress = String(formData.get("lastAddress") ?? "").trim();
+  const restaurantSlug = String(formData.get("restaurantSlug") ?? "");
+
+  await prisma.customer.update({ where: { id }, data: { name, phone, lastAddress } });
+  revalidatePath(`/admin/customers/${restaurantSlug}`);
+}
+
+/** Admin: delete a customer and ALL their orders (no order history preserved). */
+export async function deleteCustomer(formData: FormData) {
+  const { getSession } = await import("@/lib/auth");
+  const session = await getSession();
+  if (!session || session.role !== "admin") throw new Error("No autorizado.");
+
+  const customerId = String(formData.get("customerId"));
+  const restaurantSlug = String(formData.get("restaurantSlug") ?? "");
+
+  // Must delete orders first (onDelete: Restrict on Customer relation)
+  await prisma.$transaction([
+    prisma.order.deleteMany({ where: { customerId } }),
+    prisma.customer.delete({ where: { id: customerId } }),
+  ]);
+  revalidatePath(`/admin/customers/${restaurantSlug}`);
+}
+
 /** Admin: permanently delete a restaurant and ALL its data. Requires slug confirmation. */
 export async function deleteRestaurant(formData: FormData) {
   const { getSession } = await import("@/lib/auth");
