@@ -83,25 +83,6 @@ export function RestaurantSettings({ menu, restaurant, returnPath }: { menu: Men
         </form>
       </details>
 
-      <details className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-        <summary className="cursor-pointer text-lg font-semibold text-amber-900">
-          Contraseña de acceso
-        </summary>
-        <form action={setRestaurantPassword} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
-          <input name="restaurantId" type="hidden" value={restaurant.id} />
-          <label className="text-sm font-medium text-stone-700">
-            Nueva contraseña <span className="font-normal text-stone-400">(mínimo 8 caracteres)</span>
-            <input className="input mt-1" minLength={8} name="password" placeholder="Nueva contraseña" required type="password" />
-          </label>
-          <button className="button-primary self-end">
-            {restaurant.passwordHash ? "Cambiar contraseña" : "Establecer contraseña"}
-          </button>
-        </form>
-        {!restaurant.passwordHash && (
-          <p className="mt-2 text-sm text-amber-800">⚠ Este restaurante aún no tiene contraseña. El agente no podrá iniciar sesión hasta que la establezcas.</p>
-        )}
-      </details>
-
       <details className="rounded-xl border border-stone-200 p-4" open={restaurant.paymentMethods.length > 0}>
         <summary className="cursor-pointer text-lg font-semibold">
           Otros medios de pago{" "}
@@ -147,6 +128,30 @@ export function RestaurantSettings({ menu, restaurant, returnPath }: { menu: Men
           <button className="button-secondary sm:col-span-3">+ Agregar método de pago</button>
         </form>
       </details>
+      {/* Password section — separated clearly at the bottom, used infrequently */}
+      <div className="mt-4 border-t border-stone-200 pt-6">
+        <details className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <summary className="cursor-pointer text-lg font-semibold text-amber-900">
+            Contraseña de acceso
+          </summary>
+          <p className="mt-1 text-xs text-amber-700">
+            Configura o cambia la contraseña que usa el agente del restaurante para iniciar sesión.
+          </p>
+          <form action={setRestaurantPassword} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+            <input name="restaurantId" type="hidden" value={restaurant.id} />
+            <label className="text-sm font-medium text-stone-700">
+              Nueva contraseña <span className="font-normal text-stone-400">(mínimo 8 caracteres)</span>
+              <input className="input mt-1" minLength={8} name="password" placeholder="Nueva contraseña" required type="password" />
+            </label>
+            <button className="button-primary self-end">
+              {restaurant.passwordHash ? "Cambiar contraseña" : "Establecer contraseña"}
+            </button>
+          </form>
+          {!restaurant.passwordHash && (
+            <p className="mt-2 text-sm text-amber-800">⚠ Este restaurante aún no tiene contraseña. El agente no podrá iniciar sesión hasta que la establezcas.</p>
+          )}
+        </details>
+      </div>
     </div>
   );
 }
