@@ -596,7 +596,8 @@ export async function changePasswordAction(
   }
 }
 
-export type MenuFormState = { ok: boolean; message: string; ts: number };
+export type ActionState = { ok: boolean; message: string; ts: number };
+export type MenuFormState = ActionState;
 
 export async function updateTodayMenu(_prev: MenuFormState, formData: FormData): Promise<MenuFormState> {
   const restaurantId = String(formData.get("restaurantId"));
@@ -632,11 +633,13 @@ export async function updateTodayMenu(_prev: MenuFormState, formData: FormData):
   return { ok: true, message: "Menú publicado y visible para tus clientes.", ts: Date.now() };
 }
 
-export async function updateBasePrice(formData: FormData) {
+export async function updateBasePrice(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const restaurantId = String(formData.get("restaurantId"));
   const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
   const basePrice = Number(formData.get("basePrice"));
-  if (!Number.isFinite(basePrice) || basePrice <= 0) throw new Error("Precio inválido.");
+  if (!Number.isFinite(basePrice) || basePrice <= 0) {
+    return { ok: false, message: "Ingresa un precio válido mayor a 0.", ts: Date.now() };
+  }
 
   const restaurant = await prisma.restaurant.update({
     where: { id: restaurantId },
@@ -646,8 +649,7 @@ export async function updateBasePrice(formData: FormData) {
   revalidatePath("/admin");
   revalidatePath(returnPath);
   revalidatePath(`/r/${restaurant.slug}`);
-  // No redirect: returning without navigating keeps the user's scroll position.
-  // revalidatePath above refreshes the data in place.
+  return { ok: true, message: "Precio actualizado.", ts: Date.now() };
 }
 
 export async function updateBusinessPhone(formData: FormData) {

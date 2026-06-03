@@ -1,4 +1,5 @@
 import { createPaymentMethod, deletePaymentMethod, setRestaurantPassword, updateBasePrice, updateBusinessPhone, updateMenuTemplate, updatePaymentSettings } from "@/app/actions";
+import { FeedbackForm, SubmitButton } from "@/components/feedback-form";
 import { MenuEditor } from "@/components/menu-editor";
 import { ShareMenuImage } from "@/components/share-menu-image";
 
@@ -45,15 +46,15 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
 
       <div className="rounded-xl border border-stone-200 p-4">
         <h3 className="text-lg font-semibold">Precio del almuerzo</h3>
-        <form action={updateBasePrice} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+        <FeedbackForm action={updateBasePrice} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
           <input name="restaurantId" type="hidden" value={restaurant.id} />
           <input name="returnPath" type="hidden" value={returnPath} />
           <label className="text-sm font-medium text-stone-700">
             Precio base de cada almuerzo
             <input className="input mt-1 text-base" defaultValue={restaurant.basePrice.toString()} min="1" name="basePrice" required step="1" type="number" />
           </label>
-          <button className="button-primary self-end">Guardar precio</button>
-        </form>
+          <SubmitButton className="button-primary self-end">Guardar precio</SubmitButton>
+        </FeedbackForm>
       </div>
 
       <div className="rounded-xl border border-stone-200 p-4">
