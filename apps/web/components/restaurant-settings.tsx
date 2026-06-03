@@ -1,5 +1,6 @@
-import { createPaymentMethod, deletePaymentMethod, setRestaurantPassword, updateBasePrice, updatePaymentSettings, updateTodayMenu } from "@/app/actions";
+import { createPaymentMethod, deletePaymentMethod, setRestaurantPassword, updateBasePrice, updateMenuTemplate, updatePaymentSettings, updateTodayMenu } from "@/app/actions";
 import { MenuFields } from "@/components/menu-fields";
+import { ShareMenuImage } from "@/components/share-menu-image";
 
 type Menu = {
   soups: string[];
@@ -18,10 +19,11 @@ type Restaurant = {
   nequiQrPath: string | null;
   whatsappPhone: string | null;
   passwordHash: string | null;
+  menuTemplatePath: string | null;
   paymentMethods: PaymentMethod[];
 };
 
-export function RestaurantSettings({ menu, restaurant, returnPath, hidePassword = false, menuPublishedToday = false }: { menu: Menu; restaurant: Restaurant; returnPath: string; hidePassword?: boolean; menuPublishedToday?: boolean }) {
+export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlug, hidePassword = false, menuPublishedToday = false }: { menu: Menu; restaurant: Restaurant; returnPath: string; restaurantSlug: string; hidePassword?: boolean; menuPublishedToday?: boolean }) {
   const hasTemplate = !!menu && [menu.soups, menu.proteins, menu.sides, menu.drinks].some((o) => o.length > 0);
   return (
     <div className="space-y-3">
@@ -77,6 +79,26 @@ export function RestaurantSettings({ menu, restaurant, returnPath, hidePassword 
             {menuPublishedToday ? "Guardar menú" : "Publicar menú de hoy"}
           </button>
         </form>
+      </details>
+
+      <details className="rounded-xl border border-stone-200 p-4">
+        <summary className="cursor-pointer text-lg font-semibold">Imagen del menú para compartir</summary>
+        <p className="mt-1 text-sm text-stone-500">
+          Genera una imagen (1080×1350) con el menú de hoy para tus estados de WhatsApp.
+        </p>
+        <div className="mt-4">
+          <ShareMenuImage hasTemplate={!!restaurant.menuTemplatePath} publishedToday={menuPublishedToday} slug={restaurantSlug} />
+        </div>
+        <form action={updateMenuTemplate} className="mt-4 grid gap-3 border-t border-stone-100 pt-4 sm:grid-cols-[1fr_auto]">
+          <input name="restaurantId" type="hidden" value={restaurant.id} />
+          <input name="returnPath" type="hidden" value={returnPath} />
+          <label className="text-sm font-medium text-stone-700">
+            Plantilla de fondo <span className="font-normal text-stone-400">(PNG/JPG/WEBP, 1080×1350; deja libre el centro para el texto)</span>
+            <input accept="image/jpeg,image/png,image/webp" className="input mt-1" name="menuTemplate" required type="file" />
+          </label>
+          <button className="button-primary self-end">{restaurant.menuTemplatePath ? "Cambiar plantilla" : "Subir plantilla"}</button>
+        </form>
+        {restaurant.menuTemplatePath && <p className="mt-2 text-sm text-teal-600">Plantilla configurada.</p>}
       </details>
 
       <details className="rounded-xl border border-stone-200 p-4">

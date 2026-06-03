@@ -190,7 +190,7 @@ export default async function AdminPage() {
               })()}
 
               <div className="mt-5">
-                <RestaurantSettings menu={menu} menuPublishedToday={!!menu} restaurant={restaurant} returnPath="/admin" />
+                <RestaurantSettings menu={menu} menuPublishedToday={!!menu} restaurant={restaurant} restaurantSlug={restaurant.slug} returnPath="/admin" />
               </div>
 
               {/* Demo data generator — populate for sales presentations */}

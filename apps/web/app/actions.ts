@@ -668,6 +668,24 @@ export async function updatePaymentSettings(formData: FormData) {
   redirect(returnPath);
 }
 
+export async function updateMenuTemplate(formData: FormData) {
+  const restaurantId = String(formData.get("restaurantId"));
+  const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
+  const file = formData.get("menuTemplate");
+  const menuTemplatePath = file instanceof File ? await saveUpload(file, "menu-template") : null;
+  if (!menuTemplatePath) {
+    throw new Error("Sube una imagen de plantilla (PNG, JPG o WEBP) de 1080×1350.");
+  }
+
+  await prisma.restaurant.update({
+    where: { id: restaurantId },
+    data: { menuTemplatePath },
+  });
+  revalidatePath("/admin");
+  revalidatePath(returnPath);
+  redirect(returnPath);
+}
+
 export async function createPaymentMethod(formData: FormData) {
   const restaurantId = String(formData.get("restaurantId"));
   const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
