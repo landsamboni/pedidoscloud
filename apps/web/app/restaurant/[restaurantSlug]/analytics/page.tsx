@@ -248,7 +248,7 @@ function IngredientCard({ label, items, total }: { label: string; items: [string
             </div>
             <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-stone-100">
               <div
-                className="h-full rounded-full bg-teal-400"
+                className={`h-full rounded-full ${barColor(count / max)}`}
                 style={{ width: `${(count / max) * 100}%` }}
               />
             </div>
