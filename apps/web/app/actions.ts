@@ -365,13 +365,15 @@ export async function populateDemoData(formData: FormData) {
 
       orderNum++;
 
-      // Status distribution: today = mix; past = mostly confirmed
+      // Status distribution:
+      //   Past days → only terminal states (CONFIRMED or CANCELLED).
+      //     A day that has ended cannot have pending orders.
+      //   Today → realistic mix with some pending for live demo feel.
       let status: "PAYMENT_CONFIRMED" | "CANCELLED" | "PAYMENT_PENDING";
       if (isToday) {
         status = j < 2 ? "PAYMENT_PENDING" : j === 2 ? "CANCELLED" : "PAYMENT_CONFIRMED";
       } else {
-        const r = Math.random();
-        status = r < 0.82 ? "PAYMENT_CONFIRMED" : r < 0.92 ? "CANCELLED" : "PAYMENT_PENDING";
+        status = Math.random() < 0.88 ? "PAYMENT_CONFIRMED" : "CANCELLED";
       }
 
       const items = Array.from({ length: numItems }, () => ({

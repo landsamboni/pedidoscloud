@@ -52,8 +52,10 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ rest
   const allTimeCount = confirmedTotal?._count?.id ?? 0;
 
   const weeks = buildWeeks(daily);
-  const maxDaily = Math.max(...last30.map((d) => d.revenue), 1);
+  const maxDaily  = Math.max(...last30.map((d) => d.revenue), 1);
+  const minDaily  = last30.length > 0 ? Math.min(...last30.filter(d => d.revenue > 0).map(d => d.revenue)) : 0;
   const maxWeekly = Math.max(...weeks.map(([, w]) => w.revenue), 1);
+  const minWeekly = weeks.length > 0 ? Math.min(...weeks.filter(([,w]) => w.revenue > 0).map(([,w]) => w.revenue)) : 0;
 
   return (
     <main className="mx-auto max-w-5xl p-4 sm:p-6">
@@ -97,10 +99,12 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ rest
         ) : (
           <BarChart
             bars={last30.map((d) => ({
-              label: d.orderDate.slice(5), // MM-DD
+              label: d.orderDate.slice(5),
               value: d.revenue,
+              min: minDaily,
               max: maxDaily,
-              sublabel: String(d.count),
+              sublabel: compactCOP(d.revenue),
+              hint: `${d.count} pedido${d.count !== 1 ? "s" : ""}`,
               isToday: d.orderDate === today,
             }))}
           />
@@ -117,8 +121,10 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ rest
             bars={weeks.map(([key, w]) => ({
               label: key.slice(5),
               value: w.revenue,
+              min: minWeekly,
               max: maxWeekly,
-              sublabel: `${w.count} órd.`,
+              sublabel: compactCOP(w.revenue),
+              hint: `${w.count} órd.`,
             }))}
           />
         )}
@@ -168,18 +174,43 @@ function StatCard({ label, revenue, count, highlight }: { label: string; revenue
   );
 }
 
+/** Format a COP value compactly for chart labels. */
+function compactCOP(value: number): string {
+  if (value === 0) return "$0";
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1).replace(".0", "")}M`;
+  if (value >= 1_000) return `$${Math.round(value / 1_000)}K`;
+  return `$${value}`;
+}
+
 function BarChart({ bars }: {
-  bars: { label: string; value: number; max: number; sublabel: string; isToday?: boolean }[];
+  bars: { label: string; value: number; min?: number; max: number; sublabel: string; hint?: string; isToday?: boolean }[];
 }) {
   return (
-    <div className="flex items-end gap-1 overflow-x-auto pb-2" style={{ minHeight: "10rem" }}>
+    <div className="flex items-end gap-1 overflow-x-auto pb-2" style={{ minHeight: "11rem" }}>
       {bars.map((bar, i) => {
-        const pct = bar.max > 0 ? Math.max((bar.value / bar.max) * 100, bar.value > 0 ? 4 : 0) : 0;
+        // Rebased scale: amplify visual differences by using the min value as the
+        // visual baseline. All non-zero bars fill 20%–100% of chart height.
+        // Zero-value bars show a tiny stub so the label is still visible.
+        let pct = 0;
+        if (bar.value > 0 && bar.max > 0) {
+          const minVal = bar.min ?? 0;
+          const range = bar.max - minVal;
+          if (range > 0) {
+            pct = 20 + ((bar.value - minVal) / range) * 80; // 20%–100%
+          } else {
+            pct = 100; // all values equal — show full bars
+          }
+        }
         return (
-          <div className="flex min-w-[2rem] flex-1 flex-col items-center gap-1" key={i}>
-            <span className="text-xs text-stone-500">{bar.sublabel}</span>
+          <div className="flex min-w-[2rem] flex-1 flex-col items-center gap-0.5" key={i}>
+            {/* Revenue label above bar */}
+            <span className={`text-xs font-semibold ${bar.isToday ? "text-teal-700" : "text-stone-600"}`}>
+              {bar.sublabel}
+            </span>
+            {/* Order count hint */}
+            {bar.hint && <span className="text-[10px] text-stone-400">{bar.hint}</span>}
             <div
-              className={`w-full rounded-t-md ${bar.isToday ? "bg-teal-500" : "bg-teal-200"}`}
+              className={`w-full rounded-t-md ${bar.isToday ? "bg-teal-500" : "bg-teal-300"}`}
               style={{ height: `${pct}%`, minHeight: bar.value > 0 ? "0.5rem" : "2px" }}
               title={formatMoney(bar.value)}
             />

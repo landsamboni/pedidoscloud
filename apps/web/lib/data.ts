@@ -117,6 +117,26 @@ export async function getOrdersByDate(slug: string, date: string) {
   });
 }
 
+// ---- Stale order cleanup ----
+
+/**
+ * Cancel any orders from previous days that are still in a non-terminal state.
+ * A day that has passed cannot have its orders completed/paid anymore, so they
+ * should be marked CANCELLED to keep the data clean and the analytics accurate.
+ * Called lazily when the restaurant opens the orders dashboard or history.
+ */
+export async function cleanupStaleOrders(restaurantId: string) {
+  const today = localDateKey();
+  await prisma.order.updateMany({
+    where: {
+      restaurantId,
+      orderDate: { lt: today },
+      status: { notIn: ["PAYMENT_CONFIRMED", "CANCELLED"] },
+    },
+    data: { status: "CANCELLED" },
+  });
+}
+
 // ---- Ingredient analytics ----
 
 export async function getRestaurantIngredientAnalytics(slug: string, monthOffset = 0) {

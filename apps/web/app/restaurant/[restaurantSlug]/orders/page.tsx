@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RestaurantOrders } from "@/components/restaurant-orders";
-import { getTodayOrders } from "@/lib/data";
+import { cleanupStaleOrders, getTodayOrders } from "@/lib/data";
 import { resolveFileUrl } from "@/lib/file-url";
 import { formatMoney, formatTime } from "@/lib/format";
 
@@ -19,6 +19,9 @@ export default async function RestaurantOrdersPage({ params }: { params: Promise
   const { restaurantSlug } = await params;
   const restaurant = await getTodayOrders(restaurantSlug);
   if (!restaurant) notFound();
+
+  // Lazily cancel orders from previous days that never reached a terminal state.
+  await cleanupStaleOrders(restaurant.id);
 
   const orders = restaurant.orders
     .map((order) => ({
