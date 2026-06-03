@@ -1,5 +1,5 @@
 import { createPaymentMethod, deletePaymentMethod, setRestaurantPassword, updateBasePrice, updatePaymentSettings, updateTodayMenu } from "@/app/actions";
-import { AutoGrowTextarea } from "@/components/auto-grow-textarea";
+import { MenuFields } from "@/components/menu-fields";
 
 type Menu = {
   soups: string[];
@@ -65,10 +65,14 @@ export function RestaurantSettings({ menu, restaurant, returnPath, hidePassword 
             </p>
           )}
 
-          <MenuTextarea label="Sopas" name="soups" options={menu?.soups} />
-          <MenuTextarea label="Proteínas" name="proteins" options={menu?.proteins} />
-          <MenuTextarea label="Principios" name="sides" options={menu?.sides} />
-          <MenuTextarea label="Bebidas" name="drinks" options={menu?.drinks} />
+          <MenuFields
+            values={{
+              soups: menu?.soups.join("\n"),
+              proteins: menu?.proteins.join("\n"),
+              sides: menu?.sides.join("\n"),
+              drinks: menu?.drinks.join("\n"),
+            }}
+          />
           <button className="button-primary sm:col-span-2">
             {menuPublishedToday ? "Guardar menú" : "Publicar menú de hoy"}
           </button>
@@ -181,25 +185,5 @@ export function RestaurantSettings({ menu, restaurant, returnPath, hidePassword 
         </div>
       )}
     </div>
-  );
-}
-
-function MenuTextarea({ label, name, options = [] }: { label: string; name: string; options?: string[] }) {
-  return (
-    <label className="text-sm font-medium text-stone-700">
-      {label}{" "}
-      <span className="font-normal text-stone-400">
-        (una por línea · precio extra: <code className="rounded bg-stone-100 px-1 text-xs">Costilla BBQ +3000</code>)
-      </span>
-      <AutoGrowTextarea
-        className="input mt-1 min-h-36 resize-none overflow-hidden font-mono text-sm leading-relaxed"
-        defaultValue={options.join("\n")}
-        name={name}
-        // Initial height ~ number of options so it renders close to its final
-        // size before hydration fine-tunes it; AutoGrowTextarea removes any scroll.
-        rows={Math.max(options.length + 2, 6)}
-        required
-      />
-    </label>
   );
 }
