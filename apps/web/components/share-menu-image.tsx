@@ -110,7 +110,11 @@ export function ShareMenuImage({ slug, publishedToday, hasTemplate }: { slug: st
         // user dismissed the share sheet, or sharing failed — no-op
       }
     } else {
+      // Desktop: no native file sharing. Download the image and open WhatsApp Web
+      // (uses an active session or the installed app) so the operator can drag the
+      // downloaded image into a chat. (Status posting is mobile-only in WhatsApp.)
       downloadBlob(b);
+      window.open("https://web.whatsapp.com/", "_blank", "noopener,noreferrer");
     }
   }
 
@@ -130,6 +134,12 @@ export function ShareMenuImage({ slug, publishedToday, hasTemplate }: { slug: st
         <p className="text-sm font-medium text-emerald-700">✓ Link de pedidos copiado. Pégalo en tu estado junto a la imagen.</p>
       ) : (
         <p className="text-xs text-stone-500">Al compartir, copiamos tu link de pedidos para que lo pegues en el estado de WhatsApp.</p>
+      )}
+
+      {!canShareFiles && (
+        <p className="text-xs text-stone-400">
+          En computador se descarga la imagen y se abre WhatsApp Web (arrastra ahí la imagen). Para publicar un <strong>estado</strong>, usa el celular.
+        </p>
       )}
 
       {!hasTemplate && (
