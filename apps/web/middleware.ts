@@ -7,7 +7,10 @@ export const config = {
 };
 
 function getSecret() {
-  const s = process.env.AUTH_SECRET ?? "dev-fallback-secret-change-me-in-production-32chars";
+  // Use || (not ??) so an empty string also falls back — must match lib/auth.ts,
+  // which signs the token. AUTH_SECRET is inlined at build time (see next.config.ts)
+  // so this resolves to the real secret in the deployed middleware bundle.
+  const s = process.env.AUTH_SECRET || "dev-fallback-secret-change-me-in-production-32chars";
   return new TextEncoder().encode(s);
 }
 

@@ -1,6 +1,17 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Inline AUTH_SECRET at BUILD time so the Edge middleware bundle always has the
+  // correct signing secret. On Amplify WEB_COMPUTE, env vars are NOT injected into
+  // the runtime (lib/runtime-env.ts works around this for the Node SSR path, but
+  // middleware can't use that). Without this, middleware falls back to a different
+  // secret on cold Lambdas and JWT verification fails — login appears to "do
+  // nothing" and bounces back to /login. AUTH_SECRET is available at build time
+  // (see amplify.yml), and is only referenced server-side, so it is not exposed
+  // to the client bundle.
+  env: {
+    AUTH_SECRET: process.env.AUTH_SECRET ?? "",
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: "15mb",
