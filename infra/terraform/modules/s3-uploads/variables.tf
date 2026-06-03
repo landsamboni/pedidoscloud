@@ -15,6 +15,12 @@ variable "enable_versioning" {
   default     = true
 }
 
+variable "noncurrent_version_retention_days" {
+  description = "When versioning is on, days to keep noncurrent object versions before expiring them to save storage."
+  type        = number
+  default     = 90
+}
+
 variable "tags" {
   description = "Tags applied to all resources."
   type        = map(string)

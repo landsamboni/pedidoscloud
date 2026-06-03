@@ -34,9 +34,15 @@ variable "instance_class" {
 }
 
 variable "allocated_storage" {
-  description = "Storage in GB."
+  description = "Initial storage in GB."
   type        = number
   default     = 20
+}
+
+variable "max_allocated_storage" {
+  description = "Upper bound (GB) for RDS storage autoscaling. Must be >= allocated_storage. Set 0 to disable autoscaling."
+  type        = number
+  default     = 100
 }
 
 variable "publicly_accessible" {

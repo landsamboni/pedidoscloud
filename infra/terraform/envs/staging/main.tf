@@ -8,16 +8,23 @@ terraform {
   }
 }
 
-provider "aws" {
-  region = var.aws_region
-}
-
 locals {
   name = "${var.project}-${var.environment}"
   tags = {
     Project     = var.project
     Environment = var.environment
     ManagedBy   = "terraform"
+  }
+}
+
+provider "aws" {
+  region = var.aws_region
+
+  # Tag every resource in the account by default. Resources also pass local.tags
+  # explicitly (identical values), so this is a safety net for anything created
+  # without an explicit tags argument (access keys, SG rules, etc.).
+  default_tags {
+    tags = local.tags
   }
 }
 
@@ -170,6 +177,11 @@ module "amplify" {
   # NOTE: Amplify rejects env var names starting with "AWS"; S3 credentials use
   # S3_-prefixed names that the app reads in lib/storage.ts.
   # AMPLIFY_MONOREPO_APP_ROOT is handled by the module at the app level (not here).
+  #
+  # Auth model (see apps/web/lib/auth.ts): admins log in with ADMIN_USER/
+  # ADMIN_PASSWORD; restaurants log in against their bcrypt password in the DB.
+  # There is no RESTAURANT_USER/PASSWORD env var anymore — that was the old
+  # HTTP Basic Auth MVP and the app no longer reads it.
   environment_variables = {
     AUTH_SECRET          = var.auth_secret
     DATABASE_URL         = module.rds.database_url
@@ -180,8 +192,6 @@ module "amplify" {
     S3_SECRET_ACCESS_KEY = module.iam.secret_access_key
     ADMIN_USER           = var.admin_user
     ADMIN_PASSWORD       = var.admin_password
-    RESTAURANT_USER      = var.restaurant_user
-
   }
 
   tags = local.tags

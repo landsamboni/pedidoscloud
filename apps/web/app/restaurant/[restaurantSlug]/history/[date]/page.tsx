@@ -34,7 +34,7 @@ export default async function HistoryDatePage({
   const totalConfirmed = confirmed.reduce((acc, o) => acc + Number(o.total), 0);
 
   return (
-    <main className="mx-auto max-w-7xl p-4 sm:p-6">
+    <main className="mx-auto max-w-[2400px] p-4 sm:p-6">
       <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-teal-600">

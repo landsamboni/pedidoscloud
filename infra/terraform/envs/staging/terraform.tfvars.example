@@ -16,9 +16,9 @@ db_allowed_cidr_blocks = ["203.0.113.10/32"]
 # JWT session secret — generate with: openssl rand -base64 32
 auth_secret = "change-me-generate-with-openssl-rand-base64-32"
 
-# Operator auth (HTTP Basic Auth)
-admin_password      = "change-me-admin"
-restaurant_password = "change-me-restaurant"
+# Operator auth — admin logs in at /login with this password.
+# (Restaurants log in with a bcrypt password stored in the DB, not here.)
+admin_password = "change-me-admin"
 
 # Monitoring — email for CloudWatch alarm notifications.
 # Leave empty ("") to see alarms in CloudWatch console only (no email).

@@ -7,6 +7,11 @@ import { RestaurantSettings } from "@/components/restaurant-settings";
 import { formatMoney, formatOrderNumber } from "@/lib/format";
 import { getAdminRestaurants } from "@/lib/data";
 
+// Authenticated dashboard backed by the database — always render on demand.
+// Without this, Next.js tries to prerender /admin at build time and hits the DB
+// (which CodeBuild cannot reach in the VPC setup), breaking the Amplify build.
+export const dynamic = "force-dynamic";
+
 export default async function AdminPage() {
   const restaurants = await getAdminRestaurants();
   return (

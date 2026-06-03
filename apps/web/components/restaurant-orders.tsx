@@ -196,7 +196,7 @@ function OrderCard({ order, restaurantSlug, restaurantName, now, readOnly, onVie
 
   return (
     <article className={`card flex flex-col gap-0 ${border}`}>
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
         <div>
           <p className="text-3xl font-black tracking-tight">{formatOrderNumber(order.orderNumber)}</p>
           <p className="mt-0.5 text-sm text-stone-400">{order.createdAtLabel}</p>

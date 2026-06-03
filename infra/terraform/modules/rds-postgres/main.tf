@@ -53,8 +53,11 @@ resource "aws_db_instance" "this" {
   instance_class = var.instance_class
 
   allocated_storage = var.allocated_storage
-  storage_type      = "gp3"
-  storage_encrypted = true
+  # Storage autoscaling: let RDS grow storage up to this cap automatically so the
+  # DB never runs out of disk (a common cause of hard outages). 0 disables it.
+  max_allocated_storage = var.max_allocated_storage > 0 ? var.max_allocated_storage : null
+  storage_type          = "gp3"
+  storage_encrypted     = true
 
   db_name  = var.db_name
   username = var.username
@@ -64,11 +67,13 @@ resource "aws_db_instance" "this" {
   publicly_accessible    = var.publicly_accessible
   vpc_security_group_ids = [aws_security_group.db.id]
 
-  multi_az                  = var.multi_az
-  backup_retention_period   = var.backup_retention_days
-  deletion_protection       = var.deletion_protection
-  skip_final_snapshot       = var.skip_final_snapshot
-  final_snapshot_identifier = var.skip_final_snapshot ? null : "${var.identifier}-final"
+  multi_az                   = var.multi_az
+  backup_retention_period    = var.backup_retention_days
+  deletion_protection        = var.deletion_protection
+  skip_final_snapshot        = var.skip_final_snapshot
+  final_snapshot_identifier  = var.skip_final_snapshot ? null : "${var.identifier}-final"
+  copy_tags_to_snapshot      = true
+  auto_minor_version_upgrade = true
 
   # Ship PostgreSQL error and upgrade logs to CloudWatch for audit and debugging.
   # "postgresql" captures connections, disconnections, errors, and slow queries

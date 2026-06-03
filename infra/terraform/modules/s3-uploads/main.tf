@@ -39,3 +39,38 @@ resource "aws_s3_bucket_versioning" "this" {
     status = var.enable_versioning ? "Enabled" : "Suspended"
   }
 }
+
+# Housekeeping: reclaim storage from failed/incomplete multipart uploads, and
+# (when versioning is on) stop paying indefinitely for old object versions.
+# Uploads here are small QR codes and payment proofs, so these windows are safe.
+resource "aws_s3_bucket_lifecycle_configuration" "this" {
+  bucket = aws_s3_bucket.this.id
+
+  # Ensure versioning is configured before we reference noncurrent versions.
+  depends_on = [aws_s3_bucket_versioning.this]
+
+  rule {
+    id     = "abort-incomplete-multipart-uploads"
+    status = "Enabled"
+
+    filter {} # apply to the whole bucket
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+  }
+
+  dynamic "rule" {
+    for_each = var.enable_versioning ? [1] : []
+    content {
+      id     = "expire-noncurrent-versions"
+      status = "Enabled"
+
+      filter {}
+
+      noncurrent_version_expiration {
+        noncurrent_days = var.noncurrent_version_retention_days
+      }
+    }
+  }
+}

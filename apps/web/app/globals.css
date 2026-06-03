@@ -2,24 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply bg-stone-100 text-stone-900 antialiased;
+@layer base {
+  html {
+    /* Smooth in-page anchor jumps (e.g. the orders board section nav). */
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-stone-100 text-stone-900 antialiased;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "cv05", "cv11"; /* nicer Inter letterforms */
+  }
+
+  /* Headings render a touch tighter for a cleaner, more modern look. */
+  h1,
+  h2,
+  h3 {
+    @apply tracking-tight;
+    text-wrap: balance;
+  }
+
+  /* Accessible keyboard focus everywhere, without affecting mouse users. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-teal-500 ring-offset-2 ring-offset-stone-100;
+  }
 }
 
 @layer components {
   .card {
-    @apply rounded-2xl border border-stone-200 bg-white p-5 shadow-sm;
+    @apply rounded-2xl border border-stone-200 bg-white p-5 shadow-sm transition-shadow;
   }
 
   .input {
-    @apply w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-teal-400 focus:ring-2 focus:ring-teal-100;
+    @apply w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-teal-500 focus:ring-2 focus:ring-teal-100;
   }
 
   .button-primary {
-    @apply rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-stone-400;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-stone-400 disabled:shadow-none;
   }
 
   .button-secondary {
-    @apply rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-700 transition hover:bg-stone-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-700 transition hover:bg-stone-50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
   }
 }

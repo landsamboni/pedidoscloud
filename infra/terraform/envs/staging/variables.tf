@@ -74,27 +74,19 @@ variable "db_allowed_cidr_blocks" {
 }
 
 # ---- App auth ----
+# Admins authenticate with these env-var credentials; restaurants authenticate
+# against a bcrypt password stored in the database (see apps/web/lib/auth.ts).
 variable "admin_user" {
   type    = string
   default = "admin"
 }
 
 variable "admin_password" {
-  type      = string
-  sensitive = true
+  description = "Admin operator password (used at the /login screen)."
+  type        = string
+  sensitive   = true
 }
 
-variable "restaurant_user" {
-  type    = string
-  default = "restaurante"
-}
-
-# variable "restaurant_password" {
-#   type      = string
-#   sensitive = true
-# }
-
-# ---- Auth ----
 variable "auth_secret" {
   description = "Secret key for signing JWT session cookies (32+ random chars). Generate with: openssl rand -base64 32"
   type        = string
