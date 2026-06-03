@@ -188,6 +188,19 @@ function StatCard({ label, revenue, count, highlight }: { label: string; revenue
 }
 
 /**
+ * Pastel bar color by share of the row's max. Uses an analogous cool palette
+ * (emerald → teal → cyan → sky) so higher values read "warmer/greener" and lower
+ * ones "cooler/bluer" — varied but harmonious, never a rainbow. Static class
+ * names so Tailwind keeps them.
+ */
+function barColor(ratio: number): string {
+  if (ratio >= 0.75) return "bg-emerald-400";
+  if (ratio >= 0.5) return "bg-teal-400";
+  if (ratio >= 0.25) return "bg-cyan-400";
+  return "bg-sky-400";
+}
+
+/**
  * Horizontal bar list — same visual language as the ingredient breakdown.
  * Reads well on mobile (rows stack vertically, no horizontal scroll) and makes
  * differences between rows obvious because each bar is scaled to the max value.
@@ -198,19 +211,20 @@ function BarList({ rows }: {
   return (
     <div className="space-y-3">
       {rows.map((r, i) => {
-        const pct = r.max > 0 ? Math.max((r.value / r.max) * 100, r.value > 0 ? 3 : 0) : 0;
+        const ratio = r.max > 0 ? r.value / r.max : 0;
+        const pct = Math.max(ratio * 100, r.value > 0 ? 3 : 0);
         return (
           <div key={i}>
             <div className="flex items-baseline justify-between gap-3 text-sm">
               <span className="font-medium text-stone-900">{r.label}</span>
               <span className="shrink-0 text-stone-500">
-                <strong className={r.highlight ? "text-teal-700" : "text-stone-900"}>{r.valueLabel}</strong>
+                <strong className={r.highlight ? "text-emerald-600" : "text-stone-900"}>{r.valueLabel}</strong>
                 {r.hint ? ` · ${r.hint}` : ""}
               </span>
             </div>
             <div className="mt-1.5 h-2.5 w-full overflow-hidden rounded-full bg-stone-100">
               <div
-                className={`h-full rounded-full ${r.highlight ? "bg-teal-500" : "bg-teal-400"}`}
+                className={`h-full rounded-full ${barColor(ratio)}`}
                 style={{ width: `${pct}%` }}
               />
             </div>
