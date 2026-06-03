@@ -21,7 +21,7 @@ function WhatsAppIcon() {
  * The customer order link is copied to the clipboard on share so the operator
  * can paste it into the WhatsApp status caption.
  */
-export function ShareMenuImage({ slug, publishedToday, hasTemplate }: { slug: string; publishedToday: boolean; hasTemplate: boolean }) {
+export function ShareMenuImage({ slug, publishedToday, hasTemplate, version = "" }: { slug: string; publishedToday: boolean; hasTemplate: boolean; version?: string }) {
   const [canShareFiles, setCanShareFiles] = useState(false);
   const [copied, setCopied] = useState(false);
   const [preview, setPreview] = useState(false);
@@ -29,7 +29,9 @@ export function ShareMenuImage({ slug, publishedToday, hasTemplate }: { slug: st
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const blobRef = useRef<Blob | null>(null);
-  const imageUrl = `/r/${slug}/menu-image`;
+  // `version` busts the cache so editing the menu regenerates the image (the page
+  // refreshes in place without remounting, so the URL must change to refetch).
+  const imageUrl = `/r/${slug}/menu-image?v=${encodeURIComponent(version)}`;
 
   useEffect(() => {
     try {
@@ -40,9 +42,12 @@ export function ShareMenuImage({ slug, publishedToday, hasTemplate }: { slug: st
     }
   }, []);
 
-  // Prefetch the PNG once (ready before the user taps share / opens preview).
+  // Prefetch the PNG (ready before the user taps share / opens preview). Re-runs
+  // when imageUrl changes (i.e. the menu was edited), discarding the stale blob.
   useEffect(() => {
     if (!publishedToday) return;
+    blobRef.current = null;
+    setObjectUrl(null);
     let cancelled = false;
     let url: string | null = null;
     fetch(imageUrl, { cache: "no-store" })

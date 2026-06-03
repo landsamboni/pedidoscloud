@@ -25,6 +25,9 @@ type Restaurant = {
 
 export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlug, hidePassword = false, menuPublishedToday = false }: { menu: Menu; restaurant: Restaurant; returnPath: string; restaurantSlug: string; hidePassword?: boolean; menuPublishedToday?: boolean }) {
   const hasTemplate = !!menu && [menu.soups, menu.proteins, menu.sides, menu.drinks].some((o) => o.length > 0);
+  // Changes whenever the menu content changes, used to bust the menu-image cache
+  // so the preview/share always reflect the latest saved menu.
+  const menuVersion = menu ? [menu.soups, menu.proteins, menu.sides, menu.drinks].map((a) => a.join("␟")).join("␞") : "";
   return (
     <div className="space-y-3">
       <div className="rounded-xl border border-stone-200 p-4">
@@ -100,7 +103,7 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
           Genera una imagen (1080×1350) con el menú de hoy para tus estados de WhatsApp.
         </p>
         <div className="mt-4">
-          <ShareMenuImage hasTemplate={!!restaurant.menuTemplatePath} publishedToday={menuPublishedToday} slug={restaurantSlug} />
+          <ShareMenuImage hasTemplate={!!restaurant.menuTemplatePath} publishedToday={menuPublishedToday} slug={restaurantSlug} version={menuVersion} />
         </div>
         <form action={updateMenuTemplate} className="mt-4 grid gap-3 border-t border-stone-100 pt-4 sm:grid-cols-[1fr_auto]">
           <input name="restaurantId" type="hidden" value={restaurant.id} />
