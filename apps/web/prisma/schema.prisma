@@ -28,6 +28,7 @@ model Restaurant {
   nequiPhone       String?
   nequiQrPath      String?
   menuTemplatePath String?           // background image (1080x1350) for the shareable menu PNG
+  logoPath         String?           // restaurant logo (customer page header + menu image)
   whatsappPhone    String?
   passwordHash     String?           // bcrypt hash — set by admin, changeable by restaurant
   subscriptionStartedAt DateTime?   // date admin confirmed payment

@@ -56,7 +56,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ restaur
     }),
   }));
 
-  const background = await backgroundDataUri(restaurant.menuTemplatePath);
+  const [background, logo] = await Promise.all([
+    backgroundDataUri(restaurant.menuTemplatePath),
+    backgroundDataUri(restaurant.logoPath),
+  ]);
   const phone = restaurant.whatsappPhone ?? restaurant.nequiPhone ?? null;
 
   return new ImageResponse(
@@ -66,6 +69,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ restaur
         basePriceLabel={formatMoney(Number(restaurant.basePrice))}
         groups={groups}
         backgroundDataUri={background}
+        logoDataUri={logo}
         phone={phone}
       />
     ),

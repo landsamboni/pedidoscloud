@@ -685,6 +685,31 @@ export async function updateBusinessPhone(_prev: ActionState, formData: FormData
   return { ok: true, message: "Número guardado.", ts: Date.now() };
 }
 
+export async function updateLogo(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const restaurantId = String(formData.get("restaurantId"));
+  const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
+  const file = formData.get("logo");
+  let logoPath: string | null = null;
+  try {
+    logoPath = file instanceof File ? await saveUpload(file, "logo") : null;
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : "No se pudo subir el logo.", ts: Date.now() };
+  }
+  if (!logoPath) {
+    return { ok: false, message: "Sube una imagen de logo (PNG, JPG o WEBP).", ts: Date.now() };
+  }
+
+  const restaurant = await prisma.restaurant.update({
+    where: { id: restaurantId },
+    data: { logoPath },
+    select: { slug: true },
+  });
+  revalidatePath("/admin");
+  revalidatePath(returnPath);
+  revalidatePath(`/r/${restaurant.slug}`);
+  return { ok: true, message: "Logo actualizado.", ts: Date.now() };
+}
+
 export async function updatePaymentSettings(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const restaurantId = String(formData.get("restaurantId"));
   const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");

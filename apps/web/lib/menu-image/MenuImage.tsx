@@ -10,6 +10,7 @@ export type MenuImageProps = {
   basePriceLabel: string; // e.g. "$14.000"
   groups: MenuImageGroup[];
   backgroundDataUri: string | null;
+  logoDataUri: string | null; // shown top-left
   phone: string | null; // shown in the footer WhatsApp banner
 };
 
@@ -23,7 +24,7 @@ const WA_PATH =
  * banner with the phone is pinned at the bottom. Font size scales with the
  * number of options so long menus still fit.
  */
-export function MenuImage({ restaurantName, basePriceLabel, groups, backgroundDataUri, phone }: MenuImageProps) {
+export function MenuImage({ restaurantName, basePriceLabel, groups, backgroundDataUri, logoDataUri, phone }: MenuImageProps) {
   const total = groups.reduce((n, g) => n + g.items.length, 0);
   const itemFont = total <= 10 ? 34 : total <= 14 ? 29 : total <= 18 ? 25 : 22;
   const labelFont = Math.round(itemFont * 0.8);
@@ -41,6 +42,27 @@ export function MenuImage({ restaurantName, basePriceLabel, groups, backgroundDa
         />
       ) : (
         <div style={{ position: "absolute", top: 0, left: 0, width: M.width, height: M.height, backgroundImage: M.fallbackBackground }} />
+      )}
+
+      {/* Logo — top-left, in a clean white rounded card for contrast */}
+      {logoDataUri && (
+        <div
+          style={{
+            position: "absolute",
+            top: 40,
+            left: 40,
+            display: "flex",
+            width: 132,
+            height: 132,
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 24,
+            backgroundColor: "rgba(255,255,255,0.92)",
+            boxShadow: "0 4px 14px rgba(0,0,0,0.18)",
+          }}
+        >
+          <img src={logoDataUri} width={108} height={108} style={{ width: 108, height: 108, objectFit: "contain" }} />
+        </div>
       )}
 
       {/* Centered menu panel (sized to content) */}
