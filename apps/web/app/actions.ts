@@ -625,7 +625,8 @@ export async function updateTodayMenu(formData: FormData) {
   });
   revalidatePath("/admin");
   revalidatePath(returnPath);
-  redirect(returnPath);
+  // No redirect: returning without navigating keeps the user's scroll position.
+  // revalidatePath above refreshes the data in place.
 }
 
 export async function updateBasePrice(formData: FormData) {
@@ -642,7 +643,8 @@ export async function updateBasePrice(formData: FormData) {
   revalidatePath("/admin");
   revalidatePath(returnPath);
   revalidatePath(`/r/${restaurant.slug}`);
-  redirect(returnPath);
+  // No redirect: returning without navigating keeps the user's scroll position.
+  // revalidatePath above refreshes the data in place.
 }
 
 export async function updateBusinessPhone(formData: FormData) {
@@ -657,7 +659,8 @@ export async function updateBusinessPhone(formData: FormData) {
   revalidatePath("/admin");
   revalidatePath(returnPath);
   revalidatePath(`/r/${(await prisma.restaurant.findUnique({ where: { id: restaurantId }, select: { slug: true } }))?.slug ?? ""}`);
-  redirect(returnPath);
+  // No redirect: returning without navigating keeps the user's scroll position.
+  // revalidatePath above refreshes the data in place.
 }
 
 export async function updatePaymentSettings(formData: FormData) {
@@ -678,7 +681,8 @@ export async function updatePaymentSettings(formData: FormData) {
   });
   revalidatePath("/admin");
   revalidatePath(returnPath);
-  redirect(returnPath);
+  // No redirect: returning without navigating keeps the user's scroll position.
+  // revalidatePath above refreshes the data in place.
 }
 
 export async function updateMenuTemplate(formData: FormData) {
@@ -696,7 +700,8 @@ export async function updateMenuTemplate(formData: FormData) {
   });
   revalidatePath("/admin");
   revalidatePath(returnPath);
-  redirect(returnPath);
+  // No redirect: returning without navigating keeps the user's scroll position.
+  // revalidatePath above refreshes the data in place.
 }
 
 export async function createPaymentMethod(formData: FormData) {
@@ -712,7 +717,8 @@ export async function createPaymentMethod(formData: FormData) {
   });
   revalidatePath("/admin");
   revalidatePath(returnPath);
-  redirect(returnPath);
+  // No redirect: returning without navigating keeps the user's scroll position.
+  // revalidatePath above refreshes the data in place.
 }
 
 export async function deletePaymentMethod(formData: FormData) {
@@ -725,7 +731,8 @@ export async function deletePaymentMethod(formData: FormData) {
   await prisma.paymentMethod.delete({ where: { id } });
   revalidatePath("/admin");
   revalidatePath(returnPath);
-  redirect(returnPath);
+  // No redirect: returning without navigating keeps the user's scroll position.
+  // revalidatePath above refreshes the data in place.
 }
 
 export type PaymentProofState = { error: string; success: boolean };
