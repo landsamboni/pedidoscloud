@@ -29,7 +29,9 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
   const hasTemplate = !!menu && [menu.soups, menu.proteins, menu.sides, menu.drinks].some((o) => o.length > 0);
   // Changes whenever the menu content changes, used to bust the menu-image cache
   // so the preview/share always reflect the latest saved menu.
-  const menuVersion = menu ? [menu.soups, menu.proteins, menu.sides, menu.drinks].map((a) => a.join("␟")).join("␞") : "";
+  const menuVersion =
+    (menu ? [menu.soups, menu.proteins, menu.sides, menu.drinks].map((a) => a.join("␟")).join("␞") : "") +
+    "‖" + (restaurant.menuTemplatePath ?? ""); // include template so changing it refreshes the image
   return (
     <div className="space-y-3">
       <div className="rounded-xl border border-stone-200 p-4">
@@ -80,7 +82,7 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
           <input name="restaurantId" type="hidden" value={restaurant.id} />
           <input name="returnPath" type="hidden" value={returnPath} />
           <label className="text-sm font-medium text-stone-700">
-            Plantilla de fondo <span className="font-normal text-stone-400">(PNG/JPG/WEBP, 1080×1350; deja libre el centro para el texto)</span>
+            Plantilla de fondo <span className="font-normal text-stone-400">(PNG/JPG/WEBP. Tamaño recomendado 1080×1350 vertical; otras medidas se recortan. Deja libre el centro para el texto)</span>
             <input accept="image/jpeg,image/png,image/webp" className="input mt-1" name="menuTemplate" required type="file" />
           </label>
           <SubmitButton className="button-primary self-end" pendingLabel="Subiendo…">{restaurant.menuTemplatePath ? "Cambiar plantilla" : "Subir plantilla"}</SubmitButton>

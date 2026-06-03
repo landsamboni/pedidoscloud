@@ -273,7 +273,7 @@ function OrderCard({ order, restaurantSlug, restaurantName, now, readOnly, onVie
               onClick={() => {
                 if (!order.paymentProofPath) { setConfirmNoProof(true); return; }
                 // Has proof — submit directly via hidden form
-                document.getElementById(`confirm-form-${order.id}`)?.dispatchEvent(new Event("submit", { bubbles: true }));
+                (document.getElementById(`confirm-form-${order.id}`) as HTMLFormElement | null)?.requestSubmit();
               }}
               type="button"
             >
@@ -288,6 +288,9 @@ function OrderCard({ order, restaurantSlug, restaurantName, now, readOnly, onVie
           </form>
 
           <div className="flex flex-wrap gap-2">
+            {order.status === "PAYMENT_REJECTED" && (
+              <StatusButton id={order.id} slug={restaurantSlug} status="PAYMENT_REVIEW" secondary>↩ Reactivar pedido</StatusButton>
+            )}
             {order.paymentProofPath && order.status !== "PAYMENT_REJECTED" && (
               <StatusButton id={order.id} slug={restaurantSlug} status="PAYMENT_REJECTED" secondary>Rechazar</StatusButton>
             )}

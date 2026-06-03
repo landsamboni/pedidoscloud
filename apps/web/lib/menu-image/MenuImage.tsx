@@ -54,7 +54,7 @@ export function MenuImage({ restaurantName, basePriceLabel, groups, backgroundDa
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          padding: `${M.padY}px ${M.padX}px ${M.padY + 120}px`,
+          padding: `${M.padY}px ${M.padX}px ${M.padY + 84}px`,
         }}
       >
         <div
@@ -90,25 +90,25 @@ export function MenuImage({ restaurantName, basePriceLabel, groups, backgroundDa
 
       {/* WhatsApp footer banner */}
       {phone && (
-        <div style={{ position: "absolute", bottom: 44, left: 0, width: M.width, display: "flex", justifyContent: "center" }}>
+        <div style={{ position: "absolute", bottom: 32, left: 0, width: M.width, display: "flex", justifyContent: "center" }}>
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 18,
+              gap: 12,
               backgroundColor: "#25D366",
               color: "#ffffff",
-              borderRadius: 28,
-              padding: "16px 34px",
-              boxShadow: "0 6px 18px rgba(0,0,0,0.28)",
+              borderRadius: 20,
+              padding: "10px 22px",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
             }}
           >
-            <svg width="44" height="44" viewBox="0 0 24 24" fill="#ffffff">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="#ffffff">
               <path d={WA_PATH} />
             </svg>
             <div style={{ display: "flex", flexDirection: "column" }}>
-              <span style={{ fontSize: 20, letterSpacing: 4, opacity: 0.95 }}>PEDIDOS</span>
-              <span style={{ fontSize: 42, fontWeight: 700, marginTop: 2 }}>{phone}</span>
+              <span style={{ fontSize: 14, letterSpacing: 3, opacity: 0.95 }}>PEDIDOS</span>
+              <span style={{ fontSize: 28, fontWeight: 700 }}>{phone}</span>
             </div>
           </div>
         </div>
