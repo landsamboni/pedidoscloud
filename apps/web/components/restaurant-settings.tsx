@@ -33,15 +33,15 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
     <div className="space-y-3">
       <div className="rounded-xl border border-stone-200 p-4">
         <h3 className="text-lg font-semibold">Teléfono / WhatsApp del negocio</h3>
-        <form action={updateBusinessPhone} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+        <FeedbackForm action={updateBusinessPhone} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
           <input name="restaurantId" type="hidden" value={restaurant.id} />
           <input name="returnPath" type="hidden" value={returnPath} />
           <label className="text-sm font-medium text-stone-700">
             Número de contacto y WhatsApp <span className="font-normal text-stone-400">(el mismo número; lo usa el botón "Preguntar por WhatsApp" del cliente)</span>
             <input className="input mt-1 text-base" defaultValue={restaurant.whatsappPhone ?? ""} inputMode="tel" maxLength={10} name="whatsappPhone" placeholder="3001234567" />
           </label>
-          <button className="button-primary self-end">Guardar número</button>
-        </form>
+          <SubmitButton className="button-primary self-end">Guardar número</SubmitButton>
+        </FeedbackForm>
       </div>
 
       <div className="rounded-xl border border-stone-200 p-4">
@@ -88,15 +88,15 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
         <div className="mt-4">
           <ShareMenuImage hasTemplate={!!restaurant.menuTemplatePath} publishedToday={menuPublishedToday} slug={restaurantSlug} version={menuVersion} />
         </div>
-        <form action={updateMenuTemplate} className="mt-4 grid gap-3 border-t border-stone-100 pt-4 sm:grid-cols-[1fr_auto]">
+        <FeedbackForm action={updateMenuTemplate} className="mt-4 grid gap-3 border-t border-stone-100 pt-4 sm:grid-cols-[1fr_auto]">
           <input name="restaurantId" type="hidden" value={restaurant.id} />
           <input name="returnPath" type="hidden" value={returnPath} />
           <label className="text-sm font-medium text-stone-700">
             Plantilla de fondo <span className="font-normal text-stone-400">(PNG/JPG/WEBP, 1080×1350; deja libre el centro para el texto)</span>
             <input accept="image/jpeg,image/png,image/webp" className="input mt-1" name="menuTemplate" required type="file" />
           </label>
-          <button className="button-primary self-end">{restaurant.menuTemplatePath ? "Cambiar plantilla" : "Subir plantilla"}</button>
-        </form>
+          <SubmitButton className="button-primary self-end" pendingLabel="Subiendo…">{restaurant.menuTemplatePath ? "Cambiar plantilla" : "Subir plantilla"}</SubmitButton>
+        </FeedbackForm>
         {restaurant.menuTemplatePath && <p className="mt-2 text-sm text-teal-600">Plantilla configurada.</p>}
       </div>
 
@@ -105,7 +105,7 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
         <p className="mt-1 text-sm text-stone-500">Datos que verá el cliente para pagar y subir su comprobante.</p>
 
         {/* Nequi principal (con QR) */}
-        <form action={updatePaymentSettings} className="mt-4 grid gap-3 sm:grid-cols-2">
+        <FeedbackForm action={updatePaymentSettings} className="mt-4 grid gap-3 sm:grid-cols-2">
           <input name="restaurantId" type="hidden" value={restaurant.id} />
           <input name="returnPath" type="hidden" value={returnPath} />
           <p className="text-sm font-semibold text-stone-700 sm:col-span-2">Nequi (principal)</p>
@@ -122,8 +122,8 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
             <input accept="image/jpeg,image/png,image/webp" className="input mt-1" name="nequiQr" type="file" />
           </label>
           {restaurant.nequiQrPath && <p className="text-sm text-teal-600 sm:col-span-2">QR configurado actualmente.</p>}
-          <button className="button-primary sm:col-span-2">Guardar Nequi</button>
-        </form>
+          <SubmitButton className="button-primary sm:col-span-2">Guardar Nequi</SubmitButton>
+        </FeedbackForm>
 
         {/* Otros medios de pago */}
         <div className="mt-6 border-t border-stone-100 pt-4">
@@ -139,20 +139,20 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
                     <p className="font-semibold">{m.label}</p>
                     <p className="text-stone-600">{m.phone} · {m.accountName}</p>
                   </div>
-                  <form action={deletePaymentMethod}>
+                  <FeedbackForm action={deletePaymentMethod}>
                     <input name="id" type="hidden" value={m.id} />
                     <input name="restaurantId" type="hidden" value={restaurant.id} />
                     <input name="returnPath" type="hidden" value={returnPath} />
-                    <button className="rounded-lg px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50" type="submit">
+                    <SubmitButton className="rounded-lg px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50" pendingLabel="Eliminando…">
                       Eliminar
-                    </button>
-                  </form>
+                    </SubmitButton>
+                  </FeedbackForm>
                 </li>
               ))}
             </ul>
           )}
 
-          <form action={createPaymentMethod} className="mt-4 grid gap-3 sm:grid-cols-3">
+          <FeedbackForm action={createPaymentMethod} className="mt-4 grid gap-3 sm:grid-cols-3">
             <input name="restaurantId" type="hidden" value={restaurant.id} />
             <input name="returnPath" type="hidden" value={returnPath} />
             <label className="text-sm font-medium text-stone-700">
@@ -167,8 +167,8 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
               Titular
               <input className="input mt-1" name="accountName" placeholder="Nombre" required />
             </label>
-            <button className="button-secondary sm:col-span-3">+ Agregar método de pago</button>
-          </form>
+            <SubmitButton className="button-secondary sm:col-span-3" pendingLabel="Agregando…">+ Agregar método de pago</SubmitButton>
+          </FeedbackForm>
         </div>
       </div>
       {/* Password section — only shown to admin (hidePassword=true in restaurant console) */}
@@ -181,16 +181,16 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
             <p className="mt-1 text-xs text-amber-700">
               Configura o cambia la contraseña que usa el agente del restaurante para iniciar sesión.
             </p>
-            <form action={setRestaurantPassword} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+            <FeedbackForm action={setRestaurantPassword} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
               <input name="restaurantId" type="hidden" value={restaurant.id} />
               <label className="text-sm font-medium text-stone-700">
                 Nueva contraseña <span className="font-normal text-stone-400">(mínimo 8 caracteres)</span>
                 <input className="input mt-1" minLength={8} name="password" placeholder="Nueva contraseña" required type="password" />
               </label>
-              <button className="button-primary self-end">
+              <SubmitButton className="button-primary self-end">
                 {restaurant.passwordHash ? "Cambiar contraseña" : "Establecer contraseña"}
-              </button>
-            </form>
+              </SubmitButton>
+            </FeedbackForm>
             {!restaurant.passwordHash && (
               <p className="mt-2 text-sm text-amber-800">⚠ Este restaurante aún no tiene contraseña. El agente no podrá iniciar sesión hasta que la establezcas.</p>
             )}

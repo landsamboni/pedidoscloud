@@ -540,15 +540,18 @@ export async function deactivateRestaurantSubscription(formData: FormData) {
 }
 
 /** Admin: set or reset a restaurant's password. */
-export async function setRestaurantPassword(formData: FormData) {
+export async function setRestaurantPassword(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const restaurantId = String(formData.get("restaurantId"));
   const password = String(formData.get("password") ?? "").trim();
-  if (password.length < 8) throw new Error("La contraseña debe tener al menos 8 caracteres.");
+  if (password.length < 8) {
+    return { ok: false, message: "La contraseña debe tener al menos 8 caracteres.", ts: Date.now() };
+  }
 
   const { hash } = await import("bcryptjs");
   const passwordHash = await hash(password, 12);
   await prisma.restaurant.update({ where: { id: restaurantId }, data: { passwordHash } });
   revalidatePath("/admin");
+  return { ok: true, message: "Contraseña actualizada.", ts: Date.now() };
 }
 
 /** Restaurant: change their own password (requires current password). */
@@ -652,29 +655,37 @@ export async function updateBasePrice(_prev: ActionState, formData: FormData): P
   return { ok: true, message: "Precio actualizado.", ts: Date.now() };
 }
 
-export async function updateBusinessPhone(formData: FormData) {
+export async function updateBusinessPhone(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const restaurantId = String(formData.get("restaurantId"));
   const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
   const whatsappPhone = String(formData.get("whatsappPhone") ?? "").replace(/\D/g, "").slice(0, 15) || null;
 
-  await prisma.restaurant.update({
+  const restaurant = await prisma.restaurant.update({
     where: { id: restaurantId },
     data: { whatsappPhone },
+    select: { slug: true },
   });
   revalidatePath("/admin");
   revalidatePath(returnPath);
-  revalidatePath(`/r/${(await prisma.restaurant.findUnique({ where: { id: restaurantId }, select: { slug: true } }))?.slug ?? ""}`);
-  // No redirect: returning without navigating keeps the user's scroll position.
-  // revalidatePath above refreshes the data in place.
+  revalidatePath(`/r/${restaurant.slug}`);
+  return { ok: true, message: "Número guardado.", ts: Date.now() };
 }
 
-export async function updatePaymentSettings(formData: FormData) {
+export async function updatePaymentSettings(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const restaurantId = String(formData.get("restaurantId"));
   const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
-  const nequiAccountName = required(String(formData.get("nequiAccountName") ?? ""), "titular");
-  const nequiPhone = required(String(formData.get("nequiPhone") ?? ""), "celular o llave Nequi");
+  const nequiAccountName = String(formData.get("nequiAccountName") ?? "").trim();
+  const nequiPhone = String(formData.get("nequiPhone") ?? "").trim();
+  if (!nequiAccountName || !nequiPhone) {
+    return { ok: false, message: "Completa el titular y el número o llave Nequi.", ts: Date.now() };
+  }
   const file = formData.get("nequiQr");
-  const nequiQrPath = file instanceof File ? await saveUpload(file, "nequi-qr") : null;
+  let nequiQrPath: string | null = null;
+  try {
+    nequiQrPath = file instanceof File ? await saveUpload(file, "nequi-qr") : null;
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : "No se pudo subir el QR.", ts: Date.now() };
+  }
 
   await prisma.restaurant.update({
     where: { id: restaurantId },
@@ -686,17 +697,21 @@ export async function updatePaymentSettings(formData: FormData) {
   });
   revalidatePath("/admin");
   revalidatePath(returnPath);
-  // No redirect: returning without navigating keeps the user's scroll position.
-  // revalidatePath above refreshes the data in place.
+  return { ok: true, message: "Datos de Nequi guardados.", ts: Date.now() };
 }
 
-export async function updateMenuTemplate(formData: FormData) {
+export async function updateMenuTemplate(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const restaurantId = String(formData.get("restaurantId"));
   const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
   const file = formData.get("menuTemplate");
-  const menuTemplatePath = file instanceof File ? await saveUpload(file, "menu-template") : null;
+  let menuTemplatePath: string | null = null;
+  try {
+    menuTemplatePath = file instanceof File ? await saveUpload(file, "menu-template") : null;
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : "No se pudo subir la plantilla.", ts: Date.now() };
+  }
   if (!menuTemplatePath) {
-    throw new Error("Sube una imagen de plantilla (PNG, JPG o WEBP) de 1080×1350.");
+    return { ok: false, message: "Sube una imagen de plantilla (PNG, JPG o WEBP) de 1080×1350.", ts: Date.now() };
   }
 
   await prisma.restaurant.update({
@@ -705,16 +720,18 @@ export async function updateMenuTemplate(formData: FormData) {
   });
   revalidatePath("/admin");
   revalidatePath(returnPath);
-  // No redirect: returning without navigating keeps the user's scroll position.
-  // revalidatePath above refreshes the data in place.
+  return { ok: true, message: "Plantilla actualizada.", ts: Date.now() };
 }
 
-export async function createPaymentMethod(formData: FormData) {
+export async function createPaymentMethod(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const restaurantId = String(formData.get("restaurantId"));
   const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
-  const label = required(String(formData.get("label") ?? ""), "tipo de pago");
-  const phone = required(String(formData.get("phone") ?? ""), "número o llave");
-  const accountName = required(String(formData.get("accountName") ?? ""), "titular");
+  const label = String(formData.get("label") ?? "").trim();
+  const phone = String(formData.get("phone") ?? "").trim();
+  const accountName = String(formData.get("accountName") ?? "").trim();
+  if (!label || !phone || !accountName) {
+    return { ok: false, message: "Completa el tipo, el número y el titular.", ts: Date.now() };
+  }
 
   const count = await prisma.paymentMethod.count({ where: { restaurantId } });
   await prisma.paymentMethod.create({
@@ -722,22 +739,20 @@ export async function createPaymentMethod(formData: FormData) {
   });
   revalidatePath("/admin");
   revalidatePath(returnPath);
-  // No redirect: returning without navigating keeps the user's scroll position.
-  // revalidatePath above refreshes the data in place.
+  return { ok: true, message: "Método de pago agregado.", ts: Date.now() };
 }
 
-export async function deletePaymentMethod(formData: FormData) {
+export async function deletePaymentMethod(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const id = String(formData.get("id"));
   const restaurantId = String(formData.get("restaurantId"));
   const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
 
   const method = await prisma.paymentMethod.findFirst({ where: { id, restaurantId } });
-  if (!method) throw new Error("Método de pago no encontrado.");
+  if (!method) return { ok: false, message: "Método de pago no encontrado.", ts: Date.now() };
   await prisma.paymentMethod.delete({ where: { id } });
   revalidatePath("/admin");
   revalidatePath(returnPath);
-  // No redirect: returning without navigating keeps the user's scroll position.
-  // revalidatePath above refreshes the data in place.
+  return { ok: true, message: "Método de pago eliminado.", ts: Date.now() };
 }
 
 export type PaymentProofState = { error: string; success: boolean };

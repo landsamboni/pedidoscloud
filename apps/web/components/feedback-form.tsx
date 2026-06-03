@@ -6,6 +6,17 @@ import type { ActionState } from "@/app/actions";
 
 const INITIAL: ActionState = { ok: false, message: "", ts: 0 };
 
+/** Floating confirmation toast — top-center, bright green, auto-dismiss. */
+export function Toast({ message }: { message: string }) {
+  return (
+    <div className="pointer-events-none fixed inset-x-0 top-4 z-[60] flex justify-center px-4" role="status">
+      <div className="flex items-center gap-2 rounded-full bg-emerald-500 px-5 py-3 text-sm font-semibold text-white shadow-xl ring-2 ring-emerald-300">
+        ✓ {message}
+      </div>
+    </div>
+  );
+}
+
 /**
  * Wraps a form whose server action returns ActionState, adding feedback without
  * navigating away: a floating success toast, an inline error, and (via
@@ -41,13 +52,7 @@ export function FeedbackForm({
       {!state.ok && state.message && (
         <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{state.message}</p>
       )}
-      {toast && (
-        <div className="fixed inset-x-0 bottom-6 z-[60] flex justify-center px-4" role="status">
-          <div className="flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-lg">
-            ✓ {state.message}
-          </div>
-        </div>
-      )}
+      {toast && <Toast message={state.message} />}
     </>
   );
 }

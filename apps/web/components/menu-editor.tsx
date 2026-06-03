@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { updateTodayMenu, type MenuFormState } from "@/app/actions";
 import { MENU_FIELDS, MenuFields } from "@/components/menu-fields";
+import { Toast } from "@/components/feedback-form";
 import { formatSurcharge, parseItemName, parseSurcharge } from "@/lib/menu";
 
 type ReviewGroup = { label: string; items: { name: string; surcharge: string }[] };
@@ -157,13 +158,7 @@ export function MenuEditor({
         </div>
       )}
 
-      {toast && (
-        <div className="fixed inset-x-0 bottom-6 z-[60] flex justify-center px-4" role="status">
-          <div className="flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-lg">
-            ✓ {state.message || "Menú guardado."}
-          </div>
-        </div>
-      )}
+      {toast && <Toast message={state.message || "Menú guardado."} />}
     </>
   );
 }
