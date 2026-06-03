@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 function WhatsAppIcon() {
   return (
@@ -11,18 +11,24 @@ function WhatsAppIcon() {
 }
 
 /**
- * Share / download the generated menu image. The primary WhatsApp button is
- * shown on every device. On mobile (Web Share API with files) it opens the
- * native share sheet so the operator can post the image to a WhatsApp status;
- * on desktop it downloads the PNG. In BOTH cases it copies the customer order
- * link to the clipboard first, so the operator can paste it into the status
- * caption alongside the image.
+ * Share / download the generated menu image, plus an in-app preview modal.
+ *
+ * The PNG is prefetched on mount so that:
+ *  - navigator.share() is invoked WITHOUT an intervening network await — iOS
+ *    Safari requires the share to fire within the user gesture, so awaiting the
+ *    image fetch first made the share silently no-op.
+ *  - the preview modal opens instantly.
+ * The customer order link is copied to the clipboard on share so the operator
+ * can paste it into the WhatsApp status caption.
  */
 export function ShareMenuImage({ slug, publishedToday, hasTemplate }: { slug: string; publishedToday: boolean; hasTemplate: boolean }) {
   const [canShareFiles, setCanShareFiles] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [preview, setPreview] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const blobRef = useRef<Blob | null>(null);
   const imageUrl = `/r/${slug}/menu-image`;
 
   useEffect(() => {
@@ -33,6 +39,26 @@ export function ShareMenuImage({ slug, publishedToday, hasTemplate }: { slug: st
       setCanShareFiles(false);
     }
   }, []);
+
+  // Prefetch the PNG once (ready before the user taps share / opens preview).
+  useEffect(() => {
+    if (!publishedToday) return;
+    let cancelled = false;
+    let url: string | null = null;
+    fetch(imageUrl, { cache: "no-store" })
+      .then((r) => r.blob())
+      .then((b) => {
+        if (cancelled) return;
+        blobRef.current = b;
+        url = URL.createObjectURL(b);
+        setObjectUrl(url);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [imageUrl, publishedToday]);
 
   useEffect(() => {
     if (!preview) return;
@@ -47,71 +73,67 @@ export function ShareMenuImage({ slug, publishedToday, hasTemplate }: { slug: st
 
   const orderLink = () => `${window.location.origin}/r/${slug}`;
 
-  async function copyLink() {
-    try {
-      await navigator.clipboard.writeText(orderLink());
-      setCopied(true);
-      setTimeout(() => setCopied(false), 5000);
-    } catch {
-      // clipboard may be blocked; sharing/downloading still proceeds
-    }
+  function copyLink() {
+    navigator.clipboard
+      ?.writeText(orderLink())
+      .then(() => { setCopied(true); setTimeout(() => setCopied(false), 5000); })
+      .catch(() => {});
   }
 
-  async function shareOrDownload() {
-    setBusy(true);
-    await copyLink();
-    try {
-      const res = await fetch(imageUrl, { cache: "no-store" });
-      const blob = await res.blob();
-      if (canShareFiles) {
-        const file = new File([blob], `menu-${slug}.png`, { type: "image/png" });
-        await navigator.share({ files: [file], text: orderLink(), title: "Menú de hoy" });
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `menu-${slug}.png`;
-        a.click();
-        URL.revokeObjectURL(url);
+  function downloadBlob(b: Blob) {
+    const u = URL.createObjectURL(b);
+    const a = document.createElement("a");
+    a.href = u;
+    a.download = `menu-${slug}.png`;
+    a.click();
+    URL.revokeObjectURL(u);
+  }
+
+  async function onShare() {
+    copyLink(); // fire-and-forget so it doesn't delay the share gesture
+    let b = blobRef.current;
+    if (!b) {
+      setBusy(true);
+      try {
+        b = await (await fetch(imageUrl, { cache: "no-store" })).blob();
+        blobRef.current = b;
+      } catch {
+        setBusy(false);
+        return;
       }
-    } catch {
-      // user cancelled the share sheet — no-op
-    } finally {
       setBusy(false);
+    }
+    if (canShareFiles) {
+      try {
+        await navigator.share({ files: [new File([b], `menu-${slug}.png`, { type: "image/png" })], text: orderLink(), title: "Menú de hoy" });
+      } catch {
+        // user dismissed the share sheet, or sharing failed — no-op
+      }
+    } else {
+      downloadBlob(b);
     }
   }
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
-        <button
-          className="button-primary inline-flex items-center gap-2 bg-[#25D366] hover:bg-[#1ebe5d]"
-          disabled={busy}
-          onClick={shareOrDownload}
-          type="button"
-        >
+        <button className="button-primary inline-flex items-center gap-2 bg-[#25D366] hover:bg-[#1ebe5d]" disabled={busy} onClick={onShare} type="button">
           <WhatsAppIcon />
           {busy ? "Preparando…" : "Compartir en WhatsApp"}
         </button>
-        <button className="button-secondary" onClick={() => setPreview(true)} type="button">
+        <button className="button-secondary" onClick={() => { setImgLoaded(false); setPreview(true); }} type="button">
           Ver imagen
         </button>
       </div>
 
       {copied ? (
-        <p className="text-sm font-medium text-emerald-700">
-          ✓ Link de pedidos copiado. Pégalo en tu estado junto a la imagen.
-        </p>
+        <p className="text-sm font-medium text-emerald-700">✓ Link de pedidos copiado. Pégalo en tu estado junto a la imagen.</p>
       ) : (
-        <p className="text-xs text-stone-500">
-          Al compartir, copiamos tu link de pedidos para que lo pegues en el estado de WhatsApp.
-        </p>
+        <p className="text-xs text-stone-500">Al compartir, copiamos tu link de pedidos para que lo pegues en el estado de WhatsApp.</p>
       )}
 
       {!hasTemplate && (
-        <p className="text-sm text-stone-500">
-          Aún no has subido una plantilla de fondo: se usa un fondo por defecto. Sube una abajo para personalizarla.
-        </p>
+        <p className="text-sm text-stone-500">Aún no has subido una plantilla de fondo: se usa un fondo por defecto. Sube una abajo para personalizarla.</p>
       )}
 
       {preview && (
@@ -119,18 +141,23 @@ export function ShareMenuImage({ slug, publishedToday, hasTemplate }: { slug: st
           <div className="relative flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex shrink-0 items-center justify-between border-b border-stone-200 px-5 py-4">
               <p className="font-semibold">Imagen del menú</p>
-              <button
-                aria-label="Cerrar"
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100"
-                onClick={() => setPreview(false)}
-                type="button"
-              >
-                ✕
-              </button>
+              <button aria-label="Cerrar" className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100" onClick={() => setPreview(false)} type="button">✕</button>
             </div>
-            <div className="overflow-auto p-4">
+            <div className="relative flex min-h-[320px] items-center justify-center overflow-auto p-4">
+              {!imgLoaded && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-stone-500">
+                  <div className="h-10 w-10 animate-spin rounded-full border-4 border-stone-200 border-t-teal-500" />
+                  <p className="text-sm">Generando imagen…</p>
+                </div>
+              )}
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img alt="Imagen del menú de hoy" className="h-auto w-full rounded-xl" src={imageUrl} />
+              <img
+                alt="Imagen del menú de hoy"
+                className={`h-auto w-full rounded-xl transition-opacity ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+                onError={() => setImgLoaded(true)}
+                onLoad={() => setImgLoaded(true)}
+                src={objectUrl ?? imageUrl}
+              />
             </div>
           </div>
         </div>
