@@ -596,7 +596,9 @@ export async function changePasswordAction(
   }
 }
 
-export async function updateTodayMenu(formData: FormData) {
+export type MenuFormState = { ok: boolean; message: string; ts: number };
+
+export async function updateTodayMenu(_prev: MenuFormState, formData: FormData): Promise<MenuFormState> {
   const restaurantId = String(formData.get("restaurantId"));
   const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
   const menu = {
@@ -606,7 +608,7 @@ export async function updateTodayMenu(formData: FormData) {
     drinks: splitOptions(formData.get("drinks")),
   };
   if (Object.values(menu).some((options) => !options.length)) {
-    throw new Error("Cada categoría necesita al menos una opción.");
+    return { ok: false, message: "Cada categoría necesita al menos una opción.", ts: Date.now() };
   }
 
   await prisma.menu.upsert({
@@ -625,8 +627,9 @@ export async function updateTodayMenu(formData: FormData) {
   });
   revalidatePath("/admin");
   revalidatePath(returnPath);
-  // No redirect: returning without navigating keeps the user's scroll position.
-  // revalidatePath above refreshes the data in place.
+  // No redirect: returning state keeps scroll position and lets the client show
+  // a confirmation toast. revalidatePath refreshes the data in place.
+  return { ok: true, message: "Menú publicado y visible para tus clientes.", ts: Date.now() };
 }
 
 export async function updateBasePrice(formData: FormData) {

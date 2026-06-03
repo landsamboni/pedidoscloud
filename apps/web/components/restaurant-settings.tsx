@@ -1,5 +1,5 @@
-import { createPaymentMethod, deletePaymentMethod, setRestaurantPassword, updateBasePrice, updateBusinessPhone, updateMenuTemplate, updatePaymentSettings, updateTodayMenu } from "@/app/actions";
-import { MenuFields } from "@/components/menu-fields";
+import { createPaymentMethod, deletePaymentMethod, setRestaurantPassword, updateBasePrice, updateBusinessPhone, updateMenuTemplate, updatePaymentSettings } from "@/app/actions";
+import { MenuEditor } from "@/components/menu-editor";
 import { ShareMenuImage } from "@/components/share-menu-image";
 
 type Menu = {
@@ -65,36 +65,18 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
             </span>
           )}
         </h3>
-        <form action={updateTodayMenu} className="mt-4 grid gap-3 sm:grid-cols-2">
-          <input name="restaurantId" type="hidden" value={restaurant.id} />
-          <input name="returnPath" type="hidden" value={returnPath} />
-
-          {menuPublishedToday ? (
-            <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800 sm:col-span-2">
-              ✓ El menú de hoy ya está publicado y visible para tus clientes. Edítalo y guarda para actualizarlo.
-            </p>
-          ) : hasTemplate ? (
-            <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800 sm:col-span-2">
-              Estás viendo tu <strong>último menú</strong> como base. Tus clientes <strong>no</strong> lo ven todavía: ajusta lo que cambie hoy y pulsa <strong>Publicar menú de hoy</strong>.
-            </p>
-          ) : (
-            <p className="rounded-xl bg-stone-50 px-3 py-2 text-sm text-stone-600 sm:col-span-2">
-              Aún no hay menú para hoy. Escríbelo y pulsa <strong>Publicar menú de hoy</strong>.
-            </p>
-          )}
-
-          <MenuFields
-            values={{
-              soups: menu?.soups.join("\n"),
-              proteins: menu?.proteins.join("\n"),
-              sides: menu?.sides.join("\n"),
-              drinks: menu?.drinks.join("\n"),
-            }}
-          />
-          <button className="button-primary sm:col-span-2">
-            {menuPublishedToday ? "Guardar menú" : "Publicar menú de hoy"}
-          </button>
-        </form>
+        <MenuEditor
+          hasTemplate={hasTemplate}
+          menuPublishedToday={menuPublishedToday}
+          restaurantId={restaurant.id}
+          returnPath={returnPath}
+          values={{
+            soups: menu?.soups.join("\n"),
+            proteins: menu?.proteins.join("\n"),
+            sides: menu?.sides.join("\n"),
+            drinks: menu?.drinks.join("\n"),
+          }}
+        />
       </div>
 
       <div className="rounded-xl border border-stone-200 p-4">
