@@ -95,19 +95,21 @@ export function MenuImage({ restaurantName, basePriceLabel, groups, backgroundDa
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 16,
+              gap: 18,
               backgroundColor: "#25D366",
               color: "#ffffff",
-              borderRadius: 999,
-              padding: "14px 30px",
-              fontSize: 32,
-              boxShadow: "0 6px 18px rgba(0,0,0,0.25)",
+              borderRadius: 28,
+              padding: "16px 34px",
+              boxShadow: "0 6px 18px rgba(0,0,0,0.28)",
             }}
           >
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="#ffffff">
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="#ffffff">
               <path d={WA_PATH} />
             </svg>
-            <span>{phone}</span>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <span style={{ fontSize: 20, letterSpacing: 4, opacity: 0.95 }}>PEDIDOS</span>
+              <span style={{ fontSize: 42, fontWeight: 700, marginTop: 2 }}>{phone}</span>
+            </div>
           </div>
         </div>
       )}

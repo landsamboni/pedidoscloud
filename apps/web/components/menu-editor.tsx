@@ -1,9 +1,9 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { updateTodayMenu, type MenuFormState } from "@/app/actions";
+import { unpublishTodayMenu, updateTodayMenu, type MenuFormState } from "@/app/actions";
 import { MENU_FIELDS, MenuFields } from "@/components/menu-fields";
-import { Toast } from "@/components/feedback-form";
+import { SubmitButton, Toast } from "@/components/feedback-form";
 import { formatSurcharge, parseItemName, parseSurcharge } from "@/lib/menu";
 
 type ReviewGroup = { label: string; items: { name: string; surcharge: string }[] };
@@ -29,21 +29,38 @@ export function MenuEditor({
   values: Partial<Record<(typeof MENU_FIELDS)[number]["name"], string>>;
 }) {
   const [state, action, pending] = useActionState(updateTodayMenu, INITIAL);
+  const [unpubState, unpubAction] = useActionState(unpublishTodayMenu, INITIAL);
   const formRef = useRef<HTMLFormElement>(null);
   const [review, setReview] = useState<ReviewGroup[] | null>(null);
-  const [toast, setToast] = useState(false);
-  const lastTs = useRef(0);
+  const [confirmUnpub, setConfirmUnpub] = useState(false);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSaveTs = useRef(0);
+  const lastUnpubTs = useRef(0);
 
-  // On a successful save: close the review modal and show the toast briefly.
+  function showToast(message: string) {
+    setToastMsg(message);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToastMsg(null), 3500);
+  }
+
+  // Successful save: close the review modal and show the toast.
   useEffect(() => {
-    if (state.ok && state.ts !== lastTs.current) {
-      lastTs.current = state.ts;
+    if (state.ok && state.ts !== lastSaveTs.current) {
+      lastSaveTs.current = state.ts;
       setReview(null);
-      setToast(true);
-      const t = setTimeout(() => setToast(false), 3500);
-      return () => clearTimeout(t);
+      showToast(state.message);
     }
   }, [state]);
+
+  // Successful unpublish: close the confirm and show the toast.
+  useEffect(() => {
+    if (unpubState.ok && unpubState.ts !== lastUnpubTs.current) {
+      lastUnpubTs.current = unpubState.ts;
+      setConfirmUnpub(false);
+      showToast(unpubState.message);
+    }
+  }, [unpubState]);
 
   useEffect(() => {
     if (!review) return;
@@ -107,6 +124,35 @@ export function MenuEditor({
         </div>
       </form>
 
+      {/* Unpublish — pause customer orders immediately */}
+      {menuPublishedToday && (
+        <div className="mt-3 border-t border-stone-100 pt-3">
+          {!confirmUnpub ? (
+            <button
+              className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
+              onClick={() => setConfirmUnpub(true)}
+              type="button"
+            >
+              Despublicar menú (pausar pedidos)
+            </button>
+          ) : (
+            <form action={unpubAction} className="flex flex-col gap-2 rounded-xl bg-red-50 p-3 sm:flex-row sm:items-center">
+              <input name="restaurantId" type="hidden" value={restaurantId} />
+              <input name="returnPath" type="hidden" value={returnPath} />
+              <p className="text-sm text-red-800 sm:flex-1">
+                ¿Quitar el menú de hoy? Tus clientes verán “preparando el menú” y no podrán pedir hasta que vuelvas a publicar.
+              </p>
+              <div className="flex gap-2">
+                <SubmitButton className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700" pendingLabel="Despublicando…">
+                  Sí, despublicar
+                </SubmitButton>
+                <button className="button-secondary text-sm" onClick={() => setConfirmUnpub(false)} type="button">Cancelar</button>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
+
       {review && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setReview(null)}>
           <div className="flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -158,7 +204,7 @@ export function MenuEditor({
         </div>
       )}
 
-      {toast && <Toast message={state.message || "Menú guardado."} />}
+      {toastMsg && <Toast message={toastMsg} />}
     </>
   );
 }

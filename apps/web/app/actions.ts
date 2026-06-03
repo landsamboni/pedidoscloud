@@ -636,6 +636,20 @@ export async function updateTodayMenu(_prev: MenuFormState, formData: FormData):
   return { ok: true, message: "Menú publicado y visible para tus clientes.", ts: Date.now() };
 }
 
+/** Remove today's published menu so customers see the "no menu yet" state. */
+export async function unpublishTodayMenu(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const restaurantId = String(formData.get("restaurantId"));
+  const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
+  await prisma.menu.deleteMany({
+    where: { restaurantId, date: dateKeyToUtcDate(localDateKey()) },
+  });
+  const restaurant = await prisma.restaurant.findUnique({ where: { id: restaurantId }, select: { slug: true } });
+  revalidatePath("/admin");
+  revalidatePath(returnPath);
+  if (restaurant) revalidatePath(`/r/${restaurant.slug}`);
+  return { ok: true, message: "Menú despublicado. Tus clientes ya no lo ven.", ts: Date.now() };
+}
+
 export async function updateBasePrice(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const restaurantId = String(formData.get("restaurantId"));
   const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");

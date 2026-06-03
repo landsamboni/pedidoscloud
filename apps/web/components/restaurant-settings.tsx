@@ -2,6 +2,7 @@ import { createPaymentMethod, deletePaymentMethod, setRestaurantPassword, update
 import { FeedbackForm, SubmitButton } from "@/components/feedback-form";
 import { MenuEditor } from "@/components/menu-editor";
 import { ShareMenuImage } from "@/components/share-menu-image";
+import { resolveFileUrl } from "@/lib/file-url";
 
 type Menu = {
   soups: string[];
@@ -31,19 +32,6 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
   const menuVersion = menu ? [menu.soups, menu.proteins, menu.sides, menu.drinks].map((a) => a.join("␟")).join("␞") : "";
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-stone-200 p-4">
-        <h3 className="text-lg font-semibold">Teléfono / WhatsApp del negocio</h3>
-        <FeedbackForm action={updateBusinessPhone} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
-          <input name="restaurantId" type="hidden" value={restaurant.id} />
-          <input name="returnPath" type="hidden" value={returnPath} />
-          <label className="text-sm font-medium text-stone-700">
-            Número de contacto y WhatsApp <span className="font-normal text-stone-400">(el mismo número; lo usa el botón "Preguntar por WhatsApp" del cliente)</span>
-            <input className="input mt-1 text-base" defaultValue={restaurant.whatsappPhone ?? ""} inputMode="tel" maxLength={10} name="whatsappPhone" placeholder="3001234567" />
-          </label>
-          <SubmitButton className="button-primary self-end">Guardar número</SubmitButton>
-        </FeedbackForm>
-      </div>
-
       <div className="rounded-xl border border-stone-200 p-4">
         <h3 className="text-lg font-semibold">Precio del almuerzo</h3>
         <FeedbackForm action={updateBasePrice} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
@@ -121,7 +109,13 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
             QR Nequi <span className="font-normal text-stone-400">(opcional, deja vacío para conservar el actual)</span>
             <input accept="image/jpeg,image/png,image/webp" className="input mt-1" name="nequiQr" type="file" />
           </label>
-          {restaurant.nequiQrPath && <p className="text-sm text-teal-600 sm:col-span-2">QR configurado actualmente.</p>}
+          {restaurant.nequiQrPath && (
+            <div className="flex items-center gap-3 sm:col-span-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img alt="QR de Nequi configurado" className="h-28 w-28 rounded-lg border border-stone-200 object-contain" src={resolveFileUrl(restaurant.nequiQrPath) ?? ""} />
+              <p className="text-sm text-teal-600">QR configurado actualmente. Sube otro para reemplazarlo.</p>
+            </div>
+          )}
           <SubmitButton className="button-primary sm:col-span-2">Guardar Nequi</SubmitButton>
         </FeedbackForm>
 
@@ -171,6 +165,19 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
           </FeedbackForm>
         </div>
       </div>
+      <div className="rounded-xl border border-stone-200 p-4">
+        <h3 className="text-lg font-semibold">Teléfono / WhatsApp del negocio</h3>
+        <FeedbackForm action={updateBusinessPhone} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+          <input name="restaurantId" type="hidden" value={restaurant.id} />
+          <input name="returnPath" type="hidden" value={returnPath} />
+          <label className="text-sm font-medium text-stone-700">
+            Número de contacto y WhatsApp <span className="font-normal text-stone-400">(el mismo número; lo usa el botón "Preguntar por WhatsApp" del cliente y el banner de la imagen)</span>
+            <input className="input mt-1 text-base" defaultValue={restaurant.whatsappPhone ?? ""} inputMode="tel" maxLength={10} name="whatsappPhone" placeholder="3001234567" />
+          </label>
+          <SubmitButton className="button-primary self-end">Guardar número</SubmitButton>
+        </FeedbackForm>
+      </div>
+
       {/* Password section — only shown to admin (hidePassword=true in restaurant console) */}
       {!hidePassword && (
         <div className="mt-4 border-t border-stone-200 pt-6">
