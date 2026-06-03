@@ -186,7 +186,7 @@ function BarChart({ bars }: {
   bars: { label: string; value: number; min?: number; max: number; sublabel: string; hint?: string; isToday?: boolean }[];
 }) {
   return (
-    <div className="flex items-end gap-1 overflow-x-auto pb-2" style={{ minHeight: "11rem" }}>
+    <div className="flex items-end gap-1 overflow-x-auto pb-2" style={{ height: "11rem" }}>
       {bars.map((bar, i) => {
         // Rebased scale: amplify visual differences by using the min value as the
         // visual baseline. All non-zero bars fill 20%–100% of chart height.
