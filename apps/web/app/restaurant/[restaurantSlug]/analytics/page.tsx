@@ -52,10 +52,18 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ rest
   const allTimeCount = confirmedTotal?._count?.id ?? 0;
 
   const weeks = buildWeeks(daily);
-  const maxDaily  = Math.max(...last30.map((d) => d.revenue), 1);
-  const minDaily  = last30.length > 0 ? Math.min(...last30.filter(d => d.revenue > 0).map(d => d.revenue)) : 0;
   const maxWeekly = Math.max(...weeks.map(([, w]) => w.revenue), 1);
-  const minWeekly = weeks.length > 0 ? Math.min(...weeks.filter(([,w]) => w.revenue > 0).map(([,w]) => w.revenue)) : 0;
+
+  // Revenue by weekday over the last 30 days — answers "which day sells most".
+  const WEEKDAYS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+  const byWeekday = WEEKDAYS.map(() => ({ revenue: 0, count: 0 }));
+  for (const d of last30) {
+    const wd = new Date(`${d.orderDate}T12:00:00Z`).getUTCDay(); // 0=Sun..6=Sat
+    const idx = (wd + 6) % 7; // Monday=0 … Sunday=6
+    byWeekday[idx].revenue += d.revenue;
+    byWeekday[idx].count += d.count;
+  }
+  const maxWeekday = Math.max(...byWeekday.map((w) => w.revenue), 1);
 
   return (
     <main className="mx-auto max-w-5xl p-4 sm:p-6">
@@ -91,40 +99,45 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ rest
         </section>
       )}
 
-      {/* Daily chart — last 30 days */}
+      {/* Revenue by weekday — last 30 days */}
       <section className="card mt-6">
-        <h2 className="mb-4 text-lg font-bold">Ingresos diarios — últimos 30 días</h2>
-        {last30.length === 0 ? (
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-lg font-bold">Ingresos por día de la semana</h2>
+          <span className="text-sm text-stone-500">últimos 30 días</span>
+        </div>
+        {monthCount === 0 ? (
           <p className="text-stone-500">Sin datos suficientes todavía.</p>
         ) : (
-          <BarChart
-            bars={last30.map((d) => ({
-              label: d.orderDate.slice(5),
-              value: d.revenue,
-              min: minDaily,
-              max: maxDaily,
-              sublabel: compactCOP(d.revenue),
-              hint: `${d.count} pedido${d.count !== 1 ? "s" : ""}`,
-              isToday: d.orderDate === today,
+          <BarList
+            rows={byWeekday.map((w, i) => ({
+              label: WEEKDAYS[i],
+              value: w.revenue,
+              valueLabel: formatMoney(w.revenue),
+              hint: `${w.count} ${w.count === 1 ? "pedido" : "pedidos"}`,
+              max: maxWeekday,
+              highlight: w.revenue === maxWeekday && w.revenue > 0,
             }))}
           />
         )}
       </section>
 
-      {/* Weekly chart */}
+      {/* Weekly revenue — last 8 weeks */}
       <section className="card mt-4">
-        <h2 className="mb-4 text-lg font-bold">Ingresos semanales — últimas 8 semanas</h2>
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-lg font-bold">Ingresos semanales</h2>
+          <span className="text-sm text-stone-500">últimas 8 semanas</span>
+        </div>
         {weeks.length === 0 ? (
           <p className="text-stone-500">Sin datos suficientes todavía.</p>
         ) : (
-          <BarChart
-            bars={weeks.map(([key, w]) => ({
-              label: key.slice(5),
+          <BarList
+            rows={weeks.map(([key, w]) => ({
+              label: `Semana del ${key.slice(5)}`,
               value: w.revenue,
-              min: minWeekly,
-              max: maxWeekly,
-              sublabel: compactCOP(w.revenue),
+              valueLabel: formatMoney(w.revenue),
               hint: `${w.count} órd.`,
+              max: maxWeekly,
+              highlight: w.revenue === maxWeekly && w.revenue > 0,
             }))}
           />
         )}
@@ -174,49 +187,33 @@ function StatCard({ label, revenue, count, highlight }: { label: string; revenue
   );
 }
 
-/** Format a COP value compactly for chart labels. */
-function compactCOP(value: number): string {
-  if (value === 0) return "$0";
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1).replace(".0", "")}M`;
-  if (value >= 1_000) return `$${Math.round(value / 1_000)}K`;
-  return `$${value}`;
-}
-
-function BarChart({ bars }: {
-  bars: { label: string; value: number; min?: number; max: number; sublabel: string; hint?: string; isToday?: boolean }[];
+/**
+ * Horizontal bar list — same visual language as the ingredient breakdown.
+ * Reads well on mobile (rows stack vertically, no horizontal scroll) and makes
+ * differences between rows obvious because each bar is scaled to the max value.
+ */
+function BarList({ rows }: {
+  rows: { label: string; value: number; valueLabel: string; hint?: string; max: number; highlight?: boolean }[];
 }) {
   return (
-    <div className="flex items-end gap-1 overflow-x-auto pb-2" style={{ height: "11rem" }}>
-      {bars.map((bar, i) => {
-        // Rebased scale: amplify visual differences by using the min value as the
-        // visual baseline. All non-zero bars fill 20%–100% of chart height.
-        // Zero-value bars show a tiny stub so the label is still visible.
-        let pct = 0;
-        if (bar.value > 0 && bar.max > 0) {
-          const minVal = bar.min ?? 0;
-          const range = bar.max - minVal;
-          if (range > 0) {
-            pct = 20 + ((bar.value - minVal) / range) * 80; // 20%–100%
-          } else {
-            pct = 100; // all values equal — show full bars
-          }
-        }
+    <div className="space-y-3">
+      {rows.map((r, i) => {
+        const pct = r.max > 0 ? Math.max((r.value / r.max) * 100, r.value > 0 ? 3 : 0) : 0;
         return (
-          <div className="flex min-w-[2rem] flex-1 flex-col items-center gap-0.5" key={i}>
-            {/* Revenue label above bar */}
-            <span className={`text-xs font-semibold ${bar.isToday ? "text-teal-700" : "text-stone-600"}`}>
-              {bar.sublabel}
-            </span>
-            {/* Order count hint */}
-            {bar.hint && <span className="text-[10px] text-stone-400">{bar.hint}</span>}
-            <div
-              className={`w-full rounded-t-md ${bar.isToday ? "bg-teal-500" : "bg-teal-300"}`}
-              style={{ height: `${pct}%`, minHeight: bar.value > 0 ? "0.5rem" : "2px" }}
-              title={formatMoney(bar.value)}
-            />
-            <span className={`text-xs ${bar.isToday ? "font-bold text-teal-700" : "text-stone-400"}`}>
-              {bar.label}
-            </span>
+          <div key={i}>
+            <div className="flex items-baseline justify-between gap-3 text-sm">
+              <span className="font-medium text-stone-900">{r.label}</span>
+              <span className="shrink-0 text-stone-500">
+                <strong className={r.highlight ? "text-teal-700" : "text-stone-900"}>{r.valueLabel}</strong>
+                {r.hint ? ` · ${r.hint}` : ""}
+              </span>
+            </div>
+            <div className="mt-1.5 h-2.5 w-full overflow-hidden rounded-full bg-stone-100">
+              <div
+                className={`h-full rounded-full ${r.highlight ? "bg-teal-500" : "bg-teal-400"}`}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
           </div>
         );
       })}
