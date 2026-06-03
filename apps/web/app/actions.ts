@@ -645,12 +645,26 @@ export async function updateBasePrice(formData: FormData) {
   redirect(returnPath);
 }
 
+export async function updateBusinessPhone(formData: FormData) {
+  const restaurantId = String(formData.get("restaurantId"));
+  const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
+  const whatsappPhone = String(formData.get("whatsappPhone") ?? "").replace(/\D/g, "").slice(0, 15) || null;
+
+  await prisma.restaurant.update({
+    where: { id: restaurantId },
+    data: { whatsappPhone },
+  });
+  revalidatePath("/admin");
+  revalidatePath(returnPath);
+  revalidatePath(`/r/${(await prisma.restaurant.findUnique({ where: { id: restaurantId }, select: { slug: true } }))?.slug ?? ""}`);
+  redirect(returnPath);
+}
+
 export async function updatePaymentSettings(formData: FormData) {
   const restaurantId = String(formData.get("restaurantId"));
   const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
   const nequiAccountName = required(String(formData.get("nequiAccountName") ?? ""), "titular");
   const nequiPhone = required(String(formData.get("nequiPhone") ?? ""), "celular o llave Nequi");
-  const whatsappPhone = String(formData.get("whatsappPhone") ?? "").replace(/\D/g, "").slice(0, 15) || null;
   const file = formData.get("nequiQr");
   const nequiQrPath = file instanceof File ? await saveUpload(file, "nequi-qr") : null;
 
@@ -659,7 +673,6 @@ export async function updatePaymentSettings(formData: FormData) {
     data: {
       nequiAccountName,
       nequiPhone,
-      whatsappPhone,
       ...(nequiQrPath ? { nequiQrPath } : {}),
     },
   });

@@ -83,7 +83,7 @@ export function ShareMenuImage({ slug, publishedToday, hasTemplate }: { slug: st
           type="button"
         >
           <WhatsAppIcon />
-          {busy ? "Preparando…" : canShareFiles ? "Compartir en WhatsApp" : "Descargar para WhatsApp"}
+          {busy ? "Preparando…" : "Compartir en WhatsApp"}
         </button>
         <a className="button-secondary" href={imageUrl} rel="noreferrer" target="_blank">
           Ver imagen
