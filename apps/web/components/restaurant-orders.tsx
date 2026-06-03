@@ -99,7 +99,7 @@ export function RestaurantOrders({ restaurantSlug, restaurantName = "", orders, 
     return (
       <>
         {/* Still show nav even when no orders */}
-        <nav aria-label="Ir a sección" className="mb-5 flex gap-2 overflow-x-auto pb-1">
+        <nav aria-label="Ir a sección" className="mb-5 flex flex-wrap gap-2">
           {GROUPS.map((g) => (
             <span className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold opacity-40 ${g.accent}`} key={g.key}>
               {g.label} (0)
@@ -114,7 +114,7 @@ export function RestaurantOrders({ restaurantSlug, restaurantName = "", orders, 
   return (
     <>
       {/* Section quick-nav — ALWAYS shows all groups */}
-      <nav aria-label="Ir a sección" className="mb-5 flex gap-2 overflow-x-auto pb-1">
+      <nav aria-label="Ir a sección" className="mb-5 flex flex-wrap gap-2">
         {GROUPS.map((g) => {
           const count = g.statuses.reduce((n, s) => n + (byStatus[s]?.length ?? 0), 0);
           return (
