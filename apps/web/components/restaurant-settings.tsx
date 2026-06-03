@@ -27,8 +27,8 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
   const hasTemplate = !!menu && [menu.soups, menu.proteins, menu.sides, menu.drinks].some((o) => o.length > 0);
   return (
     <div className="space-y-3">
-      <details className="rounded-xl border border-stone-200 p-4">
-        <summary className="cursor-pointer text-lg font-semibold">Cambiar precio del almuerzo</summary>
+      <div className="rounded-xl border border-stone-200 p-4">
+        <h3 className="text-lg font-semibold">Precio del almuerzo</h3>
         <form action={updateBasePrice} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
           <input name="restaurantId" type="hidden" value={restaurant.id} />
           <input name="returnPath" type="hidden" value={returnPath} />
@@ -38,17 +38,17 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
           </label>
           <button className="button-primary self-end">Guardar precio</button>
         </form>
-      </details>
+      </div>
 
-      <details className="rounded-xl border border-stone-200 p-4" open={!menuPublishedToday}>
-        <summary className="cursor-pointer text-lg font-semibold">
+      <div className="rounded-xl border border-stone-200 p-4">
+        <h3 className="text-lg font-semibold">
           Editar menú de hoy
           {!menuPublishedToday && (
             <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 align-middle text-xs font-semibold text-amber-700">
               Pendiente de publicar
             </span>
           )}
-        </summary>
+        </h3>
         <form action={updateTodayMenu} className="mt-4 grid gap-3 sm:grid-cols-2">
           <input name="restaurantId" type="hidden" value={restaurant.id} />
           <input name="returnPath" type="hidden" value={returnPath} />
@@ -79,7 +79,7 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
             {menuPublishedToday ? "Guardar menú" : "Publicar menú de hoy"}
           </button>
         </form>
-      </details>
+      </div>
 
       <details className="rounded-xl border border-stone-200 p-4">
         <summary className="cursor-pointer text-lg font-semibold">Imagen del menú para compartir</summary>
