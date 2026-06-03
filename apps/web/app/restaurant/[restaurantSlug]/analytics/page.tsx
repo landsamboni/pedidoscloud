@@ -188,16 +188,15 @@ function StatCard({ label, revenue, count, highlight }: { label: string; revenue
 }
 
 /**
- * Pastel bar color by share of the row's max. Uses an analogous cool palette
- * (emerald → teal → cyan → sky) so higher values read "warmer/greener" and lower
- * ones "cooler/bluer" — varied but harmonious, never a rainbow. Static class
- * names so Tailwind keeps them.
+ * Pastel heatmap color by share of the row's max: green (high) → amber → orange
+ * → red (low). Warm/cool ramp only — no blues/purples — so it reads as a calm
+ * heatmap, not a rainbow. Static class names so Tailwind keeps them.
  */
 function barColor(ratio: number): string {
   if (ratio >= 0.75) return "bg-emerald-400";
-  if (ratio >= 0.5) return "bg-teal-400";
-  if (ratio >= 0.25) return "bg-cyan-400";
-  return "bg-sky-400";
+  if (ratio >= 0.5) return "bg-amber-300";
+  if (ratio >= 0.25) return "bg-orange-300";
+  return "bg-red-300";
 }
 
 /**
