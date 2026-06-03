@@ -31,6 +31,27 @@ export async function getRestaurantMenu(slug: string) {
   });
 }
 
+/**
+ * Menu data for the operator's editor. Returns today's menu if it has already
+ * been published; otherwise the most recent previous menu as a pre-fill TEMPLATE
+ * (so the operator edits only what changed). `publishedToday` lets the UI tell
+ * the two apart. The customer page (getRestaurantMenu) still only shows today's
+ * menu — this template never reaches customers.
+ */
+export async function getMenuForEditor(restaurantId: string) {
+  const today = dateKeyToUtcDate(localDateKey());
+  const todayMenu = await prisma.menu.findUnique({
+    where: { restaurantId_date: { restaurantId, date: today } },
+  });
+  if (todayMenu) return { menu: todayMenu, publishedToday: true };
+
+  const latest = await prisma.menu.findFirst({
+    where: { restaurantId },
+    orderBy: { date: "desc" },
+  });
+  return { menu: latest ?? undefined, publishedToday: false };
+}
+
 export async function getTodayOrders(slug: string) {
   return prisma.restaurant.findUnique({
     where: { slug },

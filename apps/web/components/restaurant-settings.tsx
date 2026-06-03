@@ -20,7 +20,8 @@ type Restaurant = {
   paymentMethods: PaymentMethod[];
 };
 
-export function RestaurantSettings({ menu, restaurant, returnPath, hidePassword = false }: { menu: Menu; restaurant: Restaurant; returnPath: string; hidePassword?: boolean }) {
+export function RestaurantSettings({ menu, restaurant, returnPath, hidePassword = false, menuPublishedToday = false }: { menu: Menu; restaurant: Restaurant; returnPath: string; hidePassword?: boolean; menuPublishedToday?: boolean }) {
+  const hasTemplate = !!menu && [menu.soups, menu.proteins, menu.sides, menu.drinks].some((o) => o.length > 0);
   return (
     <div className="space-y-3">
       <details className="rounded-xl border border-stone-200 p-4">
@@ -36,16 +37,40 @@ export function RestaurantSettings({ menu, restaurant, returnPath, hidePassword 
         </form>
       </details>
 
-      <details className="rounded-xl border border-stone-200 p-4">
-        <summary className="cursor-pointer text-lg font-semibold">Editar menú de hoy</summary>
+      <details className="rounded-xl border border-stone-200 p-4" open={!menuPublishedToday}>
+        <summary className="cursor-pointer text-lg font-semibold">
+          Editar menú de hoy
+          {!menuPublishedToday && (
+            <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 align-middle text-xs font-semibold text-amber-700">
+              Pendiente de publicar
+            </span>
+          )}
+        </summary>
         <form action={updateTodayMenu} className="mt-4 grid gap-3 sm:grid-cols-2">
           <input name="restaurantId" type="hidden" value={restaurant.id} />
           <input name="returnPath" type="hidden" value={returnPath} />
+
+          {menuPublishedToday ? (
+            <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800 sm:col-span-2">
+              ✓ El menú de hoy ya está publicado y visible para tus clientes. Edítalo y guarda para actualizarlo.
+            </p>
+          ) : hasTemplate ? (
+            <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800 sm:col-span-2">
+              Estás viendo tu <strong>último menú</strong> como base. Tus clientes <strong>no</strong> lo ven todavía: ajusta lo que cambie hoy y pulsa <strong>Publicar menú de hoy</strong>.
+            </p>
+          ) : (
+            <p className="rounded-xl bg-stone-50 px-3 py-2 text-sm text-stone-600 sm:col-span-2">
+              Aún no hay menú para hoy. Escríbelo y pulsa <strong>Publicar menú de hoy</strong>.
+            </p>
+          )}
+
           <MenuTextarea label="Sopas" name="soups" options={menu?.soups} />
           <MenuTextarea label="Proteínas" name="proteins" options={menu?.proteins} />
           <MenuTextarea label="Principios" name="sides" options={menu?.sides} />
           <MenuTextarea label="Bebidas" name="drinks" options={menu?.drinks} />
-          <button className="button-primary sm:col-span-2">Guardar menú</button>
+          <button className="button-primary sm:col-span-2">
+            {menuPublishedToday ? "Guardar menú" : "Publicar menú de hoy"}
+          </button>
         </form>
       </details>
 

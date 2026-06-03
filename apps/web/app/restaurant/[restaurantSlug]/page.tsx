@@ -5,15 +5,14 @@ import { ChangePasswordForm } from "@/components/change-password-form";
 import { logoutAction } from "@/app/login/actions";
 import { formatMoney, formatOrderNumber } from "@/lib/format";
 import { getDaysRemaining, getSubscriptionStatus, STATUS_COLORS, STATUS_LABELS } from "@/lib/subscription";
-import { getTodayOrders } from "@/lib/data";
+import { getMenuForEditor, getTodayOrders } from "@/lib/data";
 
 export default async function RestaurantConsolePage({ params }: { params: Promise<{ restaurantSlug: string }> }) {
   const { restaurantSlug } = await params;
   const restaurant = await getTodayOrders(restaurantSlug);
   if (!restaurant) notFound();
 
-  const menuRestaurant = await import("@/lib/data").then(({ getRestaurantMenu }) => getRestaurantMenu(restaurantSlug));
-  const menu = menuRestaurant?.menus[0];
+  const { menu, publishedToday } = await getMenuForEditor(restaurant.id);
 
   const subStatus = getSubscriptionStatus(restaurant.subscriptionEndsAt ?? null);
   const daysLeft = restaurant.subscriptionEndsAt ? getDaysRemaining(restaurant.subscriptionEndsAt) : null;
@@ -74,7 +73,7 @@ export default async function RestaurantConsolePage({ params }: { params: Promis
 
       <section className="card mt-4">
         <h2 className="mb-4 text-xl font-bold">Configuración</h2>
-        <RestaurantSettings hidePassword menu={menu} restaurant={restaurant} returnPath={`/restaurant/${restaurantSlug}`} />
+        <RestaurantSettings hidePassword menu={menu} menuPublishedToday={publishedToday} restaurant={restaurant} returnPath={`/restaurant/${restaurantSlug}`} />
       </section>
 
       <section className="card mt-4">

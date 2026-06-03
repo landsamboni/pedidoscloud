@@ -25,7 +25,21 @@ export default async function RestaurantMenuPage({ params }: { params: Promise<{
           menu={menu}
         />
       ) : (
-        <section className="card">Todavía no hay menú disponible para hoy.</section>
+        <section className="card text-center">
+          <p className="text-lg font-semibold text-stone-900">Estamos preparando el menú de hoy 🍲</p>
+          <p className="mt-1 text-stone-600">Vuelve en un momento para armar tu pedido.</p>
+          {(() => {
+            const phone = (restaurant.whatsappPhone ?? restaurant.nequiPhone ?? "").replace(/\D/g, "");
+            if (!phone) return null;
+            const wa = phone.startsWith("57") ? phone : `57${phone}`;
+            const text = encodeURIComponent(`Hola! ¿Ya tienen el menú de hoy en ${restaurant.name}?`);
+            return (
+              <a className="button-primary mt-4 inline-flex" href={`https://wa.me/${wa}?text=${text}`} rel="noreferrer" target="_blank">
+                Preguntar por WhatsApp
+              </a>
+            );
+          })()}
+        </section>
       )}
     </main>
   );
