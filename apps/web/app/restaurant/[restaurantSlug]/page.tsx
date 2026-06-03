@@ -18,7 +18,7 @@ export default async function RestaurantConsolePage({ params }: { params: Promis
   const daysLeft = restaurant.subscriptionEndsAt ? getDaysRemaining(restaurant.subscriptionEndsAt) : null;
 
   return (
-    <main className="mx-auto max-w-4xl p-4 sm:p-6">
+    <main className="mx-auto max-w-4xl p-4 sm:p-6 2xl:max-w-6xl 3xl:max-w-7xl">
       <header className="flex flex-wrap items-start justify-between gap-4 py-5">
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-teal-600">Consola del restaurante</p>

@@ -66,7 +66,7 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ rest
   const maxWeekday = Math.max(...byWeekday.map((w) => w.revenue), 1);
 
   return (
-    <main className="mx-auto max-w-5xl p-4 sm:p-6">
+    <main className="mx-auto max-w-5xl p-4 sm:p-6 2xl:max-w-6xl 3xl:max-w-7xl">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-teal-600">Analíticas</p>

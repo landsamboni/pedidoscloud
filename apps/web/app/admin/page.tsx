@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminPage() {
   const restaurants = await getAdminRestaurants();
   return (
-    <main className="mx-auto max-w-6xl p-4 sm:p-6">
+    <main className="mx-auto max-w-6xl p-4 sm:p-6 3xl:max-w-7xl 4xl:max-w-[110rem]">
       <header className="flex flex-wrap items-start justify-between gap-4 py-5">
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-teal-600">Administración</p>
