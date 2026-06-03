@@ -1,4 +1,5 @@
 import { createPaymentMethod, deletePaymentMethod, setRestaurantPassword, updateBasePrice, updatePaymentSettings, updateTodayMenu } from "@/app/actions";
+import { AutoGrowTextarea } from "@/components/auto-grow-textarea";
 
 type Menu = {
   soups: string[];
@@ -190,7 +191,15 @@ function MenuTextarea({ label, name, options = [] }: { label: string; name: stri
       <span className="font-normal text-stone-400">
         (una por línea · precio extra: <code className="rounded bg-stone-100 px-1 text-xs">Costilla BBQ +3000</code>)
       </span>
-      <textarea className="input mt-1 min-h-28 font-mono text-sm" defaultValue={options.join("\n")} name={name} required />
+      <AutoGrowTextarea
+        className="input mt-1 min-h-36 resize-none overflow-hidden font-mono text-sm leading-relaxed"
+        defaultValue={options.join("\n")}
+        name={name}
+        // Initial height ~ number of options so it renders close to its final
+        // size before hydration fine-tunes it; AutoGrowTextarea removes any scroll.
+        rows={Math.max(options.length + 2, 6)}
+        required
+      />
     </label>
   );
 }
