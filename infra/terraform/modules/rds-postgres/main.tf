@@ -24,26 +24,31 @@ resource "aws_security_group" "db" {
     ignore_changes = [description]
   }
 
-  # CIDR-based ingress for manual migrations from known IPs (e.g. laptop).
-  # Amplify Lambda ingress is added externally as aws_vpc_security_group_ingress_rule
-  # to avoid the circular dependency: Lambda SG ↔ RDS SG.
-  dynamic "ingress" {
-    for_each = length(var.allowed_cidr_blocks) > 0 ? [1] : []
-    content {
-      description = "PostgreSQL from allowed CIDRs (migrations)"
-      from_port   = 5432
-      to_port     = 5432
-      protocol    = "tcp"
-      cidr_blocks = var.allowed_cidr_blocks
-    }
-  }
+  # No inline ingress/egress here ON PURPOSE. The Amplify Lambda ingress is added
+  # externally as a standalone aws_vpc_security_group_ingress_rule (to break the
+  # SG <-> SG circular dependency), and inline blocks are authoritative for the
+  # whole SG — so any inline rule here would fight that standalone rule on every
+  # plan. All rules for this SG are therefore declared as standalone resources.
+}
 
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+# CIDR-based ingress for manual migrations from known IPs (e.g. laptop).
+resource "aws_vpc_security_group_ingress_rule" "db_from_cidr" {
+  for_each          = toset(var.allowed_cidr_blocks)
+  security_group_id = aws_security_group.db.id
+  cidr_ipv4         = each.value
+  from_port         = 5432
+  to_port           = 5432
+  ip_protocol       = "tcp"
+  description       = "PostgreSQL from allowed CIDR (migrations)"
+  tags              = var.tags
+}
+
+resource "aws_vpc_security_group_egress_rule" "db_all_outbound" {
+  security_group_id = aws_security_group.db.id
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1"
+  description       = "All outbound"
+  tags              = var.tags
 }
 
 resource "aws_db_instance" "this" {

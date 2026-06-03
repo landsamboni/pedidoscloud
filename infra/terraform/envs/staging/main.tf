@@ -73,20 +73,28 @@ resource "aws_security_group" "amplify_lambda" {
   vpc_id      = data.aws_vpc.default.id
   tags        = local.tags
 
-  # Allow all outbound. Lambda has no internet anyway (no NAT); outbound is
-  # limited to VPC-local destinations and VPC endpoints in practice.
-  egress {
-    description = "All outbound (VPC-local + VPC endpoints only, no internet without NAT)"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  # No inline egress/ingress here ON PURPOSE. Every rule for this SG is declared
+  # as a standalone aws_vpc_security_group_*_rule resource below. Inline rule
+  # blocks are authoritative for the whole SG, so mixing them with the standalone
+  # cross-SG rules makes the two fight on every plan (inline revokes the
+  # standalone 5432 rule, the standalone resource re-adds it). That conflict is
+  # what produced the recurring "2 to change" diff and the SG drift warning.
+}
+
+# Allow all outbound. The Lambda has no internet anyway (no NAT); outbound is
+# limited to VPC-local destinations and the S3 VPC endpoint in practice.
+resource "aws_vpc_security_group_egress_rule" "amplify_all_outbound" {
+  security_group_id = aws_security_group.amplify_lambda.id
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1"
+  description       = "All outbound (VPC-local + VPC endpoints only, no internet without NAT)"
+  tags              = local.tags
 }
 
 # ---- Cross-SG rules (break circular dependency) ---------------------
-# Created AFTER both SGs exist. Uses aws_vpc_security_group_ingress/egress_rule
-# (AWS provider ≥ 5.x) which does not conflict with inline SG rules.
+# Standalone rules created AFTER both SGs exist. ALL rules on these two SGs are
+# standalone (the SG resources declare no inline ingress/egress) — inline +
+# standalone on the same SG conflict and must not be mixed.
 
 # Allow Amplify Lambda SG to connect to RDS on port 5432.
 resource "aws_vpc_security_group_egress_rule" "amplify_to_rds" {
