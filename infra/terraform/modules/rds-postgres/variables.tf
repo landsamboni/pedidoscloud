@@ -52,7 +52,7 @@ variable "publicly_accessible" {
 }
 
 variable "allowed_cidr_blocks" {
-  description = "CIDR blocks allowed to connect on 5432 (e.g. laptop IP /32 for migrations). Amplify SSR uses a security group rule instead."
+  description = "CIDR blocks allowed to connect on 5432 (e.g. laptop /32 for migrations). NOTE: if the consuming app's compute is not in the VPC (e.g. Amplify WEB_COMPUTE SSR without VPC connectivity), it reaches RDS over the public endpoint and this must include 0.0.0.0/0."
   type        = list(string)
   default     = []
 }

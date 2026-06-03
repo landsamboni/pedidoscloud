@@ -62,13 +62,13 @@ variable "db_allocated_storage" {
 }
 
 variable "db_publicly_accessible" {
-  description = "Keep true so migrations can be run from the laptop. The security group restricts actual access to known IPs + Amplify Lambda SG."
+  description = "Keep true: the Amplify SSR Lambda is NOT in the VPC (WEB_COMPUTE VPC connectivity is unavailable here), so it reaches RDS over the public endpoint. Access is restricted by the security group / db_allowed_cidr_blocks."
   type        = bool
   default     = true
 }
 
 variable "db_allowed_cidr_blocks" {
-  description = "CIDRs allowed to connect to RDS port 5432. Use only your laptop IP /32 for migrations. Amplify Lambda access is handled via VPC security group (not CIDR)."
+  description = "CIDRs allowed to connect to RDS port 5432. MUST include 0.0.0.0/0: the Amplify SSR Lambda is not in the VPC and connects from non-fixed AWS public IPs (removing it breaks the app). Add your laptop /32 too for migrations. Protected by a strong password + SSL."
   type        = list(string)
   default     = []
 }

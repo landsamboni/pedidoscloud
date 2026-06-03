@@ -157,8 +157,13 @@ module "rds" {
   instance_class      = var.db_instance_class
   allocated_storage   = var.db_allocated_storage
   publicly_accessible = var.db_publicly_accessible
-  # Only allow known IPs (laptop for migrations). Amplify Lambda access is added
-  # via aws_vpc_security_group_ingress_rule above (not 0.0.0.0/0).
+  # IMPORTANT: Amplify WEB_COMPUTE SSR cannot be attached to a VPC in this
+  # account/version, so the SSR Lambda reaches RDS over the PUBLIC endpoint from
+  # AWS-owned egress IPs that are not a fixed range. That means db_allowed_cidr_blocks
+  # MUST include 0.0.0.0/0 for the app to connect — the cross-SG rule
+  # (rds_from_amplify) only helps if/when the Lambda is in the VPC, which it isn't.
+  # Do NOT remove 0.0.0.0/0 unless VPC connectivity is configured first (it broke
+  # the app once). Risk is mitigated by a strong DB password + sslmode=require.
   allowed_cidr_blocks         = var.db_allowed_cidr_blocks
   alarm_topic_arn             = aws_sns_topic.alerts.arn
   alarm_connections_threshold = 40

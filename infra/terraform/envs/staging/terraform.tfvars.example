@@ -9,9 +9,11 @@ amplify_branch        = "staging-aws"
 
 # Database
 db_password = "change-me-strong-password"
-# Only your laptop IP for manual migrations. Amplify SSR reaches RDS via VPC SG.
+# MUST include 0.0.0.0/0: Amplify WEB_COMPUTE SSR is not in a VPC here, so it
+# reaches RDS over the public endpoint from non-fixed AWS IPs. Removing 0.0.0.0/0
+# breaks the app. Add your laptop /32 for migrations. Protected by password + SSL.
 # Find your current IP: curl -s https://checkip.amazonaws.com
-db_allowed_cidr_blocks = ["203.0.113.10/32"]
+db_allowed_cidr_blocks = ["203.0.113.10/32", "0.0.0.0/0"]
 
 # JWT session secret — generate with: openssl rand -base64 32
 auth_secret = "change-me-generate-with-openssl-rand-base64-32"

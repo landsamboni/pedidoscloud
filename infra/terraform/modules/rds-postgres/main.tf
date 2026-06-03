@@ -31,7 +31,9 @@ resource "aws_security_group" "db" {
   # plan. All rules for this SG are therefore declared as standalone resources.
 }
 
-# CIDR-based ingress for manual migrations from known IPs (e.g. laptop).
+# CIDR-based ingress: laptop /32 for migrations, plus 0.0.0.0/0 when the app's
+# compute is outside the VPC and reaches RDS over the public endpoint (see the
+# allowed_cidr_blocks variable note).
 resource "aws_vpc_security_group_ingress_rule" "db_from_cidr" {
   for_each          = toset(var.allowed_cidr_blocks)
   security_group_id = aws_security_group.db.id

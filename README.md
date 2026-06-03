@@ -205,9 +205,13 @@ URL del browser, permitiendo migrar entre drivers sin romper registros existente
 - **S3 privado**: todo acceso público bloqueado, cifrado en reposo (AES-256),
   versionado y ciclo de vida que limpia uploads multipart incompletos y versiones antiguas.
 - **IAM de mínimo privilegio**: el usuario de la app solo puede operar sobre el bucket de uploads.
-- **RDS**: cifrado en reposo, SSL forzado (`sslmode=require`), ingreso restringido por
-  security group (IP del laptop para migraciones + SG del Lambda de Amplify), autoescalado
-  de almacenamiento y alarmas de CPU/memoria/conexiones en CloudWatch.
+- **RDS**: cifrado en reposo, SSL forzado (`sslmode=require`), autoescalado de
+  almacenamiento y alarmas de CPU/memoria/conexiones en CloudWatch. El acceso al
+  puerto 5432 se controla por security group. **Nota**: como el SSR de Amplify
+  (WEB_COMPUTE) no se puede conectar a la VPC en esta cuenta, el Lambda llega a
+  RDS por el **endpoint público** desde IPs de AWS no fijas; por eso
+  `db_allowed_cidr_blocks` **debe** incluir `0.0.0.0/0` (la app deja de conectar
+  si se quita). El riesgo se mitiga con contraseña fuerte + SSL obligatorio.
 
 ## Despliegue en AWS
 
@@ -216,13 +220,14 @@ Ver [DEPLOYMENT.md](DEPLOYMENT.md): Terraform → Amplify → Cloudflare DNS.
 - Infra como código con Terraform (`infra/terraform/envs/{staging,prod}`).
 - El build de Amplify (`amplify.yml`) corre `prisma generate && next build`.
 - Las **migraciones se ejecutan manualmente desde el laptop** antes de desplegar
-  un cambio de esquema, porque CodeBuild no alcanza RDS dentro de la VPC:
+  un cambio de esquema (CodeBuild no las corre):
   `cd apps/web && export DATABASE_URL=$(terraform output -raw database_url) && npm run db:deploy`.
 
 ## Límites conocidos del MVP
 
 - Login de admin con un único usuario/clave por variables de entorno (no por persona).
 - Sin WhatsApp Cloud API ni pasarela de pagos (comprobantes Nequi manuales).
-- Conectividad VPC del Lambda de Amplify se configura una vez a mano en la consola
-  (el provider de Terraform aún no soporta `vpc_config` para Amplify).
+- El SSR de Amplify (WEB_COMPUTE) no soporta conectividad VPC en esta cuenta, así
+  que RDS debe quedar accesible desde `0.0.0.0/0` (protegido por contraseña + SSL).
+  Los recursos de VPC/SG creados quedan listos por si en el futuro se habilita.
 - Sin pipeline CI/CD para Terraform (se aplica manualmente desde el laptop).
