@@ -22,6 +22,7 @@ export function ShareMenuImage({ slug, publishedToday, hasTemplate }: { slug: st
   const [canShareFiles, setCanShareFiles] = useState(false);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [preview, setPreview] = useState(false);
   const imageUrl = `/r/${slug}/menu-image`;
 
   useEffect(() => {
@@ -32,6 +33,13 @@ export function ShareMenuImage({ slug, publishedToday, hasTemplate }: { slug: st
       setCanShareFiles(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (!preview) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setPreview(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [preview]);
 
   if (!publishedToday) {
     return <p className="text-sm text-stone-500">Publica el menú de hoy para generar la imagen para compartir.</p>;
@@ -85,9 +93,9 @@ export function ShareMenuImage({ slug, publishedToday, hasTemplate }: { slug: st
           <WhatsAppIcon />
           {busy ? "Preparando…" : "Compartir en WhatsApp"}
         </button>
-        <a className="button-secondary" href={imageUrl} rel="noreferrer" target="_blank">
+        <button className="button-secondary" onClick={() => setPreview(true)} type="button">
           Ver imagen
-        </a>
+        </button>
       </div>
 
       {copied ? (
@@ -104,6 +112,28 @@ export function ShareMenuImage({ slug, publishedToday, hasTemplate }: { slug: st
         <p className="text-sm text-stone-500">
           Aún no has subido una plantilla de fondo: se usa un fondo por defecto. Sube una abajo para personalizarla.
         </p>
+      )}
+
+      {preview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setPreview(false)}>
+          <div className="relative flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex shrink-0 items-center justify-between border-b border-stone-200 px-5 py-4">
+              <p className="font-semibold">Imagen del menú</p>
+              <button
+                aria-label="Cerrar"
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100"
+                onClick={() => setPreview(false)}
+                type="button"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="overflow-auto p-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img alt="Imagen del menú de hoy" className="h-auto w-full rounded-xl" src={imageUrl} />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
