@@ -58,15 +58,8 @@ export function DeliveryForm({
           </label>
         )}
 
-        {mode === "separate" && (
-          <label className="text-sm font-medium text-stone-700 sm:col-span-2">
-            Mensaje al cliente sobre el domicilio{" "}
-            <span className="font-normal text-stone-400">
-              (opcional · se muestra cuando el cliente hace el pedido, para explicarle cómo se cobra o coordina. Ej: &quot;El valor varía según la distancia&quot;, &quot;Te contactamos para confirmar el costo&quot;)
-            </span>
-            <input className="input mt-1" defaultValue={deliveryNote ?? ""} maxLength={120} name="deliveryNote" placeholder="Te contactamos para confirmar el valor del domicilio" />
-          </label>
-        )}
+        {/* No custom note for "separate" — a clear fixed message is shown to the customer. */}
+        <input name="deliveryNote" type="hidden" value="" />
 
         <label className="flex items-center gap-2 text-sm font-medium text-stone-700 sm:col-span-2">
           <input className="h-4 w-4 accent-brand-blue" defaultChecked={allowPickup} name="allowPickup" type="checkbox" />
