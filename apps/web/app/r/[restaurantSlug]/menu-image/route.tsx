@@ -15,16 +15,20 @@ function mimeFromPath(p: string): string {
   return "image/jpeg";
 }
 
-/** Read the restaurant's uploaded template (S3 or local) as a data URI, or null. */
-async function backgroundDataUri(pathValue: string | null | undefined): Promise<string | null> {
+/** Read a template/logo (S3 key or /public asset) as a data URI, or null. */
+async function backgroundDataUri(pathValue: string | null | undefined, origin: string): Promise<string | null> {
   if (!pathValue) return null;
   try {
     if (pathValue.startsWith("/")) {
-      // Public static asset (/uploads/... uploaded locally, or /menu-templates/... preset).
-      const fs = await import("node:fs/promises");
-      const path = await import("node:path");
-      const buf = await fs.readFile(path.join(process.cwd(), "public", pathValue));
-      return `data:${mimeFromPath(pathValue)};base64,${buf.toString("base64")}`;
+      // Public asset (/menu-templates/... preset, or /uploads/... local dev).
+      // Fetch over HTTP from the same origin — on Amplify SSR the public folder
+      // is served by the CDN and is NOT on the compute filesystem, so reading it
+      // from disk fails. The CDN serves it fine.
+      const res = await fetch(new URL(pathValue, origin));
+      if (!res.ok) return null;
+      const buf = Buffer.from(await res.arrayBuffer());
+      const mime = res.headers.get("content-type") ?? mimeFromPath(pathValue);
+      return `data:${mime};base64,${buf.toString("base64")}`;
     }
     const { getObject } = await import("@/lib/storage");
     const { bytes, contentType } = await getObject(pathValue);
@@ -35,7 +39,8 @@ async function backgroundDataUri(pathValue: string | null | undefined): Promise<
   }
 }
 
-export async function GET(_req: Request, { params }: { params: Promise<{ restaurantSlug: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ restaurantSlug: string }> }) {
+  const origin = new URL(req.url).origin;
   const { restaurantSlug } = await params;
   const restaurant = await getRestaurantMenu(restaurantSlug);
   const menu = restaurant?.menus[0];
@@ -58,8 +63,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ restaur
   }));
 
   const [background, logo] = await Promise.all([
-    backgroundDataUri(restaurant.menuTemplatePath),
-    backgroundDataUri(restaurant.logoPath),
+    backgroundDataUri(restaurant.menuTemplatePath, origin),
+    backgroundDataUri(restaurant.logoPath, origin),
   ]);
   const phone = restaurant.whatsappPhone ?? restaurant.nequiPhone ?? null;
 
