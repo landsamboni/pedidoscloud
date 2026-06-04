@@ -1,5 +1,5 @@
 import { resetLogo, updateBusinessPhone, updateLogo } from "@/app/actions";
-import { FeedbackForm, SubmitButton } from "@/components/feedback-form";
+import { FeedbackForm, FileInput, SubmitButton } from "@/components/feedback-form";
 import { resolveFileUrl } from "@/lib/file-url";
 import { DEFAULT_LOGO_PATH } from "@/lib/branding";
 
@@ -37,7 +37,7 @@ export function BusinessDataForm({
         <input name="returnPath" type="hidden" value={returnPath} />
         <label className="text-sm font-medium text-stone-700">
           Logo del negocio <span className="font-normal text-stone-400">(PNG/JPG/WEBP. Recomendado cuadrado, mínimo 512×512 px; PNG con fondo transparente se ve mejor. Aparece en la página del cliente y en la imagen del menú)</span>
-          <input accept="image/jpeg,image/png,image/webp" className="input mt-1" name="logo" required type="file" />
+          <FileInput accept="image/jpeg,image/png,image/webp" className="input mt-1" name="logo" required type="file" />
         </label>
         <SubmitButton className="button-primary self-end" pendingLabel="Subiendo…">{logoPath ? "Cambiar logo" : "Subir logo"}</SubmitButton>
         <div className="flex items-center gap-3 sm:col-span-2">

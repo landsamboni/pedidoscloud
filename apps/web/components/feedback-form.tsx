@@ -57,6 +57,35 @@ export function FeedbackForm({
   );
 }
 
+/**
+ * File input that validates size client-side immediately on selection.
+ * Prevents large phone photos from causing a silent 413 crash.
+ */
+export function FileInput({
+  maxMB = 12,
+  ...props
+}: React.InputHTMLAttributes<HTMLInputElement> & { maxMB?: number }) {
+  const [sizeError, setSizeError] = useState<string | null>(null);
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file && file.size > maxMB * 1024 * 1024) {
+      setSizeError(`El archivo pesa ${(file.size / 1024 / 1024).toFixed(1)} MB. El máximo permitido es ${maxMB} MB. Elige una imagen más pequeña o comprimida.`);
+      e.target.value = ""; // clear the selection
+    } else {
+      setSizeError(null);
+      props.onChange?.(e);
+    }
+  }
+
+  return (
+    <>
+      <input {...props} onChange={handleChange} />
+      {sizeError && <p className="mt-1 text-sm font-medium text-red-600">{sizeError}</p>}
+    </>
+  );
+}
+
 /** Submit button that shows a pending label while its form is submitting. */
 export function SubmitButton({
   children,

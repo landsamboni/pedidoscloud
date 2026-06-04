@@ -1,5 +1,5 @@
 import { deletePaymentMethod, resetMenuTemplates, selectMenuTemplate, setRestaurantPassword, updateBasePrice, updateMenuTemplate, updatePaymentSettings } from "@/app/actions";
-import { FeedbackForm, SubmitButton } from "@/components/feedback-form";
+import { FeedbackForm, FileInput, SubmitButton } from "@/components/feedback-form";
 import { DeliveryForm } from "@/components/delivery-form";
 import { MenuEditor } from "@/components/menu-editor";
 import { PaymentMethodForm } from "@/components/payment-method-form";
@@ -144,7 +144,7 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
           <input name="returnPath" type="hidden" value={returnPath} />
           <label className="text-sm font-medium text-stone-700">
             Subir tu propia plantilla <span className="font-normal text-stone-400">(PNG/JPG/WEBP. Recomendado 1080×1350 vertical; otras medidas se recortan. Deja libre el centro para el texto)</span>
-            <input accept="image/jpeg,image/png,image/webp" className="input mt-1" name="menuTemplate" required type="file" />
+            <FileInput accept="image/jpeg,image/png,image/webp" className="input mt-1" name="menuTemplate" required type="file" />
           </label>
           <SubmitButton className="button-primary self-end" pendingLabel="Subiendo…">Subir plantilla</SubmitButton>
         </FeedbackForm>
@@ -169,7 +169,7 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
           </label>
           <label className="text-sm font-medium text-stone-700 sm:col-span-2">
             QR Nequi <span className="font-normal text-stone-400">(opcional, deja vacío para conservar el actual)</span>
-            <input accept="image/jpeg,image/png,image/webp" className="input mt-1" name="nequiQr" type="file" />
+            <FileInput accept="image/jpeg,image/png,image/webp" className="input mt-1" name="nequiQr" type="file" />
           </label>
           {restaurant.nequiQrPath && (
             <div className="flex items-center gap-3 sm:col-span-2">

@@ -14,7 +14,11 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      bodySizeLimit: "15mb",
+      // Set above our server-side MAX_UPLOAD_BYTES (12 MB) so Next.js never
+      // rejects the request with a 413 before our code runs. Mobile phone
+      // photos are routinely 10–20 MB; a 413 from Next.js causes an unhandled
+      // client-side crash instead of a friendly "file too large" error.
+      bodySizeLimit: "25mb",
     },
   },
   // allowedDevOrigins only needed in local dev; remove the IP if it changes.

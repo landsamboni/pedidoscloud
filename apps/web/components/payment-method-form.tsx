@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { createPaymentMethod, type ActionState } from "@/app/actions";
-import { Toast } from "@/components/feedback-form";
+import { FileInput, Toast } from "@/components/feedback-form";
 
 const INITIAL: ActionState = { ok: false, message: "", ts: 0 };
 
@@ -73,7 +73,7 @@ export function PaymentMethodForm({ restaurantId, returnPath }: { restaurantId: 
 
         <label className="text-sm font-medium text-stone-700 sm:col-span-2">
           QR <span className="font-normal text-stone-400">(opcional, imagen JPG/PNG/WEBP)</span>
-          <input accept="image/jpeg,image/png,image/webp" className="input mt-1" name="qr" type="file" />
+          <FileInput accept="image/jpeg,image/png,image/webp" className="input mt-1" name="qr" type="file" />
         </label>
 
         {!state.ok && state.message && (
