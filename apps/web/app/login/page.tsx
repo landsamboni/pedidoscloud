@@ -65,15 +65,10 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-brand-blue via-brand-purple to-brand-pink p-4">
       <div className="w-full max-w-sm">
         <div className="rounded-3xl bg-white p-7 shadow-2xl">
-          {/* Brand */}
-          <div className="mb-6 text-center">
-            <h1 className="text-3xl font-black tracking-tight">
-              <span className="text-stone-900">Pedidos</span>
-              <span className="text-brand-blue">Cloud</span>
-            </h1>
-            <p className="mt-1 text-xs font-medium uppercase tracking-wide text-stone-400">
-              Soluciones para tus pedidos, sin importar tu negocio
-            </p>
+          {/* Brand logo */}
+          <div className="mb-6 flex justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img alt="PedidosCloud" className="h-32 w-auto object-contain" src="/brand-logo.png" />
           </div>
 
           <div className="mb-5 text-center">
