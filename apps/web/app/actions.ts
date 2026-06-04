@@ -699,28 +699,33 @@ export async function updateBusinessPhone(_prev: ActionState, formData: FormData
 }
 
 export async function updateLogo(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const restaurantId = String(formData.get("restaurantId"));
-  const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
-  const file = formData.get("logo");
-  let logoPath: string | null = null;
   try {
-    logoPath = file instanceof File ? await saveUpload(file, "logo") : null;
-  } catch (e) {
-    return { ok: false, message: e instanceof Error ? e.message : "No se pudo subir el logo.", ts: Date.now() };
-  }
-  if (!logoPath) {
-    return { ok: false, message: "Sube una imagen de logo (PNG, JPG o WEBP).", ts: Date.now() };
-  }
+    const restaurantId = String(formData.get("restaurantId"));
+    const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
+    const file = formData.get("logo");
+    let logoPath: string | null = null;
+    try {
+      logoPath = file instanceof File ? await saveUpload(file, "logo") : null;
+    } catch (e) {
+      return { ok: false, message: e instanceof Error ? e.message : "No se pudo subir el logo.", ts: Date.now() };
+    }
+    if (!logoPath) {
+      return { ok: false, message: "Sube una imagen de logo (PNG, JPG o WEBP).", ts: Date.now() };
+    }
 
-  const restaurant = await prisma.restaurant.update({
-    where: { id: restaurantId },
-    data: { logoPath },
-    select: { slug: true },
-  });
-  revalidatePath("/admin");
-  revalidatePath(returnPath);
-  revalidatePath(`/r/${restaurant.slug}`);
-  return { ok: true, message: "Logo actualizado.", ts: Date.now() };
+    const restaurant = await prisma.restaurant.update({
+      where: { id: restaurantId },
+      data: { logoPath },
+      select: { slug: true },
+    });
+    revalidatePath("/admin");
+    revalidatePath(returnPath);
+    revalidatePath(`/r/${restaurant.slug}`);
+    return { ok: true, message: "Logo actualizado.", ts: Date.now() };
+  } catch (e) {
+    console.error("[updateLogo]", e);
+    return { ok: false, message: "No se pudo guardar el logo. Intenta de nuevo.", ts: Date.now() };
+  }
 }
 
 export async function updateDeliverySettings(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -796,31 +801,36 @@ export async function updatePaymentSettings(_prev: ActionState, formData: FormDa
 }
 
 export async function updateMenuTemplate(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const restaurantId = String(formData.get("restaurantId"));
-  const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
-  const file = formData.get("menuTemplate");
-  let menuTemplatePath: string | null = null;
   try {
-    menuTemplatePath = file instanceof File ? await saveUpload(file, "menu-template") : null;
+    const restaurantId = String(formData.get("restaurantId"));
+    const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
+    const file = formData.get("menuTemplate");
+
+    let menuTemplatePath: string | null = null;
+    try {
+      menuTemplatePath = file instanceof File ? await saveUpload(file, "menu-template") : null;
+    } catch (e) {
+      return { ok: false, message: e instanceof Error ? e.message : "No se pudo subir la plantilla.", ts: Date.now() };
+    }
+    if (!menuTemplatePath) {
+      return { ok: false, message: "Sube una imagen de plantilla (PNG, JPG o WEBP) de 1080×1350.", ts: Date.now() };
+    }
+
+    const current = await prisma.restaurant.findUnique({ where: { id: restaurantId }, select: { slug: true, menuTemplateHistory: true } });
+    const history = [menuTemplatePath, ...(current?.menuTemplateHistory ?? []).filter((p) => p !== menuTemplatePath)].slice(0, 4);
+
+    await prisma.restaurant.update({
+      where: { id: restaurantId },
+      data: { menuTemplatePath, menuTemplateHistory: history },
+    });
+    revalidatePath("/admin");
+    revalidatePath(returnPath);
+    if (current) revalidatePath(`/r/${current.slug}`);
+    return { ok: true, message: "Plantilla actualizada.", ts: Date.now() };
   } catch (e) {
-    return { ok: false, message: e instanceof Error ? e.message : "No se pudo subir la plantilla.", ts: Date.now() };
+    console.error("[updateMenuTemplate]", e);
+    return { ok: false, message: "No se pudo guardar la plantilla. Intenta de nuevo.", ts: Date.now() };
   }
-  if (!menuTemplatePath) {
-    return { ok: false, message: "Sube una imagen de plantilla (PNG, JPG o WEBP) de 1080×1350.", ts: Date.now() };
-  }
-
-  const current = await prisma.restaurant.findUnique({ where: { id: restaurantId }, select: { slug: true, menuTemplateHistory: true } });
-  // Prepend the new template, drop duplicates, keep the last 4.
-  const history = [menuTemplatePath, ...(current?.menuTemplateHistory ?? []).filter((p) => p !== menuTemplatePath)].slice(0, 4);
-
-  await prisma.restaurant.update({
-    where: { id: restaurantId },
-    data: { menuTemplatePath, menuTemplateHistory: history },
-  });
-  revalidatePath("/admin");
-  revalidatePath(returnPath);
-  if (current) revalidatePath(`/r/${current.slug}`);
-  return { ok: true, message: "Plantilla actualizada.", ts: Date.now() };
 }
 
 /** Clear the upload history so the 4 default presets are shown again. */

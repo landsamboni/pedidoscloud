@@ -76,21 +76,44 @@ export async function GET(req: Request, { params }: { params: Promise<{ restaura
   ]);
   const phone = restaurant.whatsappPhone ?? restaurant.nequiPhone ?? null;
 
-  return new ImageResponse(
-    (
-      <MenuImage
-        restaurantName={restaurant.name}
-        basePriceLabel={formatMoney(Number(restaurant.basePrice))}
-        groups={groups}
-        backgroundDataUri={background}
-        logoDataUri={logo}
-        phone={phone}
-      />
-    ),
-    {
-      width: MENU_IMAGE.width,
-      height: MENU_IMAGE.height,
-      headers: { "Cache-Control": "no-store" },
-    },
-  );
+  try {
+    return new ImageResponse(
+      (
+        <MenuImage
+          restaurantName={restaurant.name}
+          basePriceLabel={formatMoney(Number(restaurant.basePrice))}
+          groups={groups}
+          backgroundDataUri={background}
+          logoDataUri={logo}
+          phone={phone}
+        />
+      ),
+      {
+        width: MENU_IMAGE.width,
+        height: MENU_IMAGE.height,
+        headers: { "Cache-Control": "no-store" },
+      },
+    );
+  } catch (e) {
+    // Satori can fail on malformed/incompatible images. Return a fallback
+    // (no background) instead of crashing and triggering a client-side error.
+    console.error("[menu-image]", e);
+    return new ImageResponse(
+      (
+        <MenuImage
+          restaurantName={restaurant.name}
+          basePriceLabel={formatMoney(Number(restaurant.basePrice))}
+          groups={groups}
+          backgroundDataUri={null}
+          logoDataUri={null}
+          phone={phone}
+        />
+      ),
+      {
+        width: MENU_IMAGE.width,
+        height: MENU_IMAGE.height,
+        headers: { "Cache-Control": "no-store" },
+      },
+    );
+  }
 }
