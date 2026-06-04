@@ -318,6 +318,18 @@ function OrderCard({ order, restaurantSlug, restaurantName, now, readOnly, onVie
           </StatusButton>
         </div>
       )}
+      {!readOnly && order.status === "CANCELLED" && (
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-stone-100 pt-4">
+          <StatusButton
+            id={order.id}
+            slug={restaurantSlug}
+            status={order.paymentProofPath ? "PAYMENT_REVIEW" : "PAYMENT_PENDING"}
+            secondary
+          >
+            ↩ Reactivar pedido
+          </StatusButton>
+        </div>
+      )}
     </article>
   );
 }

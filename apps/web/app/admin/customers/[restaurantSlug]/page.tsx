@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { deleteCustomer, updateCustomer } from "@/app/actions";
+import { updateCustomer } from "@/app/actions";
+import { DeleteCustomerForm } from "@/components/delete-customer-form";
 import { getRestaurantCustomers } from "@/lib/data";
 
 export default async function CustomersPage({
@@ -80,25 +81,7 @@ export default async function CustomersPage({
 
                 {/* Delete */}
                 <div className="mt-4 border-t border-stone-100 pt-4">
-                  <form
-                    action={deleteCustomer}
-                    onSubmit={(e) => {
-                      if (!confirm(`¿Eliminar a "${c.name}"? ${c._count.orders > 0 ? `Sus ${c._count.orders} pedido(s) también serán eliminados.` : ""} No se puede deshacer.`)) {
-                        e.preventDefault();
-                      }
-                    }}
-                  >
-                    <input name="customerId" type="hidden" value={c.id} />
-                    <input name="restaurantSlug" type="hidden" value={restaurantSlug} />
-                    <button
-                      className="rounded-xl border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-50"
-                      type="submit"
-                    >
-                      {c._count.orders > 0
-                        ? `Eliminar cliente y sus ${c._count.orders} pedido(s)`
-                        : "Eliminar cliente"}
-                    </button>
-                  </form>
+                  <DeleteCustomerForm customerId={c.id} name={c.name} orderCount={c._count.orders} restaurantSlug={restaurantSlug} />
                 </div>
               </div>
             </details>

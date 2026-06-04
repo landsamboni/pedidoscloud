@@ -75,12 +75,29 @@ export async function getAdminRestaurants() {
       },
       orders: {
         where: { orderDate: localDateKey() },
+        select: { id: true },
+      },
+      _count: { select: { orders: true } },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+}
+
+export async function getAdminRestaurant(slug: string) {
+  return prisma.restaurant.findUnique({
+    where: { slug },
+    include: {
+      menus: {
+        where: { date: dateKeyToUtcDate(localDateKey()) },
+        take: 1,
+      },
+      orders: {
+        where: { orderDate: localDateKey() },
         include: { customer: true, items: true },
         orderBy: { createdAt: "asc" },
       },
       paymentMethods: { orderBy: { position: "asc" } },
     },
-    orderBy: { createdAt: "asc" },
   });
 }
 

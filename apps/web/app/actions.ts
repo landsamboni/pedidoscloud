@@ -303,6 +303,8 @@ export async function populateDemoData(formData: FormData) {
     select: { id: true, slug: true, basePrice: true },
   });
   if (!restaurant) throw new Error("Restaurante no encontrado.");
+  // Demo data is only for the showcase restaurant — never for real clients.
+  if (restaurant.slug !== "panza-feliz") throw new Error("Los datos demo solo están disponibles para el restaurante de demostración.");
 
   const DEMO_MENU = {
     soups: ["Sopa de lentejas", "Sancocho de pollo", "Crema de zanahoria", "Sopa de arvejas"],

@@ -87,8 +87,14 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
             <input accept="image/jpeg,image/png,image/webp" className="input mt-1" name="menuTemplate" required type="file" />
           </label>
           <SubmitButton className="button-primary self-end" pendingLabel="Subiendo…">{restaurant.menuTemplatePath ? "Cambiar plantilla" : "Subir plantilla"}</SubmitButton>
+          {restaurant.menuTemplatePath && (
+            <div className="flex items-center gap-3 sm:col-span-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img alt="Plantilla del menú" className="h-28 w-[88px] rounded-lg border border-stone-200 object-cover" src={resolveFileUrl(restaurant.menuTemplatePath) ?? ""} />
+              <p className="text-sm text-teal-600">Plantilla configurada. Sube otra para reemplazarla.</p>
+            </div>
+          )}
         </FeedbackForm>
-        {restaurant.menuTemplatePath && <p className="mt-2 text-sm text-teal-600">Plantilla configurada.</p>}
       </div>
 
       <div className="rounded-xl border border-stone-200 p-4">

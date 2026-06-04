@@ -55,6 +55,9 @@ export async function middleware(request: NextRequest) {
   }
 
   if (pathname.startsWith("/restaurant")) {
+    // Platform admin can view any restaurant's pages (read/manage from /admin).
+    if (session.role === "admin") return NextResponse.next();
+
     const slug = pathname.split("/")[2];
     if (session.role !== "restaurant" || session.restaurantSlug !== slug) {
       return redirectToLogin();
