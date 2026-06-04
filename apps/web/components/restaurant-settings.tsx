@@ -40,7 +40,8 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
   // so the preview/share always reflect the latest saved menu.
   const menuVersion =
     (menu ? [menu.soups, menu.proteins, menu.sides, menu.drinks].map((a) => a.join("␟")).join("␞") : "") +
-    "‖" + (restaurant.menuTemplatePath ?? ""); // include template so changing it refreshes the image
+    "‖" + (restaurant.menuTemplatePath ?? "") +
+    "‖" + (restaurant.logoPath ?? ""); // include logo so restoring/changing it also refreshes the image
   // Selectable backgrounds: latest uploads first, then presets, up to 4.
   const templateSlots = Array.from(new Set([...(restaurant.menuTemplateHistory ?? []), ...PRESET_TEMPLATES])).slice(0, 4);
   return (

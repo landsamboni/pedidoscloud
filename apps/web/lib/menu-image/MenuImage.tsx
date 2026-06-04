@@ -48,9 +48,9 @@ export function MenuImage({ restaurantName, basePriceLabel, groups, backgroundDa
       {logoDataUri && (
         <img
           src={logoDataUri}
-          width={180}
-          height={180}
-          style={{ position: "absolute", top: 36, left: 36, width: 180, height: 180, objectFit: "contain" }}
+          width={220}
+          height={220}
+          style={{ position: "absolute", top: 36, left: 36, width: 220, height: 220, objectFit: "contain" }}
         />
       )}
 
