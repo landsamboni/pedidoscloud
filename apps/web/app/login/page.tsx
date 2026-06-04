@@ -68,11 +68,11 @@ export default function LoginPage() {
           {/* Brand logo */}
           <div className="mb-6 flex justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img alt="PedidosCloud" className="h-48 w-auto object-contain" src="/brand-logo.png" />
+            <img alt="PedidosCloud" className="h-52 w-auto object-contain" src="/brand-logo.png" />
           </div>
 
           <div className="mb-5 text-center">
-            <h2 className="text-2xl font-bold text-stone-900">¡Bienvenido!</h2>
+            <h3 className="text-2xl font-bold text-stone-900">¡Hola!</h3>
             <p className="mt-1 text-sm text-stone-500">Inicia sesión para continuar</p>
           </div>
 
