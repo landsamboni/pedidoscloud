@@ -66,13 +66,12 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="rounded-3xl bg-white p-7 shadow-2xl">
           {/* Brand logo */}
-          <div className="mb-6 flex justify-center">
+          <div className="mb-8 flex justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img alt="PedidosCloud" className="h-52 w-auto object-contain" src="/brand-logo.png" />
+            <img alt="PedidosCloud" className="h-32 w-auto object-contain" src="/brand-logo.png" />
           </div>
 
           <div className="mb-5 text-center">
-            <h3 className="text-2xl font-bold text-stone-900">¡Hola!</h3>
             <p className="mt-1 text-sm text-stone-500">Inicia sesión para continuar</p>
           </div>
 
