@@ -22,7 +22,7 @@ export default async function AdminPage() {
           <h1 className="mt-1 text-3xl font-bold">Restaurantes</h1>
         </div>
         <form action={logoutAction}>
-          <button className="rounded-xl border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-600 transition hover:bg-stone-50" type="submit">
+          <button className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100" type="submit">
             Cerrar sesión
           </button>
         </form>

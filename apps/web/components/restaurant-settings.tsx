@@ -168,9 +168,11 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
           </FeedbackForm>
         </div>
       </div>
-      <div className="rounded-xl border border-stone-200 p-4">
-        <h3 className="text-lg font-semibold">Datos del negocio</h3>
-        <FeedbackForm action={updateBusinessPhone} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+      <div className="mt-6 border-t border-stone-200 pt-6">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-stone-400">Configuración del negocio (no cambia a diario)</p>
+        <div className="rounded-xl border border-stone-200 p-4">
+          <h3 className="text-lg font-semibold">Datos del negocio</h3>
+          <FeedbackForm action={updateBusinessPhone} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
           <input name="restaurantId" type="hidden" value={restaurant.id} />
           <input name="returnPath" type="hidden" value={returnPath} />
           <label className="text-sm font-medium text-stone-700">
@@ -196,6 +198,7 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
             </div>
           )}
         </FeedbackForm>
+        </div>
       </div>
 
       {/* Password section — only shown to admin (hidePassword=true in restaurant console) */}
