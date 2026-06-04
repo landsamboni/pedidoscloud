@@ -41,6 +41,11 @@ const statusColors: Record<string, string> = {
 
 const PENDING = new Set(["NEW", "PAYMENT_PENDING", "PAYMENT_REVIEW"]);
 
+// Neutral secondary button — kept gray ON PURPOSE so the orders board preserves
+// its own color system (the brand purple .button-secondary is not used here).
+const NEUTRAL_BTN =
+  "inline-flex items-center justify-center gap-2 rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-700 transition hover:bg-stone-50";
+
 // Sections always shown (even with count 0) — the accent applies to both nav pill and section title.
 const GROUPS = [
   { key: "review",    label: "Revisar comprobante",   statuses: ["PAYMENT_REVIEW"],         accent: "text-purple-700 bg-purple-100 border-purple-300" },
@@ -264,7 +269,7 @@ function OrderCard({ order, restaurantSlug, restaurantName, now, readOnly, onVie
               <p className="mt-1 text-amber-800">¿Confirmar el pago de todas formas?</p>
               <div className="mt-3 flex gap-2">
                 <ConfirmButton id={order.id} onCancel={() => setConfirmNoProof(false)} slug={restaurantSlug} />
-                <button className="button-secondary text-sm" onClick={() => setConfirmNoProof(false)} type="button">Cancelar</button>
+                <button className={`${NEUTRAL_BTN} text-sm`} onClick={() => setConfirmNoProof(false)} type="button">Cancelar</button>
               </div>
             </div>
           ) : (
@@ -339,7 +344,7 @@ function StatusButton({ id, slug, status, secondary, children }: {
       <input name="id" type="hidden" value={id} />
       <input name="slug" type="hidden" value={slug} />
       <input name="status" type="hidden" value={status} />
-      <button className={secondary ? "button-secondary" : "button-primary"}>{children}</button>
+      <button className={secondary ? NEUTRAL_BTN : "button-primary"}>{children}</button>
     </form>
   );
 }

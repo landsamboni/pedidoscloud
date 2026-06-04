@@ -20,12 +20,12 @@ export const MENU_IMAGE = {
   // Colors
   ink: "#1c1917", // stone-900
   muted: "#78716c", // stone-500
-  accent: "#0f766e", // teal-700
+  accent: "#2575FC", // brand blue
   surcharge: "#b45309", // amber-700
 
   // Fallback background (when a restaurant has not uploaded a template yet):
-  // a simple warm gradient drawn in CSS — no image file required.
-  fallbackBackground: "linear-gradient(135deg, #fef3c7 0%, #fde68a 45%, #fcd34d 100%)",
+  // a soft brand gradient (blue → purple → pink) drawn in CSS — no image needed.
+  fallbackBackground: "linear-gradient(135deg, #eef4ff 0%, #efeaff 50%, #fde6f4 100%)",
 } as const;
 
 export const CATEGORY_LABELS = {

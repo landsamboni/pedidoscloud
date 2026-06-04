@@ -23,7 +23,7 @@ export default async function SuspendedPage({ params }: { params: Promise<{ rest
         </div>
 
         <form action={logoutAction} className="mt-6">
-          <button className="w-full rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-100" type="submit">
+          <button className="button-danger w-full" type="submit">
             Cerrar sesión
           </button>
         </form>

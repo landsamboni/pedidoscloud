@@ -26,7 +26,7 @@ export default async function RestaurantConsolePage({ params }: { params: Promis
           <p className="mt-2 text-stone-600">Administra tu menú, pagos Nequi y pedidos del día.</p>
         </div>
         <form action={logoutAction}>
-          <button className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100" type="submit">
+          <button className="button-danger" type="submit">
             Cerrar sesión
           </button>
         </form>

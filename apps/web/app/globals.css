@@ -42,7 +42,19 @@
     @apply inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-stone-400 disabled:shadow-none;
   }
 
+  /* Secondary actions use the brand purple (outline). */
   .button-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-700 transition hover:bg-stone-50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-brand-purple/40 bg-white px-4 py-2.5 text-sm font-semibold text-brand-purple transition hover:bg-brand-purple/5 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  /* Cancel / destructive actions use the brand pink (soft outline). */
+  .button-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-brand-pink/40 bg-brand-pink/5 px-4 py-2.5 text-sm font-semibold text-brand-pink transition hover:bg-brand-pink/10 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  /* Login hero button — brand blue→pink gradient. */
+  .button-gradient {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60;
+    background-image: linear-gradient(90deg, #2575fc 0%, #7b61ff 55%, #e94dbd 100%);
   }
 }

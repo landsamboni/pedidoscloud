@@ -53,8 +53,8 @@ function LoginForm() {
         </p>
       )}
 
-      <button className="button-primary w-full py-3 text-base" disabled={pending} type="submit">
-        {pending ? "Ingresando…" : "Ingresar"}
+      <button className="button-gradient w-full py-3 text-base" disabled={pending} type="submit">
+        {pending ? "Ingresando…" : "Iniciar sesión"}
       </button>
     </form>
   );
@@ -62,18 +62,26 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-stone-100 p-4">
+    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-brand-blue via-brand-purple to-brand-pink p-4">
       <div className="w-full max-w-sm">
-        {/* Brand */}
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-black tracking-tight text-teal-700">PedidosCloud</h1>
-          <p className="mt-1 text-sm text-stone-500">Gestión de pedidos para restaurantes</p>
-        </div>
+        <div className="rounded-3xl bg-white p-7 shadow-2xl">
+          {/* Brand */}
+          <div className="mb-6 text-center">
+            <h1 className="text-3xl font-black tracking-tight">
+              <span className="text-stone-900">Pedidos</span>
+              <span className="text-brand-blue">Cloud</span>
+            </h1>
+            <p className="mt-1 text-xs font-medium uppercase tracking-wide text-stone-400">
+              Soluciones para tus pedidos, sin importar tu negocio
+            </p>
+          </div>
 
-        <div className="card">
-          <h2 className="mb-5 text-xl font-bold text-stone-900">Acceso de operadores</h2>
+          <div className="mb-5 text-center">
+            <h2 className="text-2xl font-bold text-stone-900">¡Bienvenido!</h2>
+            <p className="mt-1 text-sm text-stone-500">Inicia sesión para continuar</p>
+          </div>
 
-          <Suspense fallback={<div className="space-y-4 animate-pulse"><div className="h-10 rounded-xl bg-stone-100"/><div className="h-10 rounded-xl bg-stone-100"/><div className="h-10 rounded-xl bg-teal-100"/></div>}>
+          <Suspense fallback={<div className="space-y-4 animate-pulse"><div className="h-10 rounded-xl bg-stone-100"/><div className="h-10 rounded-xl bg-stone-100"/><div className="h-10 rounded-xl bg-stone-100"/></div>}>
             <LoginForm />
           </Suspense>
 
@@ -83,7 +91,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <p className="mt-6 text-center text-xs text-stone-400">
+        <p className="mt-6 text-center text-xs font-medium text-white/80">
           © {new Date().getFullYear()} PedidosCloud
         </p>
       </div>

@@ -128,22 +128,18 @@ export function MenuEditor({
       {menuPublishedToday && (
         <div className="mt-3 border-t border-stone-100 pt-3">
           {!confirmUnpub ? (
-            <button
-              className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
-              onClick={() => setConfirmUnpub(true)}
-              type="button"
-            >
+            <button className="button-danger" onClick={() => setConfirmUnpub(true)} type="button">
               Despublicar menú (pausar pedidos)
             </button>
           ) : (
-            <form action={unpubAction} className="flex flex-col gap-2 rounded-xl bg-red-50 p-3 sm:flex-row sm:items-center">
+            <form action={unpubAction} className="flex flex-col gap-2 rounded-xl bg-brand-pink/5 p-3 sm:flex-row sm:items-center">
               <input name="restaurantId" type="hidden" value={restaurantId} />
               <input name="returnPath" type="hidden" value={returnPath} />
-              <p className="text-sm text-red-800 sm:flex-1">
+              <p className="text-sm text-stone-700 sm:flex-1">
                 ¿Quitar el menú de hoy? Tus clientes verán “preparando el menú” y no podrán pedir hasta que vuelvas a publicar.
               </p>
               <div className="flex gap-2">
-                <SubmitButton className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700" pendingLabel="Despublicando…">
+                <SubmitButton className="rounded-xl bg-brand-pink px-4 py-2 text-sm font-semibold text-white transition hover:brightness-95" pendingLabel="Despublicando…">
                   Sí, despublicar
                 </SubmitButton>
                 <button className="button-secondary text-sm" onClick={() => setConfirmUnpub(false)} type="button">Cancelar</button>
