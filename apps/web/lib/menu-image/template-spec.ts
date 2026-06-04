@@ -28,6 +28,19 @@ export const MENU_IMAGE = {
   fallbackBackground: "linear-gradient(135deg, #eef4ff 0%, #efeaff 50%, #fde6f4 100%)",
 } as const;
 
+/**
+ * Default selectable background templates. These are static images placed in
+ * apps/web/public/menu-templates/ (preset-1.png … preset-4.png). A new
+ * restaurant starts with these; as it uploads its own, those replace the presets
+ * in the 4-thumbnail selector (see menuTemplateHistory).
+ */
+export const PRESET_TEMPLATES = [
+  "/menu-templates/preset-1.png",
+  "/menu-templates/preset-2.png",
+  "/menu-templates/preset-3.png",
+  "/menu-templates/preset-4.png",
+] as const;
+
 export const CATEGORY_LABELS = {
   soups: "Sopas",
   proteins: "Proteínas",

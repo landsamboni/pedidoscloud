@@ -755,13 +755,38 @@ export async function updateMenuTemplate(_prev: ActionState, formData: FormData)
     return { ok: false, message: "Sube una imagen de plantilla (PNG, JPG o WEBP) de 1080×1350.", ts: Date.now() };
   }
 
+  const current = await prisma.restaurant.findUnique({ where: { id: restaurantId }, select: { slug: true, menuTemplateHistory: true } });
+  // Prepend the new template, drop duplicates, keep the last 4.
+  const history = [menuTemplatePath, ...(current?.menuTemplateHistory ?? []).filter((p) => p !== menuTemplatePath)].slice(0, 4);
+
   await prisma.restaurant.update({
     where: { id: restaurantId },
-    data: { menuTemplatePath },
+    data: { menuTemplatePath, menuTemplateHistory: history },
   });
   revalidatePath("/admin");
   revalidatePath(returnPath);
+  if (current) revalidatePath(`/r/${current.slug}`);
   return { ok: true, message: "Plantilla actualizada.", ts: Date.now() };
+}
+
+/** Select an existing template (a preset or one from the upload history). */
+export async function selectMenuTemplate(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const restaurantId = String(formData.get("restaurantId"));
+  const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
+  const templatePath = String(formData.get("templatePath") ?? "");
+
+  const restaurant = await prisma.restaurant.findUnique({ where: { id: restaurantId }, select: { slug: true, menuTemplateHistory: true } });
+  if (!restaurant) return { ok: false, message: "Restaurante no encontrado.", ts: Date.now() };
+
+  const { PRESET_TEMPLATES } = await import("@/lib/menu-image/template-spec");
+  const allowed = new Set<string>([...restaurant.menuTemplateHistory, ...PRESET_TEMPLATES]);
+  if (!allowed.has(templatePath)) return { ok: false, message: "Plantilla no válida.", ts: Date.now() };
+
+  await prisma.restaurant.update({ where: { id: restaurantId }, data: { menuTemplatePath: templatePath } });
+  revalidatePath("/admin");
+  revalidatePath(returnPath);
+  revalidatePath(`/r/${restaurant.slug}`);
+  return { ok: true, message: "Plantilla seleccionada.", ts: Date.now() };
 }
 
 export async function createPaymentMethod(_prev: ActionState, formData: FormData): Promise<ActionState> {

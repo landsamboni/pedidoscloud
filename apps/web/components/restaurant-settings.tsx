@@ -1,8 +1,9 @@
-import { createPaymentMethod, deletePaymentMethod, setRestaurantPassword, updateBasePrice, updateBusinessPhone, updateLogo, updateMenuTemplate, updatePaymentSettings } from "@/app/actions";
+import { createPaymentMethod, deletePaymentMethod, selectMenuTemplate, setRestaurantPassword, updateBasePrice, updateBusinessPhone, updateLogo, updateMenuTemplate, updatePaymentSettings } from "@/app/actions";
 import { FeedbackForm, SubmitButton } from "@/components/feedback-form";
 import { MenuEditor } from "@/components/menu-editor";
 import { ShareMenuImage } from "@/components/share-menu-image";
 import { resolveFileUrl } from "@/lib/file-url";
+import { PRESET_TEMPLATES } from "@/lib/menu-image/template-spec";
 
 type Menu = {
   soups: string[];
@@ -22,6 +23,7 @@ type Restaurant = {
   whatsappPhone: string | null;
   passwordHash: string | null;
   menuTemplatePath: string | null;
+  menuTemplateHistory: string[];
   logoPath: string | null;
   paymentMethods: PaymentMethod[];
 };
@@ -33,6 +35,8 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
   const menuVersion =
     (menu ? [menu.soups, menu.proteins, menu.sides, menu.drinks].map((a) => a.join("␟")).join("␞") : "") +
     "‖" + (restaurant.menuTemplatePath ?? ""); // include template so changing it refreshes the image
+  // Selectable backgrounds: latest uploads first, then presets, up to 4.
+  const templateSlots = Array.from(new Set([...(restaurant.menuTemplateHistory ?? []), ...PRESET_TEMPLATES])).slice(0, 4);
   return (
     <div className="space-y-3">
       <div className="rounded-xl border border-stone-200 p-4">
@@ -79,21 +83,41 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
         <div className="mt-4">
           <ShareMenuImage hasTemplate={!!restaurant.menuTemplatePath} publishedToday={menuPublishedToday} slug={restaurantSlug} version={menuVersion} />
         </div>
-        <FeedbackForm action={updateMenuTemplate} className="mt-4 grid gap-3 border-t border-stone-100 pt-4 sm:grid-cols-[1fr_auto]">
+
+        {/* Template selector — 4 thumbnails (latest uploads first, then presets) */}
+        <div className="mt-4 border-t border-stone-100 pt-4">
+          <p className="text-sm font-medium text-stone-700">Fondo de la imagen <span className="font-normal text-stone-400">(elige una)</span></p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {templateSlots.map((path) => {
+              const active = path === restaurant.menuTemplatePath;
+              return (
+                <FeedbackForm action={selectMenuTemplate} key={path}>
+                  <input name="restaurantId" type="hidden" value={restaurant.id} />
+                  <input name="returnPath" type="hidden" value={returnPath} />
+                  <input name="templatePath" type="hidden" value={path} />
+                  <button
+                    aria-label={active ? "Plantilla activa" : "Usar esta plantilla"}
+                    className={`relative block overflow-hidden rounded-lg border-2 transition ${active ? "border-brand-blue ring-2 ring-brand-blue/30" : "border-stone-200 hover:border-brand-blue/40"}`}
+                    type="submit"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img alt="Plantilla" className="h-24 w-[68px] object-cover" src={resolveFileUrl(path) ?? ""} />
+                    {active && <span className="absolute inset-x-0 bottom-0 bg-brand-blue py-0.5 text-center text-[10px] font-semibold text-white">Activa</span>}
+                  </button>
+                </FeedbackForm>
+              );
+            })}
+          </div>
+        </div>
+
+        <FeedbackForm action={updateMenuTemplate} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
           <input name="restaurantId" type="hidden" value={restaurant.id} />
           <input name="returnPath" type="hidden" value={returnPath} />
           <label className="text-sm font-medium text-stone-700">
-            Plantilla de fondo <span className="font-normal text-stone-400">(PNG/JPG/WEBP. Tamaño recomendado 1080×1350 vertical; otras medidas se recortan. Deja libre el centro para el texto)</span>
+            Subir tu propia plantilla <span className="font-normal text-stone-400">(PNG/JPG/WEBP. Recomendado 1080×1350 vertical; otras medidas se recortan. Deja libre el centro para el texto)</span>
             <input accept="image/jpeg,image/png,image/webp" className="input mt-1" name="menuTemplate" required type="file" />
           </label>
-          <SubmitButton className="button-primary self-end" pendingLabel="Subiendo…">{restaurant.menuTemplatePath ? "Cambiar plantilla" : "Subir plantilla"}</SubmitButton>
-          {restaurant.menuTemplatePath && (
-            <div className="flex items-center gap-3 sm:col-span-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img alt="Plantilla del menú" className="h-28 w-[88px] rounded-lg border border-stone-200 object-cover" src={resolveFileUrl(restaurant.menuTemplatePath) ?? ""} />
-              <p className="text-sm text-teal-600">Plantilla configurada. Sube otra para reemplazarla.</p>
-            </div>
-          )}
+          <SubmitButton className="button-primary self-end" pendingLabel="Subiendo…">Subir plantilla</SubmitButton>
         </FeedbackForm>
       </div>
 

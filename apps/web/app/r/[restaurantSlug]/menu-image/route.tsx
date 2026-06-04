@@ -19,7 +19,8 @@ function mimeFromPath(p: string): string {
 async function backgroundDataUri(pathValue: string | null | undefined): Promise<string | null> {
   if (!pathValue) return null;
   try {
-    if (pathValue.startsWith("/uploads/")) {
+    if (pathValue.startsWith("/")) {
+      // Public static asset (/uploads/... uploaded locally, or /menu-templates/... preset).
       const fs = await import("node:fs/promises");
       const path = await import("node:path");
       const buf = await fs.readFile(path.join(process.cwd(), "public", pathValue));
