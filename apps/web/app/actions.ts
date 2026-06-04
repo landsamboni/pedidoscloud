@@ -712,6 +712,21 @@ export async function updateLogo(_prev: ActionState, formData: FormData): Promis
   return { ok: true, message: "Logo actualizado.", ts: Date.now() };
 }
 
+/** Remove the custom logo so the restaurant falls back to the default logo. */
+export async function resetLogo(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const restaurantId = String(formData.get("restaurantId"));
+  const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
+  const restaurant = await prisma.restaurant.update({
+    where: { id: restaurantId },
+    data: { logoPath: null },
+    select: { slug: true },
+  });
+  revalidatePath("/admin");
+  revalidatePath(returnPath);
+  revalidatePath(`/r/${restaurant.slug}`);
+  return { ok: true, message: "Logo por defecto restaurado.", ts: Date.now() };
+}
+
 export async function updatePaymentSettings(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const restaurantId = String(formData.get("restaurantId"));
   const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");

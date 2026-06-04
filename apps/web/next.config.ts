@@ -25,7 +25,7 @@ const nextConfig: NextConfig = {
   // route can read them from disk (Amplify serves /public via CDN only — the files
   // are NOT on the compute filesystem by default).
   outputFileTracingIncludes: {
-    "/r/[restaurantSlug]/menu-image": ["./public/menu-templates/**/*"],
+    "/r/[restaurantSlug]/menu-image": ["./public/menu-templates/**/*", "./public/logo-default.png"],
   },
   // HTTP security headers — defense in depth alongside Cloudflare.
   // Note: HSTS is already set by Cloudflare. CSP is intentionally omitted

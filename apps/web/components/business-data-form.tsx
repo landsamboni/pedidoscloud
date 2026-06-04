@@ -1,6 +1,7 @@
-import { updateBusinessPhone, updateLogo } from "@/app/actions";
+import { resetLogo, updateBusinessPhone, updateLogo } from "@/app/actions";
 import { FeedbackForm, SubmitButton } from "@/components/feedback-form";
 import { resolveFileUrl } from "@/lib/file-url";
+import { DEFAULT_LOGO_PATH } from "@/lib/branding";
 
 /**
  * Permanent business data (phone/WhatsApp + logo). Rendered as its own top-level
@@ -39,14 +40,22 @@ export function BusinessDataForm({
           <input accept="image/jpeg,image/png,image/webp" className="input mt-1" name="logo" required type="file" />
         </label>
         <SubmitButton className="button-primary self-end" pendingLabel="Subiendo…">{logoPath ? "Cambiar logo" : "Subir logo"}</SubmitButton>
-        {logoPath && (
-          <div className="flex items-center gap-3 sm:col-span-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img alt="Logo del negocio" className="h-20 w-20 rounded-lg border border-stone-200 object-contain" src={resolveFileUrl(logoPath) ?? ""} />
-            <p className="text-sm text-teal-600">Logo configurado. Sube otro para reemplazarlo.</p>
-          </div>
-        )}
+        <div className="flex items-center gap-3 sm:col-span-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img alt="Logo del negocio" className="h-20 w-20 rounded-lg border border-stone-200 bg-white object-contain p-1" src={resolveFileUrl(logoPath) ?? DEFAULT_LOGO_PATH} />
+          <p className="text-sm text-stone-500">{logoPath ? "Logo propio configurado." : "Usando el logo por defecto. Sube el tuyo para reemplazarlo."}</p>
+        </div>
       </FeedbackForm>
+
+      {logoPath && (
+        <FeedbackForm action={resetLogo} className="mt-2">
+          <input name="restaurantId" type="hidden" value={restaurantId} />
+          <input name="returnPath" type="hidden" value={returnPath} />
+          <SubmitButton className="text-sm font-medium text-brand-pink hover:underline" pendingLabel="Restaurando…">
+            ↺ Restaurar logo por defecto
+          </SubmitButton>
+        </FeedbackForm>
+      )}
     </section>
   );
 }

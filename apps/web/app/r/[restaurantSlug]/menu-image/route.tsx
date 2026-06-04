@@ -69,9 +69,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ restaura
     }),
   }));
 
+  const { DEFAULT_LOGO_PATH } = await import("@/lib/branding");
   const [background, logo] = await Promise.all([
     backgroundDataUri(restaurant.menuTemplatePath, origin),
-    backgroundDataUri(restaurant.logoPath, origin),
+    backgroundDataUri(restaurant.logoPath ?? DEFAULT_LOGO_PATH, origin),
   ]);
   const phone = restaurant.whatsappPhone ?? restaurant.nequiPhone ?? null;
 
