@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useRef } from "react";
 
 export const MENU_FIELDS = [
-  { name: "soups", label: "Sopas", example: "Sopa de mariscos +3000", placeholder: "Sancocho de pollo\nMazamorra\nCrema de ahuyama" },
-  { name: "proteins", label: "Proteínas", example: "Costilla BBQ +4000", placeholder: "Pollo a la plancha\nChuleta de cerdo\nCostilla BBQ +4000" },
-  { name: "sides", label: "Principios", example: "Aguacate +2000", placeholder: "Lentejas\nFrijoles\nPapa criolla" },
-  { name: "drinks", label: "Bebidas", example: "Jugo en leche +1500", placeholder: "Limonada\nJugo de lulo\nGaseosa +1500" },
+  { name: "soups", label: "Sopas", example: "Sopa +3000", placeholder: "Sancocho de pollo\nMazamorra\nCrema de ahuyama" },
+  { name: "proteins", label: "Proteínas", example: "Costilla +4000", placeholder: "Pollo a la plancha\nChuleta de cerdo\nCostilla BBQ +4000" },
+  { name: "sides", label: "Principios", example: "Principio +2000", placeholder: "Lentejas\nFrijoles\nPapa criolla" },
+  { name: "drinks", label: "Bebidas", example: "Jugo +1500", placeholder: "Limonada\nJugo de lulo\nGaseosa +1500" },
 ] as const;
 
 /**

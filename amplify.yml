@@ -41,7 +41,11 @@ applications:
         baseDirectory: .next
         files:
           - "**/*"
+      # Cache paths are relative to the repo root (not appRoot), so they must be
+      # prefixed with apps/web. .next/cache is the high-value one (incremental
+      # next build). This uses the cache-artifact store, which works even when
+      # Amplify's automatic environment cache fails to write.
       cache:
         paths:
-          - node_modules/**/*
-          - .next/cache/**/*
+          - apps/web/node_modules/**/*
+          - apps/web/.next/cache/**/*
