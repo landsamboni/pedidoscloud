@@ -29,6 +29,12 @@ export default async function RestaurantMenuPage({ params }: { params: Promise<{
           restaurantSlug={restaurant.slug}
           basePrice={Number(restaurant.basePrice)}
           menu={menu}
+          delivery={{
+            mode: restaurant.deliveryMode,
+            fee: restaurant.deliveryFee ? Number(restaurant.deliveryFee) : 0,
+            note: restaurant.deliveryNote,
+            allowPickup: restaurant.allowPickup,
+          }}
         />
       ) : (
         <section className="card text-center">

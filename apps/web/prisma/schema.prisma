@@ -30,6 +30,10 @@ model Restaurant {
   menuTemplatePath String?           // currently selected background for the shareable menu PNG
   menuTemplateHistory String[] @default([]) // last 4 uploaded templates (most recent first)
   logoPath         String?           // restaurant logo (customer page header + menu image)
+  deliveryMode     String   @default("separate") // "free" | "fixed" | "separate"
+  deliveryFee      Decimal? @db.Decimal(12, 2)   // used when deliveryMode = "fixed"
+  deliveryNote     String?           // optional note shown to the customer about delivery
+  allowPickup      Boolean  @default(true) // offer "Recoger en restaurante" (no fee)
   whatsappPhone    String?
   passwordHash     String?           // bcrypt hash — set by admin, changeable by restaurant
   subscriptionStartedAt DateTime?   // date admin confirmed payment
@@ -93,6 +97,8 @@ model Order {
   orderNumber  Int
   status       OrderStatus @default(NEW)
   total        Decimal     @db.Decimal(12, 2)
+  deliveryFee  Decimal     @default(0) @db.Decimal(12, 2) // delivery charged (0 for pickup/free/separate)
+  fulfillment  String      @default("delivery") // "delivery" | "pickup"
   address      String
   customerName String   // snapshot of customer name at order creation time
   paymentProofPath String?

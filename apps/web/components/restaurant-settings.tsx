@@ -1,5 +1,6 @@
 import { deletePaymentMethod, resetMenuTemplates, selectMenuTemplate, setRestaurantPassword, updateBasePrice, updateMenuTemplate, updatePaymentSettings } from "@/app/actions";
 import { FeedbackForm, SubmitButton } from "@/components/feedback-form";
+import { DeliveryForm } from "@/components/delivery-form";
 import { MenuEditor } from "@/components/menu-editor";
 import { PaymentMethodForm } from "@/components/payment-method-form";
 import { ShareMenuImage } from "@/components/share-menu-image";
@@ -26,6 +27,10 @@ type Restaurant = {
   menuTemplatePath: string | null;
   menuTemplateHistory: string[];
   logoPath: string | null;
+  deliveryMode: string;
+  deliveryFee: { toString(): string } | null;
+  deliveryNote: string | null;
+  allowPickup: boolean;
   paymentMethods: PaymentMethod[];
 };
 
@@ -51,6 +56,20 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
           </label>
           <SubmitButton className="button-primary self-end">Guardar precio</SubmitButton>
         </FeedbackForm>
+      </div>
+
+      <div className="rounded-xl border border-stone-200 p-4">
+        <h3 className="text-lg font-semibold">Domicilio y entrega</h3>
+        <div className="mt-4">
+          <DeliveryForm
+            allowPickup={restaurant.allowPickup}
+            deliveryFee={restaurant.deliveryFee ? Number(restaurant.deliveryFee.toString()) : null}
+            deliveryMode={restaurant.deliveryMode}
+            deliveryNote={restaurant.deliveryNote}
+            restaurantId={restaurant.id}
+            returnPath={returnPath}
+          />
+        </div>
       </div>
 
       <div className="rounded-xl border border-stone-200 p-4">

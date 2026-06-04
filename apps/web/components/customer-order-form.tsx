@@ -11,6 +11,7 @@ type Props = {
   restaurantSlug: string;
   basePrice: number;
   menu: { soups: string[]; proteins: string[]; sides: string[]; drinks: string[] };
+  delivery: { mode: string; fee: number; note: string | null; allowPickup: boolean };
 };
 
 function firstLunch(menu: Props["menu"]): Lunch {
@@ -49,10 +50,11 @@ function validateAddress(value: string): string | null {
   return null;
 }
 
-export function CustomerOrderForm({ restaurantSlug, basePrice, menu }: Props) {
+export function CustomerOrderForm({ restaurantSlug, basePrice, menu, delivery }: Props) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [fulfillment, setFulfillment] = useState<"delivery" | "pickup">("delivery");
   const [nameError, setNameError] = useState<string | null>(null);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [addressError, setAddressError] = useState<string | null>(null);
@@ -63,7 +65,10 @@ export function CustomerOrderForm({ restaurantSlug, basePrice, menu }: Props) {
   const finalTotalRef = useRef<HTMLElement>(null);
   const deliveryRef = useRef<HTMLElement>(null);
   const submittingRef = useRef(false);
-  const total = useMemo(() => items.reduce((sum, item) => sum + lunchTotal(basePrice, item), 0), [basePrice, items]);
+  const isPickup = fulfillment === "pickup";
+  const deliveryFee = !isPickup && delivery.mode === "fixed" ? delivery.fee : 0;
+  const foodTotal = useMemo(() => items.reduce((sum, item) => sum + lunchTotal(basePrice, item), 0), [basePrice, items]);
+  const total = foodTotal + deliveryFee;
 
   useEffect(() => {
     const finalTotal = finalTotalRef.current;
@@ -89,14 +94,14 @@ export function CustomerOrderForm({ restaurantSlug, basePrice, menu }: Props) {
     setError("");
     const ne = validateName(name);
     const pe = validatePhone(phone);
-    const ae = validateAddress(address);
+    const ae = isPickup ? null : validateAddress(address);
     setNameError(ne); setPhoneError(pe); setAddressError(ae);
     if (ne || pe || ae) { deliveryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
     if (submittingRef.current) return;
     submittingRef.current = true;
     startTransition(async () => {
       try {
-        const result = await createOrder({ restaurantSlug, name: name.trim(), phone, address: address.trim(), items });
+        const result = await createOrder({ restaurantSlug, name: name.trim(), phone, address: isPickup ? "" : address.trim(), items, fulfillment });
         if (!result.publicToken) throw new Error("No pudimos abrir el pago de tu pedido.");
         window.location.assign(`/r/${restaurantSlug}/orders/${result.publicToken}`);
       } catch (cause) {
@@ -139,8 +144,37 @@ export function CustomerOrderForm({ restaurantSlug, basePrice, menu }: Props) {
       </section>
 
       <section className="card scroll-mt-4 space-y-3" ref={deliveryRef}>
-        <h2 className="text-2xl font-bold">Datos para la entrega</h2>
-        <p className="text-base leading-relaxed text-stone-600">Ya casi terminas. Indícanos dónde entregar tu pedido.</p>
+        <h2 className="text-2xl font-bold">{isPickup ? "Tus datos" : "Datos para la entrega"}</h2>
+
+        {delivery.allowPickup && (
+          <div className="grid grid-cols-2 gap-2">
+            {(["delivery", "pickup"] as const).map((opt) => {
+              const selected = fulfillment === opt;
+              return (
+                <button
+                  aria-pressed={selected}
+                  className={`min-h-12 rounded-xl border px-3 py-2 text-base font-semibold transition ${selected ? "border-teal-600 bg-teal-600 text-white" : "border-stone-300 bg-white text-stone-700 hover:border-teal-400"}`}
+                  key={opt}
+                  onClick={() => setFulfillment(opt)}
+                  type="button"
+                >
+                  {opt === "delivery" ? "🛵 Domicilio" : "🏪 Recoger"}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <p className="rounded-xl bg-stone-50 px-3 py-2 text-sm text-stone-600">
+          {isPickup
+            ? "Recoges tu pedido en el restaurante — sin costo de domicilio."
+            : delivery.mode === "fixed"
+            ? `Domicilio: ${formatMoney(delivery.fee)} (se suma al total).`
+            : delivery.mode === "free"
+            ? "Domicilio: ¡gratis!"
+            : (delivery.note || "El domicilio se paga aparte; el restaurante lo coordina contigo.")}
+        </p>
+
         <div>
           <input aria-describedby={nameError ? "name-error" : undefined} aria-invalid={!!nameError} className={`input text-base ${nameError ? "border-red-400 focus:border-red-400 focus:ring-red-100" : ""}`} placeholder="Nombre y Apellido" value={name} onBlur={() => setNameError(validateName(name))} onChange={(e) => { setName(e.target.value); if (nameError) setNameError(validateName(e.target.value)); }} />
           {nameError && <p className="mt-1 text-sm text-red-600" id="name-error">{nameError}</p>}
@@ -149,17 +183,34 @@ export function CustomerOrderForm({ restaurantSlug, basePrice, menu }: Props) {
           <input aria-describedby={phoneError ? "phone-error" : undefined} aria-invalid={!!phoneError} className={`input text-base ${phoneError ? "border-red-400 focus:border-red-400 focus:ring-red-100" : ""}`} inputMode="tel" maxLength={10} placeholder="Teléfono celular (10 dígitos)" value={phone} onBlur={() => setPhoneError(validatePhone(phone))} onChange={(e) => { handlePhoneChange(e.target.value); if (phoneError) setPhoneError(validatePhone(e.target.value.replace(/\D/g, "").slice(0, 10))); }} />
           {phoneError && <p className="mt-1 text-sm text-red-600" id="phone-error">{phoneError}</p>}
         </div>
-        <div>
-          <textarea aria-describedby={addressError ? "address-error" : undefined} aria-invalid={!!addressError} className={`input min-h-24 text-base ${addressError ? "border-red-400 focus:border-red-400 focus:ring-red-100" : ""}`} placeholder="Dirección de entrega (ej. Cra 5 #12-34, apto 301)" value={address} onBlur={() => setAddressError(validateAddress(address))} onChange={(e) => { setAddress(e.target.value); if (addressError) setAddressError(validateAddress(e.target.value)); }} />
-          {addressError && <p className="mt-1 text-sm text-red-600" id="address-error">{addressError}</p>}
-        </div>
+        {!isPickup && (
+          <div>
+            <textarea aria-describedby={addressError ? "address-error" : undefined} aria-invalid={!!addressError} className={`input min-h-24 text-base ${addressError ? "border-red-400 focus:border-red-400 focus:ring-red-100" : ""}`} placeholder="Dirección de entrega (ej. Cra 5 #12-34, apto 301)" value={address} onBlur={() => setAddressError(validateAddress(address))} onChange={(e) => { setAddress(e.target.value); if (addressError) setAddressError(validateAddress(e.target.value)); }} />
+            {addressError && <p className="mt-1 text-sm text-red-600" id="address-error">{addressError}</p>}
+          </div>
+        )}
       </section>
 
       <section className="card" ref={finalTotalRef}>
-        <div className="flex items-center justify-between text-xl font-bold">
-          <span>Total</span>
+        <div className="space-y-1 text-sm text-stone-600">
+          <div className="flex items-center justify-between">
+            <span>Comida ({items.length} {items.length === 1 ? "almuerzo" : "almuerzos"})</span>
+            <span>{formatMoney(foodTotal)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span>Domicilio</span>
+            <span>
+              {isPickup ? "Recoger en restaurante" : delivery.mode === "fixed" ? formatMoney(delivery.fee) : delivery.mode === "free" ? "Gratis" : "Se paga aparte"}
+            </span>
+          </div>
+        </div>
+        <div className="mt-2 flex items-center justify-between border-t border-stone-200 pt-2 text-xl font-bold">
+          <span>Total a pagar</span>
           <span>{formatMoney(total)}</span>
         </div>
+        {!isPickup && delivery.mode === "separate" && (
+          <p className="mt-1 text-xs text-stone-400">El domicilio no está incluido; se paga/coordina aparte con el restaurante.</p>
+        )}
         {error && <p className="mt-3 text-base font-medium text-red-700">{error}</p>}
         <button className="button-primary mt-4 w-full py-3 text-base" disabled={pending} onClick={submit}>
           {pending ? "Confirmando..." : "Confirmar pedido"}

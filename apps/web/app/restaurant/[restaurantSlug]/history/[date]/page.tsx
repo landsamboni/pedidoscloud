@@ -22,6 +22,7 @@ export default async function HistoryDatePage({
     ...order,
     total: order.total.toString(),
     totalLabel: formatMoney(Number(order.total)),
+    deliveryFee: Number(order.deliveryFee),
     createdAtLabel: formatTime(order.createdAt),
     createdAtMs: order.createdAt.getTime(),
     paymentProofPath: resolveFileUrl(order.paymentProofPath),

@@ -21,6 +21,7 @@ type CreateOrderInput = {
   phone: string;
   address: string;
   items: LunchInput[];
+  fulfillment?: "delivery" | "pickup";
 };
 
 function required(value: string, field: string) {
@@ -65,9 +66,10 @@ function safeReturnPath(value: FormDataEntryValue | null, fallback: string) {
 
 
 export async function createOrder(input: CreateOrderInput) {
+  const fulfillment = input.fulfillment === "pickup" ? "pickup" : "delivery";
   const name = validateFullName(input.name);
   const phone = validatePhone(input.phone);
-  const address = validateAddress(input.address);
+  const address = fulfillment === "pickup" ? "Recoge en el restaurante" : validateAddress(input.address);
   if (!input.items.length) throw new Error("Agrega al menos un almuerzo.");
 
   const order = await prisma.$transaction(async (tx) => {
@@ -119,8 +121,8 @@ export async function createOrder(input: CreateOrderInput) {
       create: { restaurantId: restaurant.id, date: orderDate, lastNumber: 1 },
     });
 
-    // Total = sum of (basePrice + individual surcharges) for each lunch
-    const total = input.items.reduce((sum, item) => {
+    // Food total = sum of (basePrice + individual surcharges) for each lunch
+    const foodTotal = input.items.reduce((sum, item) => {
       const extra =
         parseSurcharge(item.soup) +
         parseSurcharge(item.protein) +
@@ -128,6 +130,13 @@ export async function createOrder(input: CreateOrderInput) {
         parseSurcharge(item.drink);
       return sum + Number(restaurant.basePrice) + extra;
     }, 0);
+
+    // Delivery fee only when delivering and the restaurant charges a fixed fee.
+    const deliveryFee =
+      fulfillment === "delivery" && restaurant.deliveryMode === "fixed"
+        ? Number(restaurant.deliveryFee ?? 0)
+        : 0;
+    const total = foodTotal + deliveryFee;
 
     return tx.order.create({
       data: {
@@ -138,6 +147,8 @@ export async function createOrder(input: CreateOrderInput) {
         orderNumber: counter.lastNumber,
         status: OrderStatus.PAYMENT_PENDING,
         total: new Prisma.Decimal(total),
+        deliveryFee: new Prisma.Decimal(deliveryFee),
+        fulfillment,
         address,
         items: {
           create: input.items.map((item) => {
@@ -710,6 +721,34 @@ export async function updateLogo(_prev: ActionState, formData: FormData): Promis
   revalidatePath(returnPath);
   revalidatePath(`/r/${restaurant.slug}`);
   return { ok: true, message: "Logo actualizado.", ts: Date.now() };
+}
+
+export async function updateDeliverySettings(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const restaurantId = String(formData.get("restaurantId"));
+  const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
+  const modeRaw = String(formData.get("deliveryMode") ?? "separate");
+  const deliveryMode = ["free", "fixed", "separate"].includes(modeRaw) ? modeRaw : "separate";
+  const allowPickup = formData.get("allowPickup") != null;
+  const note = String(formData.get("deliveryNote") ?? "").trim() || null;
+
+  let deliveryFee: number | null = null;
+  if (deliveryMode === "fixed") {
+    const fee = Number(formData.get("deliveryFee"));
+    if (!Number.isFinite(fee) || fee < 0) {
+      return { ok: false, message: "Ingresa un valor de domicilio válido.", ts: Date.now() };
+    }
+    deliveryFee = fee;
+  }
+
+  const restaurant = await prisma.restaurant.update({
+    where: { id: restaurantId },
+    data: { deliveryMode, deliveryFee, deliveryNote: note, allowPickup },
+    select: { slug: true },
+  });
+  revalidatePath("/admin");
+  revalidatePath(returnPath);
+  revalidatePath(`/r/${restaurant.slug}`);
+  return { ok: true, message: "Opciones de entrega guardadas.", ts: Date.now() };
 }
 
 /** Remove the custom logo so the restaurant falls back to the default logo. */

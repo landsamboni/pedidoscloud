@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateOrderStatus } from "@/app/actions";
-import { formatOrderNumber } from "@/lib/format";
+import { formatMoney, formatOrderNumber } from "@/lib/format";
 import { parseItemName } from "@/lib/menu";
 
 type Order = {
@@ -12,6 +12,8 @@ type Order = {
   status: string;
   total: string;
   totalLabel: string;
+  deliveryFee: number;
+  fulfillment: string;
   address: string;
   createdAtLabel: string;
   createdAtMs: number;
@@ -230,8 +232,15 @@ function OrderCard({ order, restaurantSlug, restaurantName, now, readOnly, onVie
             </a>
           )}
         </div>
-        <p className="text-stone-700"><span className="text-stone-500">Dirección</span> {order.address}</p>
-        <p><span className="text-stone-500">Total</span> <strong>{order.totalLabel}</strong></p>
+        {order.fulfillment === "pickup" ? (
+          <p className="font-semibold text-brand-purple">🏪 Recoge en el restaurante</p>
+        ) : (
+          <p className="text-stone-700"><span className="text-stone-500">Dirección</span> {order.address}</p>
+        )}
+        <p>
+          <span className="text-stone-500">Total</span> <strong>{order.totalLabel}</strong>
+          {order.deliveryFee > 0 && <span className="text-sm text-stone-500"> (incluye domicilio {formatMoney(order.deliveryFee)})</span>}
+        </p>
       </div>
 
       <div className="mt-4 space-y-2">
