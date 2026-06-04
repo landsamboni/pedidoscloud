@@ -769,6 +769,16 @@ export async function updateMenuTemplate(_prev: ActionState, formData: FormData)
   return { ok: true, message: "Plantilla actualizada.", ts: Date.now() };
 }
 
+/** Clear the upload history so the 4 default presets are shown again. */
+export async function resetMenuTemplates(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const restaurantId = String(formData.get("restaurantId"));
+  const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
+  await prisma.restaurant.update({ where: { id: restaurantId }, data: { menuTemplateHistory: [] } });
+  revalidatePath("/admin");
+  revalidatePath(returnPath);
+  return { ok: true, message: "Plantillas predeterminadas restauradas.", ts: Date.now() };
+}
+
 /** Select an existing template (a preset or one from the upload history). */
 export async function selectMenuTemplate(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const restaurantId = String(formData.get("restaurantId"));

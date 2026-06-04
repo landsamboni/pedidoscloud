@@ -1,4 +1,4 @@
-import { createPaymentMethod, deletePaymentMethod, selectMenuTemplate, setRestaurantPassword, updateBasePrice, updateBusinessPhone, updateLogo, updateMenuTemplate, updatePaymentSettings } from "@/app/actions";
+import { createPaymentMethod, deletePaymentMethod, resetMenuTemplates, selectMenuTemplate, setRestaurantPassword, updateBasePrice, updateBusinessPhone, updateLogo, updateMenuTemplate, updatePaymentSettings } from "@/app/actions";
 import { FeedbackForm, SubmitButton } from "@/components/feedback-form";
 import { MenuEditor } from "@/components/menu-editor";
 import { ShareMenuImage } from "@/components/share-menu-image";
@@ -108,6 +108,15 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
               );
             })}
           </div>
+          {restaurant.menuTemplateHistory.length > 0 && (
+            <FeedbackForm action={resetMenuTemplates} className="mt-2">
+              <input name="restaurantId" type="hidden" value={restaurant.id} />
+              <input name="returnPath" type="hidden" value={returnPath} />
+              <SubmitButton className="text-sm font-medium text-brand-purple hover:underline" pendingLabel="Restaurando…">
+                ↺ Restaurar plantillas predeterminadas
+              </SubmitButton>
+            </FeedbackForm>
+          )}
         </div>
 
         <FeedbackForm action={updateMenuTemplate} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
