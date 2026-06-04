@@ -44,25 +44,14 @@ export function MenuImage({ restaurantName, basePriceLabel, groups, backgroundDa
         <div style={{ position: "absolute", top: 0, left: 0, width: M.width, height: M.height, backgroundImage: M.fallbackBackground }} />
       )}
 
-      {/* Logo — top-left, in a clean white rounded card for contrast */}
+      {/* Logo — top-left, image only (no container) */}
       {logoDataUri && (
-        <div
-          style={{
-            position: "absolute",
-            top: 40,
-            left: 40,
-            display: "flex",
-            width: 132,
-            height: 132,
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: 24,
-            backgroundColor: "rgba(255,255,255,0.92)",
-            boxShadow: "0 4px 14px rgba(0,0,0,0.18)",
-          }}
-        >
-          <img src={logoDataUri} width={108} height={108} style={{ width: 108, height: 108, objectFit: "contain" }} />
-        </div>
+        <img
+          src={logoDataUri}
+          width={180}
+          height={180}
+          style={{ position: "absolute", top: 36, left: 36, width: 180, height: 180, objectFit: "contain" }}
+        />
       )}
 
       {/* Centered menu panel (sized to content) */}

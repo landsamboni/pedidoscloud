@@ -25,7 +25,6 @@ export default async function RestaurantMenuPage({ params }: { params: Promise<{
           <p className="mt-2 text-stone-600">Arma tu almuerzo desde {formatMoney(Number(restaurant.basePrice))}.</p>
         </div>
       </header>
-      <FindOrderForm restaurantSlug={restaurant.slug} />
       {menu ? (
         <CustomerOrderForm
           restaurantSlug={restaurant.slug}
@@ -49,6 +48,7 @@ export default async function RestaurantMenuPage({ params }: { params: Promise<{
           })()}
         </section>
       )}
+      <FindOrderForm restaurantSlug={restaurant.slug} />
     </main>
   );
 }
