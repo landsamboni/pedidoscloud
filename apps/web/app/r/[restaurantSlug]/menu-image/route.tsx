@@ -21,14 +21,21 @@ async function backgroundDataUri(pathValue: string | null | undefined, origin: s
   try {
     if (pathValue.startsWith("/")) {
       // Public asset (/menu-templates/... preset, or /uploads/... local dev).
-      // Fetch over HTTP from the same origin — on Amplify SSR the public folder
-      // is served by the CDN and is NOT on the compute filesystem, so reading it
-      // from disk fails. The CDN serves it fine.
-      const res = await fetch(new URL(pathValue, origin));
-      if (!res.ok) return null;
-      const buf = Buffer.from(await res.arrayBuffer());
-      const mime = res.headers.get("content-type") ?? mimeFromPath(pathValue);
-      return `data:${mime};base64,${buf.toString("base64")}`;
+      // 1) Try the filesystem (works locally and on Amplify thanks to
+      //    outputFileTracingIncludes bundling the presets into the function).
+      try {
+        const fs = await import("node:fs/promises");
+        const path = await import("node:path");
+        const buf = await fs.readFile(path.join(process.cwd(), "public", pathValue));
+        return `data:${mimeFromPath(pathValue)};base64,${buf.toString("base64")}`;
+      } catch {
+        // 2) Fallback: fetch from the same origin (CDN serves /public).
+        const res = await fetch(new URL(pathValue, origin));
+        if (!res.ok) return null;
+        const buf = Buffer.from(await res.arrayBuffer());
+        const mime = res.headers.get("content-type") ?? mimeFromPath(pathValue);
+        return `data:${mime};base64,${buf.toString("base64")}`;
+      }
     }
     const { getObject } = await import("@/lib/storage");
     const { bytes, contentType } = await getObject(pathValue);

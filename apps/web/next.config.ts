@@ -21,6 +21,12 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: process.env.NODE_ENV === "development" ? ["192.168.0.172"] : [],
   // Keep Prisma external so Next.js doesn't try to webpack-bundle the binary.
   serverExternalPackages: ["@prisma/client", "prisma"],
+  // Bundle the preset menu-template images into the SSR function so the menu-image
+  // route can read them from disk (Amplify serves /public via CDN only — the files
+  // are NOT on the compute filesystem by default).
+  outputFileTracingIncludes: {
+    "/r/[restaurantSlug]/menu-image": ["./public/menu-templates/**/*"],
+  },
   // HTTP security headers — defense in depth alongside Cloudflare.
   // Note: HSTS is already set by Cloudflare. CSP is intentionally omitted
   // until a proper policy is audited to avoid breaking the app.
