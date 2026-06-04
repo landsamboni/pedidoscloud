@@ -114,7 +114,7 @@ export async function getPublicOrder(slug: string, publicToken: string) {
           nequiQrPath: true,
           whatsappPhone: true,
           paymentMethods: {
-            select: { id: true, label: true, phone: true, accountName: true },
+            select: { id: true, label: true, phone: true, accountName: true, qrPath: true, accountType: true, idNumber: true },
             orderBy: { position: "asc" },
           },
         },

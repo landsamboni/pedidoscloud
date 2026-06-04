@@ -47,8 +47,11 @@ model PaymentMethod {
   id           String     @id @default(cuid())
   restaurantId String
   label        String     // e.g. "Daviplata", "Nequi secundario", "Bancolombia"
-  phone        String     // number or key to display and copy
+  phone        String     // number / key / account number to display and copy
   accountName  String     // account holder name
+  qrPath       String?    // optional QR image (like Nequi)
+  accountType  String?    // "ahorros" | "corriente" — only for bank accounts
+  idNumber     String?    // cédula — only for bank accounts
   position     Int        @default(0)
   createdAt    DateTime   @default(now())
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)

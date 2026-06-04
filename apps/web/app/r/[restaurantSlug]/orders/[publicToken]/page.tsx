@@ -176,18 +176,28 @@ export default async function PublicOrderPage({ params }: { params: Promise<{ re
           </div>
 
           {/* Additional payment methods */}
-          {additionalMethods.map((m) => (
-            <div className="mt-3 rounded-2xl bg-stone-50 p-4" key={m.id}>
-              <p className="text-xs font-bold uppercase tracking-wider text-stone-500">{m.label}</p>
-              <div className="mt-1 flex flex-wrap items-baseline gap-2">
-                <p className="text-2xl font-bold tracking-wide">{m.phone}</p>
-                <p className="text-sm text-stone-600">{m.accountName}</p>
+          {additionalMethods.map((m) => {
+            const qrUrl = resolveFileUrl(m.qrPath);
+            return (
+              <div className="mt-3 rounded-2xl bg-stone-50 p-4" key={m.id}>
+                <p className="text-xs font-bold uppercase tracking-wider text-stone-500">
+                  {m.label}{m.accountType ? ` · cuenta ${m.accountType}` : ""}
+                </p>
+                <div className="mt-1 flex flex-wrap items-baseline gap-2">
+                  <p className="text-2xl font-bold tracking-wide">{m.phone}</p>
+                  <p className="text-sm text-stone-600">{m.accountName}</p>
+                </div>
+                {m.idNumber && <p className="text-sm text-stone-500">C.C. {m.idNumber}</p>}
+                {qrUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img alt={`QR ${m.label}`} className="mt-3 h-44 w-44 rounded-xl border border-stone-200 bg-white object-contain p-1" src={qrUrl} />
+                )}
+                <div className="mt-3">
+                  <CopyPaymentNumber label={`Copiar número ${m.label}`} value={m.phone} />
+                </div>
               </div>
-              <div className="mt-3">
-                <CopyPaymentNumber label={`Copiar número ${m.label}`} value={m.phone} />
-              </div>
-            </div>
-          ))}
+            );
+          })}
 
           <p className="mt-4 text-sm leading-relaxed text-stone-500">
             Transfiere exactamente <strong>{formatMoney(Number(order.total))}</strong> y regresa aquí para adjuntar el comprobante.

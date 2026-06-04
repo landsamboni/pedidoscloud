@@ -1,6 +1,7 @@
-import { createPaymentMethod, deletePaymentMethod, resetMenuTemplates, selectMenuTemplate, setRestaurantPassword, updateBasePrice, updateBusinessPhone, updateLogo, updateMenuTemplate, updatePaymentSettings } from "@/app/actions";
+import { deletePaymentMethod, resetMenuTemplates, selectMenuTemplate, setRestaurantPassword, updateBasePrice, updateBusinessPhone, updateLogo, updateMenuTemplate, updatePaymentSettings } from "@/app/actions";
 import { FeedbackForm, SubmitButton } from "@/components/feedback-form";
 import { MenuEditor } from "@/components/menu-editor";
+import { PaymentMethodForm } from "@/components/payment-method-form";
 import { ShareMenuImage } from "@/components/share-menu-image";
 import { resolveFileUrl } from "@/lib/file-url";
 import { PRESET_TEMPLATES } from "@/lib/menu-image/template-spec";
@@ -12,7 +13,7 @@ type Menu = {
   drinks: string[];
 } | undefined;
 
-type PaymentMethod = { id: string; label: string; phone: string; accountName: string };
+type PaymentMethod = { id: string; label: string; phone: string; accountName: string; qrPath: string | null; accountType: string | null; idNumber: string | null };
 
 type Restaurant = {
   id: string;
@@ -164,22 +165,28 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
         {/* Otros medios de pago */}
         <div className="mt-6 border-t border-stone-100 pt-4">
           <p className="text-sm font-semibold text-stone-700">
-            Otros medios <span className="font-normal text-stone-400">(Daviplata, segunda llave, Bancolombia…)</span>
+            Otros medios <span className="font-normal text-stone-400">(Daviplata, segunda llave, cuenta bancaria…)</span>
           </p>
 
           {restaurant.paymentMethods.length > 0 && (
             <ul className="mt-3 space-y-2">
               {restaurant.paymentMethods.map((m) => (
-                <li className="flex items-center justify-between rounded-xl border border-stone-200 bg-stone-50 p-3" key={m.id}>
-                  <div className="text-sm">
-                    <p className="font-semibold">{m.label}</p>
-                    <p className="text-stone-600">{m.phone} · {m.accountName}</p>
+                <li className="flex items-center justify-between gap-3 rounded-xl border border-stone-200 bg-stone-50 p-3" key={m.id}>
+                  <div className="flex min-w-0 items-center gap-3">
+                    {m.qrPath && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img alt={`QR ${m.label}`} className="h-14 w-14 shrink-0 rounded-lg border border-stone-200 object-contain" src={resolveFileUrl(m.qrPath) ?? ""} />
+                    )}
+                    <div className="min-w-0 text-sm">
+                      <p className="font-semibold">{m.label}{m.accountType ? ` · cuenta ${m.accountType}` : ""}</p>
+                      <p className="truncate text-stone-600">{m.phone} · {m.accountName}{m.idNumber ? ` · C.C. ${m.idNumber}` : ""}</p>
+                    </div>
                   </div>
                   <FeedbackForm action={deletePaymentMethod}>
                     <input name="id" type="hidden" value={m.id} />
                     <input name="restaurantId" type="hidden" value={restaurant.id} />
                     <input name="returnPath" type="hidden" value={returnPath} />
-                    <SubmitButton className="rounded-lg px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50" pendingLabel="Eliminando…">
+                    <SubmitButton className="shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50" pendingLabel="Eliminando…">
                       Eliminar
                     </SubmitButton>
                   </FeedbackForm>
@@ -188,27 +195,12 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
             </ul>
           )}
 
-          <FeedbackForm action={createPaymentMethod} className="mt-4 grid gap-3 sm:grid-cols-3">
-            <input name="restaurantId" type="hidden" value={restaurant.id} />
-            <input name="returnPath" type="hidden" value={returnPath} />
-            <label className="text-sm font-medium text-stone-700">
-              Tipo <span className="font-normal text-stone-400">(ej. Daviplata)</span>
-              <input className="input mt-1" name="label" placeholder="Daviplata" required />
-            </label>
-            <label className="text-sm font-medium text-stone-700">
-              Número o llave
-              <input className="input mt-1" inputMode="tel" name="phone" placeholder="3001234567" required />
-            </label>
-            <label className="text-sm font-medium text-stone-700">
-              Titular
-              <input className="input mt-1" name="accountName" placeholder="Nombre" required />
-            </label>
-            <SubmitButton className="button-secondary sm:col-span-3" pendingLabel="Agregando…">+ Agregar método de pago</SubmitButton>
-          </FeedbackForm>
+          <div className="mt-4">
+            <PaymentMethodForm restaurantId={restaurant.id} returnPath={returnPath} />
+          </div>
         </div>
       </div>
-      <div className="mt-6 border-t border-stone-200 pt-6">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-stone-400">Configuración del negocio (no cambia a diario)</p>
+      <div className="mt-8">
         <div className="rounded-xl border border-stone-200 p-4">
           <h3 className="text-lg font-semibold">Datos del negocio</h3>
           <FeedbackForm action={updateBusinessPhone} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">

@@ -805,13 +805,27 @@ export async function createPaymentMethod(_prev: ActionState, formData: FormData
   const label = String(formData.get("label") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
   const accountName = String(formData.get("accountName") ?? "").trim();
+  const isBank = formData.get("isBank") != null;
+  const accountType = isBank ? (String(formData.get("accountType") ?? "").trim() || null) : null;
+  const idNumber = isBank ? (String(formData.get("idNumber") ?? "").trim() || null) : null;
   if (!label || !phone || !accountName) {
     return { ok: false, message: "Completa el tipo, el número y el titular.", ts: Date.now() };
+  }
+  if (isBank && (!accountType || !idNumber)) {
+    return { ok: false, message: "Para cuentas bancarias indica el tipo de cuenta y la cédula.", ts: Date.now() };
+  }
+
+  const file = formData.get("qr");
+  let qrPath: string | null = null;
+  try {
+    qrPath = file instanceof File ? await saveUpload(file, "payment-qr") : null;
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : "No se pudo subir el QR.", ts: Date.now() };
   }
 
   const count = await prisma.paymentMethod.count({ where: { restaurantId } });
   await prisma.paymentMethod.create({
-    data: { restaurantId, label, phone, accountName, position: count },
+    data: { restaurantId, label, phone, accountName, accountType, idNumber, qrPath, position: count },
   });
   revalidatePath("/admin");
   revalidatePath(returnPath);
