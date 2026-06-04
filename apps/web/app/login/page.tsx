@@ -68,7 +68,7 @@ export default function LoginPage() {
           {/* Brand logo */}
           <div className="mb-6 flex justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img alt="PedidosCloud" className="h-40 w-auto object-contain" src="/brand-logo.png" />
+            <img alt="PedidosCloud" className="h-48 w-auto object-contain" src="/brand-logo.png" />
           </div>
 
           <div className="mb-5 text-center">
