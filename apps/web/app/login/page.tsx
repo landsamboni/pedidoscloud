@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { loginAction } from "./actions";
@@ -9,64 +9,81 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const from = searchParams.get("from") ?? "";
   const [state, action, pending] = useActionState(loginAction, { error: "" });
+  // Controlled so the values survive React's form reset when the action returns
+  // (e.g. when the admin step asks for the MFA code).
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
 
   return (
     <form action={action} className="space-y-4">
       <input name="from" type="hidden" value={from} />
 
-      <div>
-        <label className="text-sm font-semibold text-stone-700" htmlFor="username">
-          Usuario
-        </label>
-        <input
-          autoCapitalize="none"
-          autoComplete="username"
-          className="input mt-1 text-base"
-          id="username"
-          name="username"
-          placeholder=""
-          required
-          type="text"
-        />
-        <p className="mt-1 text-xs text-stone-400">
-          El identificador de tu negocio (ej. mi-restaurante)
-        </p>
-      </div>
-
-      <div>
-        <label className="text-sm font-semibold text-stone-700" htmlFor="password">
-          Contraseña
-        </label>
-        <input
-          autoComplete="current-password"
-          className="input mt-1 text-base"
-          id="password"
-          name="password"
-          required
-          type="password"
-        />
-      </div>
-
-      {state.needsTotp && (
-        <div>
-          <label className="text-sm font-semibold text-stone-700" htmlFor="totp">
-            Código de verificación
-          </label>
-          <input
-            autoComplete="one-time-code"
-            autoFocus
-            className="input mt-1 text-center text-lg tracking-[0.4em]"
-            id="totp"
-            inputMode="numeric"
-            maxLength={6}
-            name="totp"
-            pattern="[0-9]*"
-            placeholder="••••••"
-          />
-          <p className="mt-1 text-xs text-stone-400">
-            Ingresa el código de 6 dígitos de tu app autenticadora.
+      {state.needsTotp ? (
+        <>
+          {/* Step 2: credentials carried over, only the code is asked. */}
+          <input name="username" type="hidden" value={username} />
+          <input name="password" type="hidden" value={password} />
+          <p className="rounded-xl bg-stone-50 px-4 py-3 text-sm text-stone-600">
+            Ingresando como <strong>{username}</strong>. Ingresa tu código de verificación.
           </p>
-        </div>
+          <div>
+            <label className="text-sm font-semibold text-stone-700" htmlFor="totp">
+              Código de verificación
+            </label>
+            <input
+              autoComplete="one-time-code"
+              autoFocus
+              className="input mt-1 text-center text-lg tracking-[0.4em]"
+              id="totp"
+              inputMode="numeric"
+              maxLength={6}
+              name="totp"
+              pattern="[0-9]*"
+              placeholder="••••••"
+            />
+            <p className="mt-1 text-xs text-stone-400">
+              Ingresa el código de 6 dígitos de tu app autenticadora.
+            </p>
+          </div>
+        </>
+      ) : (
+        <>
+          <div>
+            <label className="text-sm font-semibold text-stone-700" htmlFor="username">
+              Usuario
+            </label>
+            <input
+              autoCapitalize="none"
+              autoComplete="username"
+              className="input mt-1 text-base"
+              id="username"
+              name="username"
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              type="text"
+              value={username}
+            />
+            <p className="mt-1 text-xs text-stone-400">
+              El identificador de tu negocio (ej. mi-restaurante)
+            </p>
+          </div>
+
+          <div>
+            <label className="text-sm font-semibold text-stone-700" htmlFor="password">
+              Contraseña
+            </label>
+            <input
+              autoComplete="current-password"
+              className="input mt-1 text-base"
+              id="password"
+              name="password"
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              type="password"
+              value={password}
+            />
+          </div>
+        </>
       )}
 
       {state.error && (
