@@ -29,7 +29,7 @@ function LoginForm() {
           type="text"
         />
         <p className="mt-1 text-xs text-stone-400">
-          El identificador de tu restaurante (ej. martica-la-bonita)
+          El identificador de tu negocio (ej. mi-restaurante)
         </p>
       </div>
 
@@ -47,6 +47,28 @@ function LoginForm() {
         />
       </div>
 
+      {state.needsTotp && (
+        <div>
+          <label className="text-sm font-semibold text-stone-700" htmlFor="totp">
+            Código de verificación
+          </label>
+          <input
+            autoComplete="one-time-code"
+            autoFocus
+            className="input mt-1 text-center text-lg tracking-[0.4em]"
+            id="totp"
+            inputMode="numeric"
+            maxLength={6}
+            name="totp"
+            pattern="[0-9]*"
+            placeholder="••••••"
+          />
+          <p className="mt-1 text-xs text-stone-400">
+            Ingresa el código de 6 dígitos de tu app autenticadora.
+          </p>
+        </div>
+      )}
+
       {state.error && (
         <p className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
           {state.error}
@@ -54,7 +76,7 @@ function LoginForm() {
       )}
 
       <button className="button-gradient w-full py-3 text-base" disabled={pending} type="submit">
-        {pending ? "Ingresando…" : "Iniciar sesión"}
+        {pending ? "Ingresando…" : state.needsTotp ? "Verificar código" : "Iniciar sesión"}
       </button>
     </form>
   );

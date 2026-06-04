@@ -87,6 +87,13 @@ variable "admin_password" {
   sensitive   = true
 }
 
+variable "admin_totp_secret" {
+  description = "Optional TOTP (authenticator app) secret for admin MFA. Empty = MFA disabled. Generate with otplib authenticator.generateSecret()."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "auth_secret" {
   description = "Secret key for signing JWT session cookies (32+ random chars). Generate with: openssl rand -base64 32"
   type        = string

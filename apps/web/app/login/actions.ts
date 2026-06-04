@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { createSession, clearSession } from "@/lib/auth";
 
-export type LoginState = { error: string };
+export type LoginState = { error: string; needsTotp?: boolean };
 
 export async function loginAction(_: LoginState, formData: FormData): Promise<LoginState> {
   const username = String(formData.get("username") ?? "").trim().toLowerCase();
@@ -20,6 +20,18 @@ export async function loginAction(_: LoginState, formData: FormData): Promise<Lo
   const adminPass = process.env.ADMIN_PASSWORD ?? "";
   if (username === adminUser) {
     if (!adminPass || password !== adminPass) return { error: "Credenciales inválidas." };
+
+    // Optional MFA: only enforced when ADMIN_TOTP_SECRET is configured.
+    const totpSecret = process.env.ADMIN_TOTP_SECRET;
+    if (totpSecret) {
+      const code = String(formData.get("totp") ?? "").replace(/\s/g, "");
+      if (!code) return { error: "", needsTotp: true };
+      const { authenticator } = await import("otplib");
+      if (!authenticator.verify({ token: code, secret: totpSecret })) {
+        return { error: "Código de verificación incorrecto.", needsTotp: true };
+      }
+    }
+
     await createSession({ role: "admin" });
     redirect(from && from.startsWith("/admin") ? from : "/admin");
   }

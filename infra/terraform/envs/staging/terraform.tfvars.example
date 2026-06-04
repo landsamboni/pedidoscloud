@@ -22,6 +22,10 @@ auth_secret = "change-me-generate-with-openssl-rand-base64-32"
 # (Restaurants log in with a bcrypt password stored in the DB, not here.)
 admin_password = "change-me-admin"
 
+# Optional admin MFA (TOTP / authenticator app). Empty = disabled.
+# Generate: cd apps/web && node -e "console.log(require('otplib').authenticator.generateSecret())"
+# admin_totp_secret = "BASE32SECRET..."
+
 # Monitoring — email for CloudWatch alarm notifications.
 # Leave empty ("") to see alarms in CloudWatch console only (no email).
 # After first apply you must confirm the subscription in the email AWS sends.

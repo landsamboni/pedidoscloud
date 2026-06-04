@@ -205,6 +205,7 @@ module "amplify" {
     S3_SECRET_ACCESS_KEY = module.iam.secret_access_key
     ADMIN_USER           = var.admin_user
     ADMIN_PASSWORD       = var.admin_password
+    ADMIN_TOTP_SECRET    = var.admin_totp_secret
   }
 
   tags = local.tags
