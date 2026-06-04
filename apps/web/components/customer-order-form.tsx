@@ -172,7 +172,7 @@ export function CustomerOrderForm({ restaurantSlug, basePrice, menu, delivery }:
             ? `Domicilio: ${formatMoney(delivery.fee)} (se suma al total).`
             : delivery.mode === "free"
             ? "Domicilio: ¡gratis!"
-            : (delivery.note || "El domicilio se paga aparte; el restaurante lo coordina contigo.")}
+            : (delivery.note || "El domicilio se paga aparte - el restaurante lo coordina contigo.")}
         </p>
 
         <div>
