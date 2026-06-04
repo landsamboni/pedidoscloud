@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RestaurantSettings } from "@/components/restaurant-settings";
+import { BusinessDataForm } from "@/components/business-data-form";
 import { ChangePasswordForm } from "@/components/change-password-form";
 import { logoutAction } from "@/app/login/actions";
 import { formatMoney, formatOrderNumber } from "@/lib/format";
@@ -75,6 +76,8 @@ export default async function RestaurantConsolePage({ params }: { params: Promis
         <h2 className="mb-4 text-xl font-bold">Configuración</h2>
         <RestaurantSettings hidePassword menu={menu} menuPublishedToday={publishedToday} restaurant={restaurant} restaurantSlug={restaurantSlug} returnPath={`/restaurant/${restaurantSlug}`} />
       </section>
+
+      <BusinessDataForm logoPath={restaurant.logoPath} restaurantId={restaurant.id} returnPath={`/restaurant/${restaurantSlug}`} whatsappPhone={restaurant.whatsappPhone} />
 
       <details className="card mt-4">
         <summary className="cursor-pointer text-xl font-bold">Cambiar contraseña</summary>

@@ -1,4 +1,4 @@
-import { deletePaymentMethod, resetMenuTemplates, selectMenuTemplate, setRestaurantPassword, updateBasePrice, updateBusinessPhone, updateLogo, updateMenuTemplate, updatePaymentSettings } from "@/app/actions";
+import { deletePaymentMethod, resetMenuTemplates, selectMenuTemplate, setRestaurantPassword, updateBasePrice, updateMenuTemplate, updatePaymentSettings } from "@/app/actions";
 import { FeedbackForm, SubmitButton } from "@/components/feedback-form";
 import { MenuEditor } from "@/components/menu-editor";
 import { PaymentMethodForm } from "@/components/payment-method-form";
@@ -198,37 +198,6 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
           <div className="mt-4">
             <PaymentMethodForm restaurantId={restaurant.id} returnPath={returnPath} />
           </div>
-        </div>
-      </div>
-      <div className="mt-8">
-        <div className="rounded-xl border border-stone-200 p-4">
-          <h3 className="text-lg font-semibold">Datos del negocio</h3>
-          <FeedbackForm action={updateBusinessPhone} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
-          <input name="restaurantId" type="hidden" value={restaurant.id} />
-          <input name="returnPath" type="hidden" value={returnPath} />
-          <label className="text-sm font-medium text-stone-700">
-            Teléfono / WhatsApp <span className="font-normal text-stone-400">(el mismo número; lo usa el botón "Preguntar por WhatsApp" del cliente y el banner de la imagen)</span>
-            <input className="input mt-1 text-base" defaultValue={restaurant.whatsappPhone ?? ""} inputMode="tel" maxLength={10} name="whatsappPhone" placeholder="3001234567" />
-          </label>
-          <SubmitButton className="button-primary self-end">Guardar número</SubmitButton>
-        </FeedbackForm>
-
-        <FeedbackForm action={updateLogo} className="mt-4 grid gap-3 border-t border-stone-100 pt-4 sm:grid-cols-[1fr_auto]">
-          <input name="restaurantId" type="hidden" value={restaurant.id} />
-          <input name="returnPath" type="hidden" value={returnPath} />
-          <label className="text-sm font-medium text-stone-700">
-            Logo del negocio <span className="font-normal text-stone-400">(PNG/JPG/WEBP. Recomendado cuadrado, mínimo 512×512 px; PNG con fondo transparente se ve mejor. Aparece en la página del cliente y en la imagen del menú)</span>
-            <input accept="image/jpeg,image/png,image/webp" className="input mt-1" name="logo" required type="file" />
-          </label>
-          <SubmitButton className="button-primary self-end" pendingLabel="Subiendo…">{restaurant.logoPath ? "Cambiar logo" : "Subir logo"}</SubmitButton>
-          {restaurant.logoPath && (
-            <div className="flex items-center gap-3 sm:col-span-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img alt="Logo del negocio" className="h-20 w-20 rounded-lg border border-stone-200 object-contain" src={resolveFileUrl(restaurant.logoPath) ?? ""} />
-              <p className="text-sm text-teal-600">Logo configurado. Sube otro para reemplazarlo.</p>
-            </div>
-          )}
-        </FeedbackForm>
         </div>
       </div>
 

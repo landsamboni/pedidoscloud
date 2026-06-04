@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { deactivateRestaurantSubscription, deleteRestaurant, deleteRestaurantOrders, deleteRestaurantOrdersByDate, populateDemoData, setRestaurantSubscription } from "@/app/actions";
 import { getDaysRemaining, getSubscriptionStatus, STATUS_COLORS, STATUS_LABELS } from "@/lib/subscription";
 import { RestaurantSettings } from "@/components/restaurant-settings";
+import { BusinessDataForm } from "@/components/business-data-form";
 import { formatMoney, formatOrderNumber } from "@/lib/format";
 import { getAdminRestaurant } from "@/lib/data";
 
@@ -113,6 +114,8 @@ export default async function AdminRestaurantPage({ params }: { params: Promise<
         <h2 className="mb-4 text-lg font-bold">Configuración</h2>
         <RestaurantSettings menu={menu} menuPublishedToday={!!menu} restaurant={restaurant} restaurantSlug={restaurant.slug} returnPath={`/admin/restaurants/${restaurant.slug}`} />
       </section>
+
+      <BusinessDataForm logoPath={restaurant.logoPath} restaurantId={restaurant.id} returnPath={`/admin/restaurants/${restaurant.slug}`} whatsappPhone={restaurant.whatsappPhone} />
 
       {/* Demo data — only for the showcase restaurant */}
       {restaurant.slug === DEMO_SLUG && (
