@@ -469,22 +469,23 @@ export async function populateCatalogDemoData(formData: FormData) {
   ];
 
   // Realistic product combos (popular items for a bakery demo)
+  // Matches the simplified demo catalog (4 categories)
   const DEMO_ORDERS = [
-    [{ cat: "Tortas Clásicas", item: "Torta Castilla - Tortica", price: 26000, qty: 1 }],
-    [{ cat: "Tortas Clásicas", item: "Torta Red Velvet - 1/4 libra", price: 50000, qty: 1 }],
-    [{ cat: "Tortas Clásicas", item: "Torta Zanahoria - 1/4 libra", price: 50000, qty: 1 }],
-    [{ cat: "Cinnamon Rolls", item: "Caja x 4", price: 26000, qty: 1 }],
-    [{ cat: "Cinnamon Rolls", item: "Caja x 6", price: 32000, qty: 1 }],
-    [{ cat: "Tortas Clásicas", item: "Torta Castilla - 1/2 libra", price: 78000, qty: 1 }],
-    [{ cat: "Tortas Clásicas", item: "Torta Mora & Arequipe - Tortica", price: 26000, qty: 1 }, { cat: "Cinnamon Rolls", item: "Caja x 4", price: 26000, qty: 1 }],
-    [{ cat: "Tortas Clásicas", item: "Torta Limón - Tortica", price: 26000, qty: 2 }],
-    [{ cat: "Red Velvet Especial Fresas", item: "Redonda 1/4 libra", price: 62000, qty: 1 }],
-    [{ cat: "Tortas Clásicas", item: "Torta Valencia - Tortica", price: 26000, qty: 1 }],
+    [{ cat: "Torticas", item: "Tortica Castilla", price: 26000, qty: 1 }],
+    [{ cat: "Torticas", item: "Tortica Red Velvet", price: 26000, qty: 1 }],
+    [{ cat: "Torticas", item: "Tortica Zanahoria", price: 26000, qty: 2 }],
+    [{ cat: "Tortas (1/4 libra)", item: "Torta Castilla", price: 54000, qty: 1 }],
+    [{ cat: "Tortas (1/4 libra)", item: "Torta Red Velvet", price: 50000, qty: 1 }],
+    [{ cat: "Tortas (1/4 libra)", item: "Red Velvet Especial Fresas", price: 62000, qty: 1 }],
+    [{ cat: "Torticas", item: "Tortica Limón", price: 26000, qty: 1 }, { cat: "Cinnamon Rolls", item: "Cinnamon Rolls x 4", price: 26000, qty: 1 }],
+    [{ cat: "Cinnamon Rolls", item: "Cinnamon Rolls x 4", price: 26000, qty: 1 }],
+    [{ cat: "Cinnamon Rolls", item: "Cinnamon Rolls x 6", price: 32000, qty: 1 }],
+    [{ cat: "Cinnamon Rolls", item: "Cinnamon Rolls x 6", price: 32000, qty: 2 }],
     [{ cat: "Caja de Galletas", item: "Caja mediana", price: 49000, qty: 1 }],
-    [{ cat: "Tortas en Corazón", item: "Corazón 1/4 libra (8-10 porciones)", price: 59000, qty: 1 }],
-    [{ cat: "Tortas Clásicas", item: "Torta Arequipe - 1/4 libra", price: 50000, qty: 1 }],
-    [{ cat: "Cinnamon Rolls", item: "Caja x 6", price: 32000, qty: 2 }],
-    [{ cat: "Tortas Clásicas", item: "Torta Castilla - 1 libra", price: 119000, qty: 1 }],
+    [{ cat: "Caja de Galletas", item: "Caja grande", price: 59000, qty: 1 }],
+    [{ cat: "Tortas (1/4 libra)", item: "Torta Zanahoria", price: 50000, qty: 1 }],
+    [{ cat: "Torticas", item: "Tortica Castilla", price: 26000, qty: 2 }, { cat: "Cinnamon Rolls", item: "Cinnamon Rolls x 4", price: 26000, qty: 1 }],
+    [{ cat: "Caja de Galletas", item: "Caja pequeña", price: 36000, qty: 1 }],
   ];
 
   const rand = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
@@ -509,14 +510,9 @@ export async function populateCatalogDemoData(formData: FormData) {
     // Seed categories if empty
     if (menu.categories.length === 0) {
       const PASTELERIA_CATS = [
-        { name: "Tortas Clásicas", items: [
-          { name: "Torta Castilla - Tortica", price: 26000 }, { name: "Torta Castilla - 1/4 libra", price: 54000 }, { name: "Torta Castilla - 1/2 libra", price: 78000 }, { name: "Torta Castilla - 1 libra", price: 119000 },
-          { name: "Torta Mora & Arequipe - Tortica", price: 26000 }, { name: "Torta Red Velvet - 1/4 libra", price: 50000 }, { name: "Torta Zanahoria - 1/4 libra", price: 50000 }, { name: "Torta Limón - Tortica", price: 26000 },
-          { name: "Torta Valencia - Tortica", price: 26000 }, { name: "Torta Arequipe - 1/4 libra", price: 50000 },
-        ]},
-        { name: "Tortas en Corazón", items: [{ name: "Corazón 1/4 libra (8-10 porciones)", price: 59000 }, { name: "Corazón 1/2 libra (18-22 porciones)", price: 81000 }] },
-        { name: "Red Velvet Especial Fresas", items: [{ name: "Redonda 1/4 libra", price: 62000 }, { name: "Redonda 1/2 libra", price: 85000 }] },
-        { name: "Cinnamon Rolls", items: [{ name: "Caja x 4", price: 26000 }, { name: "Caja x 6", price: 32000 }] },
+        { name: "Torticas", items: [{ name: "Tortica Castilla", price: 26000 }, { name: "Tortica Red Velvet", price: 26000 }, { name: "Tortica Limón", price: 26000 }, { name: "Tortica Zanahoria", price: 26000 }] },
+        { name: "Tortas (1/4 libra)", items: [{ name: "Torta Castilla", price: 54000 }, { name: "Torta Red Velvet", price: 50000 }, { name: "Torta Zanahoria", price: 50000 }, { name: "Red Velvet Especial Fresas", price: 62000 }] },
+        { name: "Cinnamon Rolls", items: [{ name: "Cinnamon Rolls x 4", price: 26000 }, { name: "Cinnamon Rolls x 6", price: 32000 }] },
         { name: "Caja de Galletas", items: [{ name: "Caja pequeña", price: 36000 }, { name: "Caja mediana", price: 49000 }, { name: "Caja grande", price: 59000 }] },
       ];
       for (let ci = 0; ci < PASTELERIA_CATS.length; ci++) {
@@ -974,6 +970,36 @@ export async function updateMenuTemplate(_prev: ActionState, formData: FormData)
   }
 }
 
+/** Update the description and optional photo of a catalog menu item. */
+export async function updateMenuItemDetails(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    const itemId = String(formData.get("itemId"));
+    const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
+    const description = String(formData.get("description") ?? "").trim() || null;
+    const file = formData.get("image");
+    let imagePath: string | null = undefined as unknown as null;
+    if (file instanceof File && file.size > 0) {
+      try {
+        imagePath = await saveUpload(file, "menu-item");
+      } catch (e) {
+        return { ok: false, message: e instanceof Error ? e.message : "No se pudo subir la imagen.", ts: Date.now() };
+      }
+    }
+    await prisma.menuItem.update({
+      where: { id: itemId },
+      data: {
+        description,
+        ...(imagePath !== undefined ? { imagePath } : {}),
+      },
+    });
+    revalidatePath(returnPath);
+    return { ok: true, message: "Detalles actualizados.", ts: Date.now() };
+  } catch (e) {
+    console.error("[updateMenuItemDetails]", e);
+    return { ok: false, message: "No se pudo guardar los detalles.", ts: Date.now() };
+  }
+}
+
 /** Clear the upload history so the 4 default presets are shown again. */
 export async function resetMenuTemplates(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const restaurantId = String(formData.get("restaurantId"));
@@ -1091,9 +1117,9 @@ export async function uploadPaymentProof(_: PaymentProofState, formData: FormDat
 // ─────────────────────────────────────────────────────────
 
 export type CatalogCategory = {
-  id?: string;       // present for existing categories, absent for new ones
+  id?: string;
   name: string;
-  items: { id?: string; name: string; price: number }[];
+  items: { id?: string; name: string; price: number; description?: string | null; imagePath?: string | null }[];
 };
 
 export type CatalogMenuState = { ok: boolean; message: string; ts: number };

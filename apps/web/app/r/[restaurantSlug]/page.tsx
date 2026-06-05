@@ -28,7 +28,7 @@ export default async function RestaurantMenuPage({ params }: { params: Promise<{
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img alt={restaurant.name} className="h-20 w-20 shrink-0 rounded-2xl border border-stone-200 bg-white object-contain p-1 shadow-sm" src={logoUrl} />
         <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-brand-blue">Menú del día</p>
+          <p className="text-sm font-semibold uppercase tracking-wide text-brand-blue">{isCatalog ? "Nuestros productos" : "Menú del día"}</p>
           <h1 className="mt-1 text-3xl font-bold">{restaurant.name}</h1>
           {!isCatalog && (
             <p className="mt-2 text-stone-600">Arma tu {restaurant.orderUnitLabel} desde {formatMoney(Number(restaurant.basePrice))}.</p>
@@ -44,7 +44,7 @@ export default async function RestaurantMenuPage({ params }: { params: Promise<{
             categories={menu.categories.map(c => ({
               id: c.id,
               name: c.name,
-              items: c.items.map(i => ({ id: i.id, name: i.name, price: Number(i.price) })),
+              items: c.items.map(i => ({ id: i.id, name: i.name, price: Number(i.price), description: i.description, imagePath: i.imagePath })),
             }))}
             delivery={deliveryProps}
           />

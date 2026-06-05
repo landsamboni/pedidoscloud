@@ -1,8 +1,9 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { unpublishCatalogMenu, updateCatalogMenu, type CatalogCategory, type CatalogMenuState } from "@/app/actions";
-import { SubmitButton, Toast } from "@/components/feedback-form";
+import { unpublishCatalogMenu, updateCatalogMenu, updateMenuItemDetails, type CatalogCategory, type CatalogMenuState } from "@/app/actions";
+import { FeedbackForm, FileInput, SubmitButton, Toast } from "@/components/feedback-form";
+import { resolveFileUrl } from "@/lib/file-url";
 import { formatMoney } from "@/lib/format";
 
 const INITIAL: CatalogMenuState = { ok: false, message: "", ts: 0 };
@@ -123,39 +124,75 @@ export function CatalogMenuEditor({ restaurantId, returnPath, publishedToday, in
               </div>
 
               {/* Items */}
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {cat.items.map((item, ii) => (
-                  <div key={ii} className="flex items-center gap-2">
-                    <input
-                      className="input flex-1 text-sm"
-                      onChange={e => setItemField(ci, ii, "name", e.target.value)}
-                      placeholder="Nombre del producto"
-                      required
-                      value={item.name}
-                    />
-                    <div className="relative w-32 shrink-0">
-                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-stone-400">$</span>
+                  <div key={ii} className="rounded-xl border border-stone-100 bg-stone-50 p-2">
+                    <div className="flex items-center gap-2">
                       <input
-                        className="input pl-6 text-sm"
-                        inputMode="numeric"
-                        min="0"
-                        onChange={e => setItemField(ci, ii, "price", e.target.value)}
-                        placeholder="0"
+                        className="input flex-1 text-sm bg-white"
+                        onChange={e => setItemField(ci, ii, "name", e.target.value)}
+                        placeholder="Nombre del producto"
                         required
-                        step="1"
-                        type="number"
-                        value={item.price || ""}
+                        value={item.name}
                       />
+                      <div className="relative w-32 shrink-0">
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-stone-400">$</span>
+                        <input
+                          className="input pl-6 text-sm bg-white"
+                          inputMode="numeric"
+                          min="0"
+                          onChange={e => setItemField(ci, ii, "price", e.target.value)}
+                          placeholder="0"
+                          required
+                          step="1"
+                          type="number"
+                          value={item.price || ""}
+                        />
+                      </div>
+                      {cat.items.length > 1 && (
+                        <button
+                          className="shrink-0 rounded-lg px-2 py-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 transition"
+                          onClick={() => removeItem(ci, ii)}
+                          title="Quitar producto"
+                          type="button"
+                        >
+                          ✕
+                        </button>
+                      )}
                     </div>
-                    {cat.items.length > 1 && (
-                      <button
-                        className="shrink-0 rounded-lg px-2 py-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 transition"
-                        onClick={() => removeItem(ci, ii)}
-                        title="Quitar producto"
-                        type="button"
-                      >
-                        ✕
-                      </button>
+                    {/* Details panel — only for saved items (have an id) */}
+                    {item.id && (
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-xs font-medium text-brand-purple hover:underline">
+                          {item.description || item.imagePath ? "✓ Tiene descripción/foto · Editar" : "+ Agregar descripción y foto (opcional)"}
+                        </summary>
+                        <FeedbackForm action={updateMenuItemDetails} className="mt-2 grid gap-2">
+                          <input name="itemId" type="hidden" value={item.id} />
+                          <input name="returnPath" type="hidden" value={returnPath} />
+                          <label className="text-xs font-medium text-stone-600">
+                            Descripción
+                            <textarea
+                              className="input mt-1 min-h-20 resize-none text-xs"
+                              defaultValue={item.description ?? ""}
+                              maxLength={300}
+                              name="description"
+                              placeholder="Ingredientes, tamaño, sabor especial, etc."
+                            />
+                          </label>
+                          <label className="text-xs font-medium text-stone-600">
+                            Foto del producto <span className="font-normal text-stone-400">(JPG/PNG/WEBP, opcional)</span>
+                            {item.imagePath && (
+                              <div className="mt-1 flex items-center gap-2">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img alt="foto" className="h-12 w-12 rounded-lg border object-cover" src={resolveFileUrl(item.imagePath) ?? ""} />
+                                <span className="text-xs text-teal-600">Foto configurada. Sube otra para reemplazarla.</span>
+                              </div>
+                            )}
+                            <FileInput accept="image/jpeg,image/png,image/webp" className="input mt-1 text-xs" name="image" type="file" />
+                          </label>
+                          <SubmitButton className="button-secondary text-xs" pendingLabel="Guardando…">Guardar descripción y foto</SubmitButton>
+                        </FeedbackForm>
+                      </details>
                     )}
                   </div>
                 ))}

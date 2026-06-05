@@ -20,63 +20,31 @@ function todayUtc() {
 }
 
 // ── Mi Pastelería catalog ────────────────────────────────────────────────────
+// Simplified for demo — 4 categories, 3-4 products each.
 const PASTELERIA_CATEGORIES = [
   {
-    name: "Tortas Clásicas",
+    name: "Torticas",
     items: [
-      { name: "Torta Castilla - Tortica", price: 26000 },
-      { name: "Torta Castilla - 1/4 libra", price: 54000 },
-      { name: "Torta Castilla - 1/2 libra", price: 78000 },
-      { name: "Torta Castilla - 1 libra", price: 119000 },
-      { name: "Torta Mora & Arequipe - Tortica", price: 26000 },
-      { name: "Torta Mora & Arequipe - 1/4 libra", price: 54000 },
-      { name: "Torta Mora & Arequipe - 1/2 libra", price: 78000 },
-      { name: "Torta Mora & Arequipe - 1 libra", price: 119000 },
-      { name: "Torta Red Velvet - Tortica", price: 26000 },
-      { name: "Torta Red Velvet - 1/4 libra", price: 50000 },
-      { name: "Torta Red Velvet - 1/2 libra", price: 75000 },
-      { name: "Torta Red Velvet - 1 libra", price: 114000 },
-      { name: "Torta Limón - Tortica", price: 26000 },
-      { name: "Torta Limón - 1/4 libra", price: 54000 },
-      { name: "Torta Limón - 1/2 libra", price: 78000 },
-      { name: "Torta Limón - 1 libra", price: 119000 },
-      { name: "Torta Zanahoria - Tortica", price: 26000 },
-      { name: "Torta Zanahoria - 1/4 libra", price: 50000 },
-      { name: "Torta Zanahoria - 1/2 libra", price: 75000 },
-      { name: "Torta Zanahoria - 1 libra", price: 114000 },
-      { name: "Torta Valencia - Tortica", price: 26000 },
-      { name: "Torta Valencia - 1/4 libra", price: 50000 },
-      { name: "Torta Valencia - 1/2 libra", price: 75000 },
-      { name: "Torta Valencia - 1 libra", price: 114000 },
-      { name: "Torta Arequipe - Tortica", price: 26000 },
-      { name: "Torta Arequipe - 1/4 libra", price: 50000 },
-      { name: "Torta Arequipe - 1/2 libra", price: 75000 },
-      { name: "Torta Arequipe - 1 libra", price: 114000 },
+      { name: "Tortica Castilla", price: 26000 },
+      { name: "Tortica Red Velvet", price: 26000 },
+      { name: "Tortica Limón", price: 26000 },
+      { name: "Tortica Zanahoria", price: 26000 },
     ],
   },
   {
-    name: "Tortas en Corazón",
+    name: "Tortas (1/4 libra)",
     items: [
-      { name: "Corazón Mini (1-2 porciones)", price: 18000 },
-      { name: "Corazón 1/4 libra (8-10 porciones)", price: 59000 },
-      { name: "Corazón 1/2 libra (18-22 porciones)", price: 81000 },
-    ],
-  },
-  {
-    name: "Red Velvet Especial Fresas",
-    items: [
-      { name: "Redonda 1/4 libra", price: 62000 },
-      { name: "Redonda 1/2 libra", price: 85000 },
-      { name: "Redonda 1 libra", price: 129000 },
-      { name: "Corazón 1/4 libra", price: 73000 },
-      { name: "Corazón 1/2 libra", price: 93000 },
+      { name: "Torta Castilla", price: 54000 },
+      { name: "Torta Red Velvet", price: 50000 },
+      { name: "Torta Zanahoria", price: 50000 },
+      { name: "Red Velvet Especial Fresas", price: 62000 },
     ],
   },
   {
     name: "Cinnamon Rolls",
     items: [
-      { name: "Caja x 4", price: 26000 },
-      { name: "Caja x 6", price: 32000 },
+      { name: "Cinnamon Rolls x 4", price: 26000 },
+      { name: "Cinnamon Rolls x 6", price: 32000 },
     ],
   },
   {

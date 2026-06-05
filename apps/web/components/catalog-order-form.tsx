@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { resolveFileUrl } from "@/lib/file-url";
 import { createCatalogOrder } from "@/app/actions";
 import { formatMoney } from "@/lib/format";
 
-type CatalogItem = { id: string; name: string; price: number };
+type CatalogItem = { id: string; name: string; price: number; description?: string | null; imagePath?: string | null };
 type CatalogCategory = { id: string; name: string; items: CatalogItem[] };
 
 type Props = {
@@ -36,7 +37,8 @@ function validateAddress(v: string) {
 }
 
 export function CatalogOrderForm({ restaurantSlug, orderUnitLabel, categories, delivery }: Props) {
-  const [quantities, setQuantities] = useState<Record<string, number>>({}); // itemId -> qty
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [detailItem, setDetailItem] = useState<CatalogItem | null>(null); // itemId -> qty
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
@@ -48,6 +50,13 @@ export function CatalogOrderForm({ restaurantSlug, orderUnitLabel, categories, d
   const [pending, startTransition] = useTransition();
   const deliveryRef = useRef<HTMLElement>(null);
   const submittingRef = useRef(false);
+
+  useEffect(() => {
+    if (!detailItem) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setDetailItem(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [detailItem]);
 
   const isPickup = fulfillment === "pickup";
   const deliveryFee = !isPickup && delivery.mode === "fixed" ? delivery.fee : 0;
@@ -127,6 +136,15 @@ export function CatalogOrderForm({ restaurantSlug, orderUnitLabel, categories, d
                   <div className="min-w-0">
                     <p className="font-medium text-stone-900 truncate">{item.name}</p>
                     <p className="text-sm font-semibold text-brand-blue">{formatMoney(item.price)}</p>
+                    {(item.description || item.imagePath) && (
+                      <button
+                        className="mt-0.5 text-xs font-medium text-brand-purple hover:underline"
+                        onClick={() => setDetailItem(item)}
+                        type="button"
+                      >
+                        Ver detalles ›
+                      </button>
+                    )}
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <button
@@ -262,6 +280,35 @@ export function CatalogOrderForm({ restaurantSlug, orderUnitLabel, categories, d
           {pending ? "Confirmando..." : "Confirmar pedido"}
         </button>
       </section>
+
+      {/* Product detail popup */}
+      {detailItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setDetailItem(null)}>
+          <div className="flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-stone-200 px-5 py-4">
+              <div>
+                <p className="text-lg font-bold text-stone-900">{detailItem.name}</p>
+                <p className="text-base font-semibold text-brand-blue">{formatMoney(detailItem.price)}</p>
+              </div>
+              <button aria-label="Cerrar" className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100" onClick={() => setDetailItem(null)} type="button">✕</button>
+            </div>
+            <div className="overflow-auto">
+              {detailItem.imagePath && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img alt={detailItem.name} className="h-56 w-full object-cover" src={resolveFileUrl(detailItem.imagePath) ?? ""} />
+              )}
+              {detailItem.description && (
+                <p className="px-5 py-4 text-base leading-relaxed text-stone-700">{detailItem.description}</p>
+              )}
+            </div>
+            <div className="shrink-0 border-t border-stone-200 px-5 py-4">
+              <button className="button-primary w-full" onClick={() => { setDetailItem(null); setQty(detailItem.id, 1); }} type="button">
+                + Agregar al pedido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Floating total on mobile */}
       {totalItems > 0 && (
