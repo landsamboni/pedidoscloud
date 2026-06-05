@@ -208,6 +208,12 @@ module "amplify" {
     ADMIN_TOTP_SECRET    = var.admin_totp_secret
   }
 
+  # Custom domain: app.pedidoscloud.com for the app, staging.pedidoscloud.com kept.
+  # www.pedidoscloud.com is intentionally excluded — it serves the landing page
+  # (Cloudflare Pages) and must NOT point to Amplify.
+  custom_domain     = "pedidoscloud.com"
+  custom_subdomains = ["app", "staging"]
+
   tags = local.tags
 }
 

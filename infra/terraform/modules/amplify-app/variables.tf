@@ -44,6 +44,18 @@ variable "enable_auto_build" {
   default     = true
 }
 
+variable "custom_domain" {
+  description = "Root domain for the Amplify custom domain association (e.g. pedidoscloud.com). Leave empty to skip."
+  type        = string
+  default     = ""
+}
+
+variable "custom_subdomains" {
+  description = "Subdomains to associate with this branch (e.g. [\"app\", \"staging\"]). Ignored when custom_domain is empty."
+  type        = list(string)
+  default     = []
+}
+
 variable "tags" {
   description = "Tags applied to all resources."
   type        = map(string)

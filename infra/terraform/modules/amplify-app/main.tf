@@ -39,6 +39,24 @@ resource "aws_amplify_app" "this" {
   }
 }
 
+resource "aws_amplify_domain_association" "this" {
+  count       = var.custom_domain != "" ? 1 : 0
+  app_id      = aws_amplify_app.this.id
+  domain_name = var.custom_domain
+
+  # One sub_domain block per subdomain, all pointing to this branch.
+  dynamic "sub_domain" {
+    for_each = var.custom_subdomains
+    content {
+      branch_name = aws_amplify_branch.this.branch_name
+      prefix      = sub_domain.value
+    }
+  }
+
+  # Let Amplify manage the SSL certificate (same as current setup).
+  enable_auto_sub_domain = false
+}
+
 resource "aws_amplify_branch" "this" {
   app_id      = aws_amplify_app.this.id
   branch_name = var.branch_name
