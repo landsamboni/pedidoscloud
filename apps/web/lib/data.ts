@@ -242,8 +242,46 @@ export async function getRestaurantIngredientAnalytics(slug: string, monthOffset
 
 // ---- Analytics ----
 
+/** Top-selling catalog items for the current month (catalog mode restaurants). */
+export async function getRestaurantCatalogAnalytics(slug: string) {
+  const restaurant = await prisma.restaurant.findUnique({ where: { slug }, select: { id: true } });
+  if (!restaurant) return null;
+
+  const now = new Date();
+  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+  const monthLabel = now.toLocaleDateString("es-CO", { month: "long", year: "numeric" });
+
+  const items = await prisma.orderItem.findMany({
+    where: {
+      order: {
+        restaurantId: restaurant.id,
+        status: "PAYMENT_CONFIRMED",
+        orderDate: { gte: monthStart },
+      },
+      catalogItem: { not: "" },
+    },
+    select: { catalogCategory: true, catalogItem: true, quantity: true, unitPrice: true },
+  });
+
+  // Aggregate by item
+  const map = new Map<string, { name: string; category: string; qty: number; revenue: number }>();
+  for (const i of items) {
+    const key = `${i.catalogCategory}::${i.catalogItem}`;
+    const existing = map.get(key);
+    if (existing) {
+      existing.qty += i.quantity;
+      existing.revenue += Number(i.unitPrice) * i.quantity;
+    } else {
+      map.set(key, { name: i.catalogItem, category: i.catalogCategory, qty: i.quantity, revenue: Number(i.unitPrice) * i.quantity });
+    }
+  }
+
+  const sorted = Array.from(map.values()).sort((a, b) => b.qty - a.qty);
+  return { items: sorted.slice(0, 12), monthLabel, totalConfirmed: items.reduce((s, i) => s + i.quantity, 0) };
+}
+
 export async function getRestaurantAnalytics(slug: string) {
-  const restaurant = await prisma.restaurant.findUnique({ where: { slug }, select: { id: true, name: true } });
+  const restaurant = await prisma.restaurant.findUnique({ where: { slug }, select: { id: true, name: true, menuType: true } });
   if (!restaurant) return null;
 
   const since = dateKeyDaysAgo(89);

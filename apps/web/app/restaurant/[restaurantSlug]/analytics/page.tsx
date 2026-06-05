@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getRestaurantAnalytics, getRestaurantIngredientAnalytics } from "@/lib/data";
+import { getRestaurantAnalytics, getRestaurantCatalogAnalytics, getRestaurantIngredientAnalytics } from "@/lib/data";
 import { formatDateKey, formatMoney, localDateKey } from "@/lib/format";
 
 function buildWeeks(daily: { orderDate: string; revenue: number; count: number }[]) {
@@ -23,11 +23,13 @@ function buildWeeks(daily: { orderDate: string; revenue: number; count: number }
 
 export default async function AnalyticsPage({ params }: { params: Promise<{ restaurantSlug: string }> }) {
   const { restaurantSlug } = await params;
-  const [data, ingredients] = await Promise.all([
-    getRestaurantAnalytics(restaurantSlug),
-    getRestaurantIngredientAnalytics(restaurantSlug),
-  ]);
+  const data = await getRestaurantAnalytics(restaurantSlug);
   if (!data) notFound();
+  const isCatalog = data.restaurant.menuType === "catalog";
+  const [ingredients, catalogAnalytics] = await Promise.all([
+    isCatalog ? null : getRestaurantIngredientAnalytics(restaurantSlug),
+    isCatalog ? getRestaurantCatalogAnalytics(restaurantSlug) : null,
+  ]);
 
   const today = localDateKey();
   const daily = data.daily.map((d) => ({
@@ -83,8 +85,8 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ rest
         <StatCard label="Total histórico" revenue={allTimeRevenue} count={allTimeCount} />
       </div>
 
-      {/* Ingredient analytics — most sold this month */}
-      {ingredients && ingredients.total > 0 && (
+      {/* Combo mode: ingredient breakdown */}
+      {!isCatalog && ingredients && ingredients.total > 0 && (
         <section className="card mt-6">
           <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="text-lg font-bold">Ingredientes más vendidos</h2>
@@ -95,6 +97,40 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ rest
             <IngredientCard label="Proteínas" items={ingredients.proteins} total={ingredients.total} />
             <IngredientCard label="Principios" items={ingredients.sides} total={ingredients.total} />
             <IngredientCard label="Bebidas" items={ingredients.drinks} total={ingredients.total} />
+          </div>
+        </section>
+      )}
+
+      {/* Catalog mode: top products */}
+      {isCatalog && catalogAnalytics && catalogAnalytics.items.length > 0 && (
+        <section className="card mt-6">
+          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-lg font-bold">Productos más vendidos</h2>
+            <span className="text-sm text-stone-500 capitalize">{catalogAnalytics.monthLabel} · {catalogAnalytics.totalConfirmed} unidades confirmadas</span>
+          </div>
+          <div className="space-y-3">
+            {catalogAnalytics.items.map((item) => {
+              const max = catalogAnalytics.items[0]?.qty ?? 1;
+              const ratio = item.qty / max;
+              return (
+                <div key={`${item.category}::${item.name}`}>
+                  <div className="flex items-baseline justify-between gap-3 text-sm">
+                    <span className="font-medium text-stone-900">{item.name}</span>
+                    <span className="shrink-0 text-stone-500">
+                      <strong className={ratio >= 0.75 ? "text-emerald-600" : "text-stone-900"}>{item.qty} uds</strong>
+                      {" · "}{formatMoney(item.revenue)}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 h-2.5 w-full overflow-hidden rounded-full bg-stone-100">
+                    <div
+                      className={`h-full rounded-full ${ratio >= 0.75 ? "bg-emerald-400" : ratio >= 0.5 ? "bg-amber-300" : ratio >= 0.25 ? "bg-orange-300" : "bg-red-300"}`}
+                      style={{ width: `${Math.max(ratio * 100, 3)}%` }}
+                    />
+                  </div>
+                  <p className="mt-0.5 text-xs text-stone-400">{item.category}</p>
+                </div>
+              );
+            })}
           </div>
         </section>
       )}
