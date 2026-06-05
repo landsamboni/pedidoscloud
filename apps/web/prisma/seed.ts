@@ -20,24 +20,14 @@ function todayUtc() {
 }
 
 // ── Mi Pastelería catalog ────────────────────────────────────────────────────
-// Simplified for demo — 4 categories, 3-4 products each.
+// Minimal demo menu — 2 categories, 5 products.
 const PASTELERIA_CATEGORIES = [
   {
     name: "Torticas",
     items: [
       { name: "Tortica Castilla", price: 26000 },
       { name: "Tortica Red Velvet", price: 26000 },
-      { name: "Tortica Limón", price: 26000 },
       { name: "Tortica Zanahoria", price: 26000 },
-    ],
-  },
-  {
-    name: "Tortas (1/4 libra)",
-    items: [
-      { name: "Torta Castilla", price: 54000 },
-      { name: "Torta Red Velvet", price: 50000 },
-      { name: "Torta Zanahoria", price: 50000 },
-      { name: "Red Velvet Especial Fresas", price: 62000 },
     ],
   },
   {
@@ -45,14 +35,6 @@ const PASTELERIA_CATEGORIES = [
     items: [
       { name: "Cinnamon Rolls x 4", price: 26000 },
       { name: "Cinnamon Rolls x 6", price: 32000 },
-    ],
-  },
-  {
-    name: "Caja de Galletas",
-    items: [
-      { name: "Caja pequeña", price: 36000 },
-      { name: "Caja mediana", price: 49000 },
-      { name: "Caja grande", price: 59000 },
     ],
   },
 ];
