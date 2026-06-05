@@ -95,6 +95,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ restaura
         <MenuImage
           restaurantName={restaurant.name}
           basePriceLabel={isCatalog ? "" : formatMoney(Number(restaurant.basePrice))}
+          subtitle={isCatalog ? "NUESTROS PRODUCTOS" : "MENÚ DEL DÍA"}
           groups={groups}
           backgroundDataUri={background}
           logoDataUri={logo}
@@ -116,6 +117,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ restaura
         <MenuImage
           restaurantName={restaurant.name}
           basePriceLabel={isCatalog ? "" : formatMoney(Number(restaurant.basePrice))}
+          subtitle={isCatalog ? "NUESTROS PRODUCTOS" : "MENÚ DEL DÍA"}
           groups={groups}
           backgroundDataUri={null}
           logoDataUri={null}

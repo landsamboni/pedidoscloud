@@ -8,6 +8,7 @@ export type MenuImageGroup = {
 export type MenuImageProps = {
   restaurantName: string;
   basePriceLabel: string; // e.g. "$14.000"
+  subtitle: string; // e.g. "MENÚ DEL DÍA" or "NUESTROS PRODUCTOS"
   groups: MenuImageGroup[];
   backgroundDataUri: string | null;
   logoDataUri: string | null; // shown top-left
@@ -24,7 +25,7 @@ const WA_PATH =
  * banner with the phone is pinned at the bottom. Font size scales with the
  * number of options so long menus still fit.
  */
-export function MenuImage({ restaurantName, basePriceLabel, groups, backgroundDataUri, logoDataUri, phone }: MenuImageProps) {
+export function MenuImage({ restaurantName, basePriceLabel, subtitle, groups, backgroundDataUri, logoDataUri, phone }: MenuImageProps) {
   const total = groups.reduce((n, g) => n + g.items.length, 0);
   const itemFont = total <= 10 ? 34 : total <= 14 ? 29 : total <= 18 ? 25 : 22;
   const labelFont = Math.round(itemFont * 0.8);
@@ -80,7 +81,7 @@ export function MenuImage({ restaurantName, basePriceLabel, groups, backgroundDa
           }}
         >
           <div style={{ display: "flex", textAlign: "center", fontSize: 56, color: M.accent }}>{restaurantName}</div>
-          <div style={{ display: "flex", fontSize: 24, color: M.muted, letterSpacing: 5, marginTop: 8 }}>MENÚ DEL DÍA</div>
+          <div style={{ display: "flex", fontSize: 24, color: M.muted, letterSpacing: 5, marginTop: 8 }}>{subtitle}</div>
           {basePriceLabel ? (
             <div style={{ display: "flex", fontSize: 30, color: M.ink, marginTop: 16 }}>Almuerzo {basePriceLabel}</div>
           ) : null}
