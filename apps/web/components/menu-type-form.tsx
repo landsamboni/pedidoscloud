@@ -54,20 +54,9 @@ export function MenuTypeForm({
           </select>
         </label>
 
-        {!isCatalog && (
-          <label className="text-sm font-medium text-stone-700">
-            Nombre del pedido{" "}
-            <span className="font-normal text-stone-400">(palabra que se usa para llamar a cada pedido, ej. almuerzo, combo, bandeja)</span>
-            <input
-              className="input mt-1"
-              defaultValue={initialLabel}
-              name="orderUnitLabel"
-              placeholder="almuerzo"
-              required
-            />
-          </label>
-        )}
-        {isCatalog && <input name="orderUnitLabel" type="hidden" value="pedido" />}
+        {/* orderUnitLabel is always sent as a hidden value — not exposed to the operator
+            since it's only used in a minor mobile UI detail. */}
+        <input name="orderUnitLabel" type="hidden" value={isCatalog ? "pedido" : "almuerzo"} />
 
         {/* Always include basePrice but hide/zero it in catalog mode so the
             form submits cleanly without a required-but-hidden field. */}
