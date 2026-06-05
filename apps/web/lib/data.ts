@@ -101,6 +101,7 @@ export async function getAdminRestaurant(slug: string) {
     include: {
       menus: {
         where: { date: dateKeyToUtcDate(localDateKey()) },
+        ...menuWithCategories,
         take: 1,
       },
       orders: {

@@ -113,7 +113,14 @@ export default async function AdminRestaurantPage({ params }: { params: Promise<
       {/* Settings */}
       <section className="card mt-4">
         <h2 className="mb-4 text-lg font-bold">Configuración del Menú</h2>
-        <RestaurantSettings menu={menu} menuPublishedToday={!!menu} restaurant={restaurant} restaurantSlug={restaurant.slug} returnPath={`/admin/restaurants/${restaurant.slug}`} />
+        <RestaurantSettings
+          catalogCategories={menu?.categories ?? []}
+          menu={menu}
+          menuPublishedToday={!!menu}
+          restaurant={restaurant}
+          restaurantSlug={restaurant.slug}
+          returnPath={`/admin/restaurants/${restaurant.slug}`}
+        />
       </section>
 
       <DeliveryCard
