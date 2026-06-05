@@ -1054,7 +1054,13 @@ export async function updateMenuType(_prev: ActionState, formData: FormData): Pr
     const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
     const menuType = formData.get("menuType") === "catalog" ? "catalog" : "combo";
     const orderUnitLabel = String(formData.get("orderUnitLabel") ?? "almuerzo").trim() || "almuerzo";
-    await prisma.restaurant.update({ where: { id: restaurantId }, data: { menuType, orderUnitLabel } });
+    const basePriceRaw = Number(formData.get("basePrice"));
+    const basePrice = menuType === "combo" && Number.isFinite(basePriceRaw) && basePriceRaw >= 0
+      ? new Prisma.Decimal(basePriceRaw) : undefined;
+    await prisma.restaurant.update({
+      where: { id: restaurantId },
+      data: { menuType, orderUnitLabel, ...(basePrice !== undefined ? { basePrice } : {}) },
+    });
     revalidatePath("/admin");
     revalidatePath(returnPath);
     return { ok: true, message: "Tipo de menú actualizado.", ts: Date.now() };

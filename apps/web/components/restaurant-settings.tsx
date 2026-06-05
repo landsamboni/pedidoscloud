@@ -2,6 +2,7 @@ import { deletePaymentMethod, resetMenuTemplates, selectMenuTemplate, setRestaur
 import { FeedbackForm, FileInput, SubmitButton } from "@/components/feedback-form";
 import { CatalogMenuEditor } from "@/components/catalog-menu-editor";
 import { DeliveryForm } from "@/components/delivery-form";
+import { MenuTypeForm } from "@/components/menu-type-form";
 import { MenuEditor } from "@/components/menu-editor";
 import { PaymentMethodForm } from "@/components/payment-method-form";
 import { ShareMenuImage } from "@/components/share-menu-image";
@@ -56,28 +57,13 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
       {/* Menu type selector */}
       <div className="rounded-xl border border-stone-200 p-4">
         <h3 className="text-lg font-semibold">Tipo de negocio</h3>
-        <FeedbackForm action={updateMenuType} className="mt-4 grid gap-3 sm:grid-cols-2">
-          <input name="restaurantId" type="hidden" value={restaurant.id} />
-          <input name="returnPath" type="hidden" value={returnPath} />
-          <label className="text-sm font-medium text-stone-700 sm:col-span-2">
-            Modo del menú
-            <select className="input mt-1" defaultValue={restaurant.menuType} name="menuType">
-              <option value="combo">Menú de combos (sopa, proteína, principio, bebida)</option>
-              <option value="catalog">Catálogo libre (productos con precio individual)</option>
-            </select>
-          </label>
-          <label className="text-sm font-medium text-stone-700">
-            Nombre de cada pedido <span className="font-normal text-stone-400">(ej. almuerzo, pedido, caja, docena)</span>
-            <input className="input mt-1" defaultValue={restaurant.orderUnitLabel} name="orderUnitLabel" placeholder="almuerzo" required />
-          </label>
-          {!isCatalog && (
-            <label className="text-sm font-medium text-stone-700">
-              Precio base
-              <input className="input mt-1 text-base" defaultValue={restaurant.basePrice.toString()} min="0" name="basePrice" required step="1" type="number" />
-            </label>
-          )}
-          <SubmitButton className="button-primary sm:col-span-2">Guardar configuración</SubmitButton>
-        </FeedbackForm>
+        <MenuTypeForm
+          basePrice={restaurant.basePrice.toString()}
+          menuType={restaurant.menuType}
+          orderUnitLabel={restaurant.orderUnitLabel}
+          restaurantId={restaurant.id}
+          returnPath={returnPath}
+        />
       </div>
 
       <div className="rounded-xl border border-stone-200 p-4">
