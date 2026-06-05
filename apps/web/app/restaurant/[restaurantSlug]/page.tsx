@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RestaurantSettings } from "@/components/restaurant-settings";
 import { BusinessDataForm } from "@/components/business-data-form";
+import { DeliveryCard, PaymentCard } from "@/components/settings-cards";
 import { ChangePasswordForm } from "@/components/change-password-form";
 import { logoutAction } from "@/app/login/actions";
 import { formatMoney, formatOrderNumber } from "@/lib/format";
@@ -74,9 +75,27 @@ export default async function RestaurantConsolePage({ params }: { params: Promis
       </section>
 
       <section className="card mt-4">
-        <h2 className="mb-4 text-xl font-bold">Configuración</h2>
+        <h2 className="mb-4 text-xl font-bold">Configuración del Menú</h2>
         <RestaurantSettings catalogCategories={catalogCategories} hidePassword menu={menu} menuPublishedToday={publishedToday} restaurant={restaurant} restaurantSlug={restaurantSlug} returnPath={`/restaurant/${restaurantSlug}`} />
       </section>
+
+      <DeliveryCard
+        allowPickup={restaurant.allowPickup}
+        deliveryFee={restaurant.deliveryFee}
+        deliveryMode={restaurant.deliveryMode}
+        deliveryNote={restaurant.deliveryNote}
+        restaurantId={restaurant.id}
+        returnPath={`/restaurant/${restaurantSlug}`}
+      />
+
+      <PaymentCard
+        nequiAccountName={restaurant.nequiAccountName}
+        nequiPhone={restaurant.nequiPhone}
+        nequiQrPath={restaurant.nequiQrPath}
+        paymentMethods={restaurant.paymentMethods}
+        restaurantId={restaurant.id}
+        returnPath={`/restaurant/${restaurantSlug}`}
+      />
 
       <BusinessDataForm logoPath={restaurant.logoPath} restaurantId={restaurant.id} returnPath={`/restaurant/${restaurantSlug}`} whatsappPhone={restaurant.whatsappPhone} />
 

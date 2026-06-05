@@ -4,6 +4,7 @@ import { deactivateRestaurantSubscription, deleteRestaurant, deleteRestaurantOrd
 import { getDaysRemaining, getSubscriptionStatus, STATUS_COLORS, STATUS_LABELS } from "@/lib/subscription";
 import { RestaurantSettings } from "@/components/restaurant-settings";
 import { BusinessDataForm } from "@/components/business-data-form";
+import { DeliveryCard, PaymentCard } from "@/components/settings-cards";
 import { formatMoney, formatOrderNumber } from "@/lib/format";
 import { getAdminRestaurant } from "@/lib/data";
 
@@ -111,9 +112,27 @@ export default async function AdminRestaurantPage({ params }: { params: Promise<
 
       {/* Settings */}
       <section className="card mt-4">
-        <h2 className="mb-4 text-lg font-bold">Configuración</h2>
+        <h2 className="mb-4 text-lg font-bold">Configuración del Menú</h2>
         <RestaurantSettings menu={menu} menuPublishedToday={!!menu} restaurant={restaurant} restaurantSlug={restaurant.slug} returnPath={`/admin/restaurants/${restaurant.slug}`} />
       </section>
+
+      <DeliveryCard
+        allowPickup={restaurant.allowPickup}
+        deliveryFee={restaurant.deliveryFee}
+        deliveryMode={restaurant.deliveryMode}
+        deliveryNote={restaurant.deliveryNote}
+        restaurantId={restaurant.id}
+        returnPath={`/admin/restaurants/${restaurant.slug}`}
+      />
+
+      <PaymentCard
+        nequiAccountName={restaurant.nequiAccountName}
+        nequiPhone={restaurant.nequiPhone}
+        nequiQrPath={restaurant.nequiQrPath}
+        paymentMethods={restaurant.paymentMethods}
+        restaurantId={restaurant.id}
+        returnPath={`/admin/restaurants/${restaurant.slug}`}
+      />
 
       <BusinessDataForm logoPath={restaurant.logoPath} restaurantId={restaurant.id} returnPath={`/admin/restaurants/${restaurant.slug}`} whatsappPhone={restaurant.whatsappPhone} />
 
