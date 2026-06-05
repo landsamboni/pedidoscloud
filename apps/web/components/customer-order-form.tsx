@@ -213,6 +213,11 @@ export function CustomerOrderForm({ restaurantSlug, basePrice, menu, delivery }:
             🛵 El domicilio <strong>no está incluido</strong> — lo pagas en tu casa al recibir el pedido.
           </p>
         )}
+        {!isPickup && delivery.mode === "free" && (
+          <p className="mt-2 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+            🎉 ¡Domicilio <strong>gratis</strong>! No hay costo adicional de entrega.
+          </p>
+        )}
         {error && <p className="mt-3 text-base font-medium text-red-700">{error}</p>}
         <button className="button-primary mt-4 w-full py-3 text-base" disabled={pending} onClick={submit}>
           {pending ? "Confirmando..." : "Confirmar pedido"}
