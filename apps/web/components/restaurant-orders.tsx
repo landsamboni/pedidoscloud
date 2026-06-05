@@ -20,7 +20,7 @@ type Order = {
   paymentProofPath: string | null;
   paymentSubmittedAtLabel: string | null;
   customer: { name: string; phone: string };
-  items: { id: string; soup: string; protein: string; side: string; drink: string }[];
+  items: { id: string; soup: string; protein: string; side: string; drink: string; catalogCategory: string; catalogItem: string; quantity: number; unitPrice: string }[];
 };
 
 const statusLabels: Record<string, string> = {
@@ -244,17 +244,39 @@ function OrderCard({ order, restaurantSlug, restaurantName, now, readOnly, onVie
       </div>
 
       <div className="mt-4 space-y-2">
-        {order.items.map((item, index) => (
-          <div className="rounded-xl bg-stone-50 p-3" key={item.id}>
-            {order.items.length > 1 && <p className="mb-2 text-xs font-bold uppercase tracking-wider text-stone-400">Almuerzo {index + 1}</p>}
-            <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-base">
-              <dt className="text-stone-500">Sopa</dt>      <dd className="font-medium">{parseItemName(item.soup)}</dd>
-              <dt className="text-stone-500">Proteína</dt>  <dd className="font-medium">{parseItemName(item.protein)}</dd>
-              <dt className="text-stone-500">Principio</dt> <dd className="font-medium">{parseItemName(item.side)}</dd>
-              <dt className="text-stone-500">Bebida</dt>    <dd className="font-medium">{parseItemName(item.drink)}</dd>
-            </dl>
-          </div>
-        ))}
+        {/* Catalog mode: group items by category */}
+        {order.items[0]?.catalogItem ? (
+          (() => {
+            const byCategory = order.items.reduce<Record<string, typeof order.items>>((acc, item) => {
+              (acc[item.catalogCategory] ??= []).push(item);
+              return acc;
+            }, {});
+            return Object.entries(byCategory).map(([cat, items]) => (
+              <div className="rounded-xl bg-stone-50 p-3" key={cat}>
+                <p className="mb-1 text-xs font-bold uppercase tracking-wider text-stone-400">{cat}</p>
+                {items.map(item => (
+                  <div className="flex items-baseline justify-between gap-2 text-base" key={item.id}>
+                    <span className="font-medium">{item.quantity} × {item.catalogItem}</span>
+                    <span className="text-sm text-stone-500">{formatMoney(Number(item.unitPrice) * item.quantity)}</span>
+                  </div>
+                ))}
+              </div>
+            ));
+          })()
+        ) : (
+          /* Combo mode (legacy) */
+          order.items.map((item, index) => (
+            <div className="rounded-xl bg-stone-50 p-3" key={item.id}>
+              {order.items.length > 1 && <p className="mb-2 text-xs font-bold uppercase tracking-wider text-stone-400">Almuerzo {index + 1}</p>}
+              <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-base">
+                <dt className="text-stone-500">Sopa</dt>      <dd className="font-medium">{parseItemName(item.soup)}</dd>
+                <dt className="text-stone-500">Proteína</dt>  <dd className="font-medium">{parseItemName(item.protein)}</dd>
+                <dt className="text-stone-500">Principio</dt> <dd className="font-medium">{parseItemName(item.side)}</dd>
+                <dt className="text-stone-500">Bebida</dt>    <dd className="font-medium">{parseItemName(item.drink)}</dd>
+              </dl>
+            </div>
+          ))
+        )}
       </div>
 
       {order.paymentProofPath && (

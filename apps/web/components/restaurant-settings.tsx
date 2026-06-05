@@ -1,5 +1,6 @@
-import { deletePaymentMethod, resetMenuTemplates, selectMenuTemplate, setRestaurantPassword, updateBasePrice, updateMenuTemplate, updatePaymentSettings } from "@/app/actions";
+import { deletePaymentMethod, resetMenuTemplates, selectMenuTemplate, setRestaurantPassword, updateBasePrice, updateMenuTemplate, updateMenuType, updatePaymentSettings } from "@/app/actions";
 import { FeedbackForm, FileInput, SubmitButton } from "@/components/feedback-form";
+import { CatalogMenuEditor } from "@/components/catalog-menu-editor";
 import { DeliveryForm } from "@/components/delivery-form";
 import { MenuEditor } from "@/components/menu-editor";
 import { PaymentMethodForm } from "@/components/payment-method-form";
@@ -16,9 +17,14 @@ type Menu = {
 
 type PaymentMethod = { id: string; label: string; phone: string; accountName: string; qrPath: string | null; accountType: string | null; idNumber: string | null };
 
+type CatalogItem = { id: string; name: string; price: { toString(): string } };
+type CatalogCategory = { id: string; name: string; items: CatalogItem[] };
+
 type Restaurant = {
   id: string;
   basePrice: { toString(): string };
+  menuType: string;
+  orderUnitLabel: string;
   nequiPhone: string | null;
   nequiAccountName: string | null;
   nequiQrPath: string | null;
@@ -34,8 +40,9 @@ type Restaurant = {
   paymentMethods: PaymentMethod[];
 };
 
-export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlug, hidePassword = false, menuPublishedToday = false }: { menu: Menu; restaurant: Restaurant; returnPath: string; restaurantSlug: string; hidePassword?: boolean; menuPublishedToday?: boolean }) {
-  const hasTemplate = !!menu && [menu.soups, menu.proteins, menu.sides, menu.drinks].some((o) => o.length > 0);
+export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlug, catalogCategories = [], hidePassword = false, menuPublishedToday = false }: { menu: Menu; restaurant: Restaurant; returnPath: string; restaurantSlug: string; catalogCategories?: CatalogCategory[]; hidePassword?: boolean; menuPublishedToday?: boolean }) {
+  const isCatalog = restaurant.menuType === "catalog";
+  const hasTemplate = !!menu && (!isCatalog ? [menu.soups, menu.proteins, menu.sides, menu.drinks].some((o) => o.length > 0) : catalogCategories.length > 0);
   // Changes whenever the menu content changes, used to bust the menu-image cache
   // so the preview/share always reflect the latest saved menu.
   const menuVersion =
@@ -46,16 +53,30 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
   const templateSlots = Array.from(new Set([...(restaurant.menuTemplateHistory ?? []), ...PRESET_TEMPLATES])).slice(0, 4);
   return (
     <div className="space-y-3">
+      {/* Menu type selector */}
       <div className="rounded-xl border border-stone-200 p-4">
-        <h3 className="text-lg font-semibold">Precio del almuerzo</h3>
-        <FeedbackForm action={updateBasePrice} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+        <h3 className="text-lg font-semibold">Tipo de negocio</h3>
+        <FeedbackForm action={updateMenuType} className="mt-4 grid gap-3 sm:grid-cols-2">
           <input name="restaurantId" type="hidden" value={restaurant.id} />
           <input name="returnPath" type="hidden" value={returnPath} />
-          <label className="text-sm font-medium text-stone-700">
-            Precio base de cada almuerzo
-            <input className="input mt-1 text-base" defaultValue={restaurant.basePrice.toString()} min="1" name="basePrice" required step="1" type="number" />
+          <label className="text-sm font-medium text-stone-700 sm:col-span-2">
+            Modo del menú
+            <select className="input mt-1" defaultValue={restaurant.menuType} name="menuType">
+              <option value="combo">Menú de combos (sopa, proteína, principio, bebida)</option>
+              <option value="catalog">Catálogo libre (productos con precio individual)</option>
+            </select>
           </label>
-          <SubmitButton className="button-primary self-end">Guardar precio</SubmitButton>
+          <label className="text-sm font-medium text-stone-700">
+            Nombre de cada pedido <span className="font-normal text-stone-400">(ej. almuerzo, pedido, caja, docena)</span>
+            <input className="input mt-1" defaultValue={restaurant.orderUnitLabel} name="orderUnitLabel" placeholder="almuerzo" required />
+          </label>
+          {!isCatalog && (
+            <label className="text-sm font-medium text-stone-700">
+              Precio base
+              <input className="input mt-1 text-base" defaultValue={restaurant.basePrice.toString()} min="0" name="basePrice" required step="1" type="number" />
+            </label>
+          )}
+          <SubmitButton className="button-primary sm:col-span-2">Guardar configuración</SubmitButton>
         </FeedbackForm>
       </div>
 
@@ -82,18 +103,31 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
             </span>
           )}
         </h3>
-        <MenuEditor
-          hasTemplate={hasTemplate}
-          menuPublishedToday={menuPublishedToday}
-          restaurantId={restaurant.id}
-          returnPath={returnPath}
-          values={{
-            soups: menu?.soups.join("\n"),
-            proteins: menu?.proteins.join("\n"),
-            sides: menu?.sides.join("\n"),
-            drinks: menu?.drinks.join("\n"),
-          }}
-        />
+        {isCatalog ? (
+          <CatalogMenuEditor
+            initialCategories={catalogCategories.map(c => ({
+              id: c.id,
+              name: c.name,
+              items: c.items.map(i => ({ id: i.id, name: i.name, price: Number(i.price.toString()) })),
+            }))}
+            publishedToday={menuPublishedToday}
+            restaurantId={restaurant.id}
+            returnPath={returnPath}
+          />
+        ) : (
+          <MenuEditor
+            hasTemplate={hasTemplate}
+            menuPublishedToday={menuPublishedToday}
+            restaurantId={restaurant.id}
+            returnPath={returnPath}
+            values={{
+              soups: menu?.soups.join("\n"),
+              proteins: menu?.proteins.join("\n"),
+              sides: menu?.sides.join("\n"),
+              drinks: menu?.drinks.join("\n"),
+            }}
+          />
+        )}
       </div>
 
       <div className="rounded-xl border border-stone-200 p-4">

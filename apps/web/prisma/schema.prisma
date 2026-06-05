@@ -24,6 +24,12 @@ model Restaurant {
   name          String
   slug          String              @unique
   basePrice     Decimal             @db.Decimal(12, 2)
+  // "combo" = fixed categories (soups/proteins/sides/drinks), original behavior.
+  // "catalog" = dynamic categories with per-item prices and free quantities.
+  menuType      String              @default("combo")
+  // Display label for a single order unit shown to the customer (e.g. "almuerzo",
+  // "pedido", "caja"). Used in totals and confirmations.
+  orderUnitLabel String             @default("almuerzo")
   nequiAccountName String?
   nequiPhone       String?
   nequiQrPath      String?
@@ -63,17 +69,44 @@ model PaymentMethod {
   @@index([restaurantId])
 }
 
+// "combo" mode menu — original fixed categories (soups/proteins/sides/drinks).
+// Kept for backward compatibility with existing restaurants.
 model Menu {
-  id           String     @id @default(cuid())
+  id           String         @id @default(cuid())
   restaurantId String
-  date         DateTime   @db.Date
+  date         DateTime       @db.Date
   soups        String[]
   proteins     String[]
   sides        String[]
   drinks       String[]
-  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  restaurant   Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  // "catalog" mode: dynamic categories attached to this daily menu.
+  categories   MenuCategory[]
 
   @@unique([restaurantId, date])
+}
+
+// "catalog" mode — dynamic categories with custom names and per-item prices.
+model MenuCategory {
+  id       String     @id @default(cuid())
+  menuId   String
+  name     String     // e.g. "Pasteles", "Rolls", "Bebidas"
+  position Int        @default(0)
+  menu     Menu       @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  items    MenuItem[]
+
+  @@index([menuId])
+}
+
+model MenuItem {
+  id         String       @id @default(cuid())
+  categoryId String
+  name       String       // e.g. "Pastel de chocolate"
+  price      Decimal      @db.Decimal(12, 2)
+  position   Int          @default(0)
+  category   MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([categoryId])
 }
 
 model Customer {
@@ -97,10 +130,10 @@ model Order {
   orderNumber  Int
   status       OrderStatus @default(NEW)
   total        Decimal     @db.Decimal(12, 2)
-  deliveryFee  Decimal     @default(0) @db.Decimal(12, 2) // delivery charged (0 for pickup/free/separate)
+  deliveryFee  Decimal     @default(0) @db.Decimal(12, 2)
   fulfillment  String      @default("delivery") // "delivery" | "pickup"
   address      String
-  customerName String   // snapshot of customer name at order creation time
+  customerName String
   paymentProofPath String?
   paymentSubmittedAt DateTime?
   createdAt    DateTime    @default(now())
@@ -112,14 +145,23 @@ model Order {
   @@index([restaurantId, orderDate, createdAt])
 }
 
+// Unified order item — supports both combo and catalog modes.
+// combo: soup/protein/side/drink filled, catalogCategory/catalogItem/quantity unused.
+// catalog: catalogCategory/catalogItem/quantity/unitPrice filled, soup-drink empty.
 model OrderItem {
   id        String  @id @default(cuid())
   orderId   String
-  soup      String
-  protein   String
-  side      String
-  drink     String
-  price     Decimal @db.Decimal(12, 2)
+  // combo mode (legacy, kept for backward compat)
+  soup      String  @default("")
+  protein   String  @default("")
+  side      String  @default("")
+  drink     String  @default("")
+  price     Decimal @default(0) @db.Decimal(12, 2)  // total price for combo row
+  // catalog mode
+  catalogCategory String  @default("") // category name snapshot
+  catalogItem     String  @default("") // item name snapshot
+  quantity        Int     @default(1)
+  unitPrice       Decimal @default(0) @db.Decimal(12, 2)
   order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 

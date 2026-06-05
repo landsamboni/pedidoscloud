@@ -19,12 +19,22 @@ export async function getRestaurantCustomers(slug: string) {
   return { restaurant, customers };
 }
 
+const menuWithCategories = {
+  include: {
+    categories: {
+      orderBy: { position: "asc" as const },
+      include: { items: { orderBy: { position: "asc" as const } } },
+    },
+  },
+} as const;
+
 export async function getRestaurantMenu(slug: string) {
   return prisma.restaurant.findFirst({
     where: { slug, active: true },
     include: {
       menus: {
         where: { date: dateKeyToUtcDate(localDateKey()) },
+        ...menuWithCategories,
         take: 1,
       },
     },
@@ -42,12 +52,14 @@ export async function getMenuForEditor(restaurantId: string) {
   const today = dateKeyToUtcDate(localDateKey());
   const todayMenu = await prisma.menu.findUnique({
     where: { restaurantId_date: { restaurantId, date: today } },
+    ...menuWithCategories,
   });
   if (todayMenu) return { menu: todayMenu, publishedToday: true };
 
   const latest = await prisma.menu.findFirst({
     where: { restaurantId },
     orderBy: { date: "desc" },
+    ...menuWithCategories,
   });
   return { menu: latest ?? undefined, publishedToday: false };
 }

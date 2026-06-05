@@ -33,7 +33,7 @@ export default async function RestaurantOrdersPage({ params }: { params: Promise
       createdAtMs: order.createdAt.getTime(),
       paymentProofPath: resolveFileUrl(order.paymentProofPath),
       paymentSubmittedAtLabel: order.paymentSubmittedAt ? formatTime(order.paymentSubmittedAt) : null,
-      items: order.items.map((item) => ({ ...item, price: item.price.toString() })),
+      items: order.items.map((item) => ({ ...item, price: item.price.toString(), unitPrice: item.unitPrice.toString() })),
       customer: { ...order.customer, name: order.customerName },
     }))
     .sort((a, b) => {

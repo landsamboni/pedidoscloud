@@ -14,6 +14,7 @@ export default async function RestaurantConsolePage({ params }: { params: Promis
   if (!restaurant) notFound();
 
   const { menu, publishedToday } = await getMenuForEditor(restaurant.id);
+  const catalogCategories = menu?.categories ?? [];
 
   const subStatus = getSubscriptionStatus(restaurant.subscriptionEndsAt ?? null);
   const daysLeft = restaurant.subscriptionEndsAt ? getDaysRemaining(restaurant.subscriptionEndsAt) : null;
@@ -74,7 +75,7 @@ export default async function RestaurantConsolePage({ params }: { params: Promis
 
       <section className="card mt-4">
         <h2 className="mb-4 text-xl font-bold">Configuración</h2>
-        <RestaurantSettings hidePassword menu={menu} menuPublishedToday={publishedToday} restaurant={restaurant} restaurantSlug={restaurantSlug} returnPath={`/restaurant/${restaurantSlug}`} />
+        <RestaurantSettings catalogCategories={catalogCategories} hidePassword menu={menu} menuPublishedToday={publishedToday} restaurant={restaurant} restaurantSlug={restaurantSlug} returnPath={`/restaurant/${restaurantSlug}`} />
       </section>
 
       <BusinessDataForm logoPath={restaurant.logoPath} restaurantId={restaurant.id} returnPath={`/restaurant/${restaurantSlug}`} whatsappPhone={restaurant.whatsappPhone} />

@@ -944,3 +944,218 @@ export async function uploadPaymentProof(_: PaymentProofState, formData: FormDat
     };
   }
 }
+
+// ─────────────────────────────────────────────────────────
+// Catalog menu (menuType = "catalog") — dynamic categories
+// ─────────────────────────────────────────────────────────
+
+export type CatalogCategory = {
+  id?: string;       // present for existing categories, absent for new ones
+  name: string;
+  items: { id?: string; name: string; price: number }[];
+};
+
+export type CatalogMenuState = { ok: boolean; message: string; ts: number };
+
+/** Upsert today's catalog menu (dynamic categories + items with per-item prices). */
+export async function updateCatalogMenu(
+  _prev: CatalogMenuState,
+  formData: FormData,
+): Promise<CatalogMenuState> {
+  try {
+    const restaurantId = String(formData.get("restaurantId"));
+    const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
+    const rawCategories = String(formData.get("categories") ?? "[]");
+
+    let categories: CatalogCategory[];
+    try {
+      categories = JSON.parse(rawCategories);
+    } catch {
+      return { ok: false, message: "Datos del menú inválidos.", ts: Date.now() };
+    }
+
+    if (!categories.length) {
+      return { ok: false, message: "Agrega al menos una categoría.", ts: Date.now() };
+    }
+    for (const cat of categories) {
+      if (!cat.name.trim()) return { ok: false, message: "Todas las categorías deben tener nombre.", ts: Date.now() };
+      if (!cat.items.length) return { ok: false, message: `La categoría "${cat.name}" no tiene productos.`, ts: Date.now() };
+      for (const item of cat.items) {
+        if (!item.name.trim()) return { ok: false, message: `Un producto en "${cat.name}" no tiene nombre.`, ts: Date.now() };
+        if (item.price < 0) return { ok: false, message: `Precio inválido en "${cat.name}".`, ts: Date.now() };
+      }
+    }
+
+    const today = dateKeyToUtcDate(localDateKey());
+
+    // Upsert the Menu row for today.
+    const menu = await prisma.menu.upsert({
+      where: { restaurantId_date: { restaurantId, date: today } },
+      update: {},
+      create: { restaurantId, date: today, soups: [], proteins: [], sides: [], drinks: [] },
+      include: { categories: { include: { items: true } } },
+    });
+
+    // Replace all categories: delete existing, recreate from submitted data.
+    await prisma.menuCategory.deleteMany({ where: { menuId: menu.id } });
+    for (let ci = 0; ci < categories.length; ci++) {
+      const cat = categories[ci];
+      const created = await prisma.menuCategory.create({
+        data: { menuId: menu.id, name: cat.name.trim(), position: ci },
+      });
+      for (let ii = 0; ii < cat.items.length; ii++) {
+        const item = cat.items[ii];
+        await prisma.menuItem.create({
+          data: {
+            categoryId: created.id,
+            name: item.name.trim(),
+            price: new Prisma.Decimal(item.price),
+            position: ii,
+          },
+        });
+      }
+    }
+
+    revalidatePath("/admin");
+    revalidatePath(returnPath);
+    const restaurant = await prisma.restaurant.findUnique({ where: { id: restaurantId }, select: { slug: true } });
+    if (restaurant) revalidatePath(`/r/${restaurant.slug}`);
+    return { ok: true, message: "Menú publicado y visible para tus clientes.", ts: Date.now() };
+  } catch (e) {
+    console.error("[updateCatalogMenu]", e);
+    return { ok: false, message: "No se pudo guardar el menú. Intenta de nuevo.", ts: Date.now() };
+  }
+}
+
+/** Unpublish today's catalog menu (same as combo unpublish). */
+export async function unpublishCatalogMenu(
+  _prev: CatalogMenuState,
+  formData: FormData,
+): Promise<CatalogMenuState> {
+  try {
+    const restaurantId = String(formData.get("restaurantId"));
+    const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
+    await prisma.menu.deleteMany({ where: { restaurantId, date: dateKeyToUtcDate(localDateKey()) } });
+    const restaurant = await prisma.restaurant.findUnique({ where: { id: restaurantId }, select: { slug: true } });
+    revalidatePath("/admin");
+    revalidatePath(returnPath);
+    if (restaurant) revalidatePath(`/r/${restaurant.slug}`);
+    return { ok: true, message: "Menú despublicado. Tus clientes ya no lo ven.", ts: Date.now() };
+  } catch (e) {
+    console.error("[unpublishCatalogMenu]", e);
+    return { ok: false, message: "No se pudo despublicar el menú.", ts: Date.now() };
+  }
+}
+
+/** Switch a restaurant's menu type between "combo" and "catalog". */
+export async function updateMenuType(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    const restaurantId = String(formData.get("restaurantId"));
+    const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
+    const menuType = formData.get("menuType") === "catalog" ? "catalog" : "combo";
+    const orderUnitLabel = String(formData.get("orderUnitLabel") ?? "almuerzo").trim() || "almuerzo";
+    await prisma.restaurant.update({ where: { id: restaurantId }, data: { menuType, orderUnitLabel } });
+    revalidatePath("/admin");
+    revalidatePath(returnPath);
+    return { ok: true, message: "Tipo de menú actualizado.", ts: Date.now() };
+  } catch (e) {
+    console.error("[updateMenuType]", e);
+    return { ok: false, message: "No se pudo actualizar el tipo de menú.", ts: Date.now() };
+  }
+}
+
+/** Create a catalog order (catalog mode restaurants). */
+export type CreateCatalogOrderInput = {
+  restaurantSlug: string;
+  name: string;
+  phone: string;
+  address: string;
+  fulfillment: "delivery" | "pickup";
+  items: { categoryName: string; itemName: string; unitPrice: number; quantity: number }[];
+};
+
+export async function createCatalogOrder(input: CreateCatalogOrderInput) {
+  try {
+    const fulfillment = input.fulfillment === "pickup" ? "pickup" : "delivery";
+    const name = validateFullName(input.name);
+    const phone = validatePhone(input.phone);
+    const address = fulfillment === "pickup" ? "Recoge en el restaurante" : validateAddress(input.address);
+    if (!input.items.length) throw new Error("Agrega al menos un producto.");
+    if (input.items.some(i => i.quantity < 1)) throw new Error("La cantidad mínima por producto es 1.");
+
+    const order = await prisma.$transaction(async (tx) => {
+      const restaurant = await tx.restaurant.findFirst({
+        where: { slug: input.restaurantSlug, active: true },
+        include: {
+          menus: {
+            where: { date: dateKeyToUtcDate(localDateKey()) },
+            include: { categories: { include: { items: true } } },
+            take: 1,
+          },
+        },
+      });
+      if (!restaurant) throw new Error("Restaurante no encontrado.");
+      const menu = restaurant.menus[0];
+      if (!menu) throw new Error("El restaurante no tiene menú para hoy.");
+
+      // Validate items against current menu
+      const allItems = menu.categories.flatMap(c => c.items.map(i => ({ categoryName: c.name, itemName: i.name, price: Number(i.price) })));
+      for (const inputItem of input.items) {
+        const found = allItems.find(i => i.categoryName === inputItem.categoryName && i.itemName === inputItem.itemName);
+        if (!found) throw new Error(`"${inputItem.itemName}" ya no está disponible. Actualiza tu selección.`);
+        // Use server price (authoritative, ignore client-sent price)
+        inputItem.unitPrice = found.price;
+      }
+
+      const customer = await tx.customer.upsert({
+        where: { restaurantId_phone: { restaurantId: restaurant.id, phone } },
+        update: { name, lastAddress: address },
+        create: { restaurantId: restaurant.id, name, phone, lastAddress: address },
+      });
+
+      const orderDate = localDateKey();
+      const counter = await tx.dailyOrderCounter.upsert({
+        where: { restaurantId_date: { restaurantId: restaurant.id, date: orderDate } },
+        update: { lastNumber: { increment: 1 } },
+        create: { restaurantId: restaurant.id, date: orderDate, lastNumber: 1 },
+      });
+
+      const deliveryFee =
+        fulfillment === "delivery" && restaurant.deliveryMode === "fixed"
+          ? Number(restaurant.deliveryFee ?? 0) : 0;
+      const itemsTotal = input.items.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
+      const total = itemsTotal + deliveryFee;
+
+      return tx.order.create({
+        data: {
+          restaurantId: restaurant.id,
+          customerId: customer.id,
+          customerName: name,
+          orderDate,
+          orderNumber: counter.lastNumber,
+          status: OrderStatus.PAYMENT_PENDING,
+          total: new Prisma.Decimal(total),
+          deliveryFee: new Prisma.Decimal(deliveryFee),
+          fulfillment,
+          address,
+          items: {
+            create: input.items.map(i => ({
+              soup: "", protein: "", side: "", drink: "",
+              price: new Prisma.Decimal(i.unitPrice * i.quantity),
+              catalogCategory: i.categoryName,
+              catalogItem: i.itemName,
+              quantity: i.quantity,
+              unitPrice: new Prisma.Decimal(i.unitPrice),
+            })),
+          },
+        },
+      });
+    });
+
+    revalidatePath(`/restaurant/${input.restaurantSlug}/orders`);
+    revalidatePath("/admin");
+    return { orderNumber: order.orderNumber, publicToken: order.publicToken };
+  } catch (cause) {
+    throw cause;
+  }
+}
