@@ -54,17 +54,20 @@ export function MenuTypeForm({
           </select>
         </label>
 
-        <label className="text-sm font-medium text-stone-700">
-          Nombre de cada pedido{" "}
-          <span className="font-normal text-stone-400">(ej. almuerzo, pedido, caja, docena)</span>
-          <input
-            className="input mt-1"
-            defaultValue={initialLabel}
-            name="orderUnitLabel"
-            placeholder="almuerzo"
-            required
-          />
-        </label>
+        {!isCatalog && (
+          <label className="text-sm font-medium text-stone-700">
+            Nombre del pedido{" "}
+            <span className="font-normal text-stone-400">(palabra que se usa para llamar a cada pedido, ej. almuerzo, combo, bandeja)</span>
+            <input
+              className="input mt-1"
+              defaultValue={initialLabel}
+              name="orderUnitLabel"
+              placeholder="almuerzo"
+              required
+            />
+          </label>
+        )}
+        {isCatalog && <input name="orderUnitLabel" type="hidden" value="pedido" />}
 
         {/* Always include basePrice but hide/zero it in catalog mode so the
             form submits cleanly without a required-but-hidden field. */}
