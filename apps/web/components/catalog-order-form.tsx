@@ -246,6 +246,11 @@ export function CatalogOrderForm({ restaurantSlug, orderUnitLabel, categories, d
           <span>Total a pagar</span>
           <span>{formatMoney(total)}</span>
         </div>
+        {!isPickup && delivery.mode === "separate" && totalItems > 0 && (
+          <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            🛵 El domicilio <strong>no está incluido</strong> — lo pagas en tu casa al recibir el pedido.
+          </p>
+        )}
         {totalItems === 0 && <p className="mt-1 text-sm text-stone-400">Agrega productos de arriba para ver el total.</p>}
         {error && <p className="mt-3 text-base font-medium text-red-700">{error}</p>}
         <button className="button-primary mt-4 w-full py-3 text-base" disabled={pending || totalItems === 0} onClick={submit}>

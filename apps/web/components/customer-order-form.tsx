@@ -209,7 +209,9 @@ export function CustomerOrderForm({ restaurantSlug, basePrice, menu, delivery }:
           <span>{formatMoney(total)}</span>
         </div>
         {!isPickup && delivery.mode === "separate" && (
-          <p className="mt-1 text-xs text-stone-400">El domicilio no está incluido; se paga/coordina aparte con el restaurante.</p>
+          <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            🛵 El domicilio <strong>no está incluido</strong> — lo pagas en tu casa al recibir el pedido.
+          </p>
         )}
         {error && <p className="mt-3 text-base font-medium text-red-700">{error}</p>}
         <button className="button-primary mt-4 w-full py-3 text-base" disabled={pending} onClick={submit}>
