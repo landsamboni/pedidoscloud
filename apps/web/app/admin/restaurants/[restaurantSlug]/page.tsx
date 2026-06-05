@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { deactivateRestaurantSubscription, deleteRestaurant, deleteRestaurantOrders, deleteRestaurantOrdersByDate, populateDemoData, setRestaurantSubscription } from "@/app/actions";
+import { deactivateRestaurantSubscription, deleteRestaurant, deleteRestaurantOrders, deleteRestaurantOrdersByDate, populateCatalogDemoData, populateDemoData, setRestaurantSubscription } from "@/app/actions";
 import { getDaysRemaining, getSubscriptionStatus, STATUS_COLORS, STATUS_LABELS } from "@/lib/subscription";
 import { RestaurantSettings } from "@/components/restaurant-settings";
 import { BusinessDataForm } from "@/components/business-data-form";
@@ -11,6 +11,7 @@ import { getAdminRestaurant } from "@/lib/data";
 export const dynamic = "force-dynamic";
 
 const DEMO_SLUG = "panza-feliz";
+const CATALOG_DEMO_SLUG = "mi-pasteleria";
 
 export default async function AdminRestaurantPage({ params }: { params: Promise<{ restaurantSlug: string }> }) {
   const { restaurantSlug } = await params;
@@ -143,12 +144,24 @@ export default async function AdminRestaurantPage({ params }: { params: Promise<
 
       <BusinessDataForm logoPath={restaurant.logoPath} restaurantId={restaurant.id} returnPath={`/admin/restaurants/${restaurant.slug}`} whatsappPhone={restaurant.whatsappPhone} />
 
-      {/* Demo data — only for the showcase restaurant */}
+      {/* Demo data — combo showcase */}
       {restaurant.slug === DEMO_SLUG && (
         <details className="mt-4 rounded-xl border border-teal-200 bg-teal-50 p-4">
           <summary className="cursor-pointer text-sm font-semibold text-teal-800">🎬 Poblar datos demo (últimos 15 días)</summary>
-          <p className="mt-2 text-xs text-teal-700">Genera órdenes y clientes ficticios de los últimos 15 días para presentaciones de ventas. Se agregan a los datos existentes.</p>
+          <p className="mt-2 text-xs text-teal-700">Genera órdenes y clientes ficticios para presentaciones de ventas.</p>
           <form action={populateDemoData} className="mt-3">
+            <input name="restaurantId" type="hidden" value={restaurant.id} />
+            <button className="button-primary text-sm" type="submit">Generar datos demo</button>
+          </form>
+        </details>
+      )}
+
+      {/* Demo data — catalog showcase (Mi Pastelería) */}
+      {restaurant.slug === CATALOG_DEMO_SLUG && (
+        <details className="mt-4 rounded-xl border border-teal-200 bg-teal-50 p-4">
+          <summary className="cursor-pointer text-sm font-semibold text-teal-800">🎬 Poblar datos demo pastelería (últimos 15 días)</summary>
+          <p className="mt-2 text-xs text-teal-700">Genera pedidos y clientes ficticios con productos reales de la pastelería para presentaciones de ventas.</p>
+          <form action={populateCatalogDemoData} className="mt-3">
             <input name="restaurantId" type="hidden" value={restaurant.id} />
             <button className="button-primary text-sm" type="submit">Generar datos demo</button>
           </form>

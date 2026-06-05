@@ -441,6 +441,147 @@ export async function populateDemoData(formData: FormData) {
   revalidatePath(`/restaurant/${restaurant.slug}`);
 }
 
+/** Admin: populate catalog demo orders for mi-pasteleria (for sales demos). */
+export async function populateCatalogDemoData(formData: FormData) {
+  const { getSession } = await import("@/lib/auth");
+  const session = await getSession();
+  if (!session || session.role !== "admin") throw new Error("No autorizado.");
+
+  const restaurantId = String(formData.get("restaurantId"));
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { id: restaurantId },
+    select: { id: true, slug: true },
+  });
+  if (!restaurant) throw new Error("Restaurante no encontrado.");
+  if (restaurant.slug !== "mi-pasteleria") throw new Error("Datos demo solo disponibles para Mi Pastelería.");
+
+  const CUSTOMERS = [
+    { name: "Valentina Muñoz", phone: "3101234567", address: "Cra 5 #12-34 Popayán" },
+    { name: "Camila Ospina", phone: "3152345678", address: "Cll 4N #2-15 Popayán" },
+    { name: "Diana Torres", phone: "3003456789", address: "Cra 9 #18-50 apto 301" },
+    { name: "Juliana García", phone: "3204567890", address: "Cll 10 #8-22 Popayán" },
+    { name: "Marcela Ríos", phone: "3115678901", address: "Cra 12 #6-40 Popayán" },
+    { name: "Andrea Castro", phone: "3006789012", address: "Cll 6N #5-18 apto 202" },
+    { name: "Sofía Leal", phone: "3177890123", address: "Cra 7 #14-30 Popayán" },
+    { name: "Laura Quintero", phone: "3028901234", address: "Cll 8 #11-45 Popayán" },
+    { name: "Natalia Vargas", phone: "3159012345", address: "Cra 3 #20-12 Popayán" },
+    { name: "Paula Romero", phone: "3100123456", address: "Cll 15 #4-28 apto 104" },
+  ];
+
+  // Realistic product combos (popular items for a bakery demo)
+  const DEMO_ORDERS = [
+    [{ cat: "Tortas Clásicas", item: "Torta Castilla - Tortica", price: 26000, qty: 1 }],
+    [{ cat: "Tortas Clásicas", item: "Torta Red Velvet - 1/4 libra", price: 50000, qty: 1 }],
+    [{ cat: "Tortas Clásicas", item: "Torta Zanahoria - 1/4 libra", price: 50000, qty: 1 }],
+    [{ cat: "Cinnamon Rolls", item: "Caja x 4", price: 26000, qty: 1 }],
+    [{ cat: "Cinnamon Rolls", item: "Caja x 6", price: 32000, qty: 1 }],
+    [{ cat: "Tortas Clásicas", item: "Torta Castilla - 1/2 libra", price: 78000, qty: 1 }],
+    [{ cat: "Tortas Clásicas", item: "Torta Mora & Arequipe - Tortica", price: 26000, qty: 1 }, { cat: "Cinnamon Rolls", item: "Caja x 4", price: 26000, qty: 1 }],
+    [{ cat: "Tortas Clásicas", item: "Torta Limón - Tortica", price: 26000, qty: 2 }],
+    [{ cat: "Red Velvet Especial Fresas", item: "Redonda 1/4 libra", price: 62000, qty: 1 }],
+    [{ cat: "Tortas Clásicas", item: "Torta Valencia - Tortica", price: 26000, qty: 1 }],
+    [{ cat: "Caja de Galletas", item: "Caja mediana", price: 49000, qty: 1 }],
+    [{ cat: "Tortas en Corazón", item: "Corazón 1/4 libra (8-10 porciones)", price: 59000, qty: 1 }],
+    [{ cat: "Tortas Clásicas", item: "Torta Arequipe - 1/4 libra", price: 50000, qty: 1 }],
+    [{ cat: "Cinnamon Rolls", item: "Caja x 6", price: 32000, qty: 2 }],
+    [{ cat: "Tortas Clásicas", item: "Torta Castilla - 1 libra", price: 119000, qty: 1 }],
+  ];
+
+  const rand = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+  const randInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+  const DAYS = 15;
+  for (let daysAgo = DAYS; daysAgo >= 0; daysAgo--) {
+    const date = new Date();
+    date.setDate(date.getDate() - daysAgo);
+    const dateKey = localDateKey(date);
+    const isToday = daysAgo === 0;
+    const ordersCount = isToday ? randInt(2, 4) : randInt(3, 8);
+
+    // Ensure menu exists for this day
+    const menu = await prisma.menu.upsert({
+      where: { restaurantId_date: { restaurantId: restaurant.id, date: dateKeyToUtcDate(dateKey) } },
+      update: {},
+      create: { restaurantId: restaurant.id, date: dateKeyToUtcDate(dateKey), soups: [], proteins: [], sides: [], drinks: [] },
+      include: { categories: { include: { items: true } } },
+    });
+
+    // Seed categories if empty
+    if (menu.categories.length === 0) {
+      const PASTELERIA_CATS = [
+        { name: "Tortas Clásicas", items: [
+          { name: "Torta Castilla - Tortica", price: 26000 }, { name: "Torta Castilla - 1/4 libra", price: 54000 }, { name: "Torta Castilla - 1/2 libra", price: 78000 }, { name: "Torta Castilla - 1 libra", price: 119000 },
+          { name: "Torta Mora & Arequipe - Tortica", price: 26000 }, { name: "Torta Red Velvet - 1/4 libra", price: 50000 }, { name: "Torta Zanahoria - 1/4 libra", price: 50000 }, { name: "Torta Limón - Tortica", price: 26000 },
+          { name: "Torta Valencia - Tortica", price: 26000 }, { name: "Torta Arequipe - 1/4 libra", price: 50000 },
+        ]},
+        { name: "Tortas en Corazón", items: [{ name: "Corazón 1/4 libra (8-10 porciones)", price: 59000 }, { name: "Corazón 1/2 libra (18-22 porciones)", price: 81000 }] },
+        { name: "Red Velvet Especial Fresas", items: [{ name: "Redonda 1/4 libra", price: 62000 }, { name: "Redonda 1/2 libra", price: 85000 }] },
+        { name: "Cinnamon Rolls", items: [{ name: "Caja x 4", price: 26000 }, { name: "Caja x 6", price: 32000 }] },
+        { name: "Caja de Galletas", items: [{ name: "Caja pequeña", price: 36000 }, { name: "Caja mediana", price: 49000 }, { name: "Caja grande", price: 59000 }] },
+      ];
+      for (let ci = 0; ci < PASTELERIA_CATS.length; ci++) {
+        const c = await prisma.menuCategory.create({ data: { menuId: menu.id, name: PASTELERIA_CATS[ci].name, position: ci } });
+        for (let ii = 0; ii < PASTELERIA_CATS[ci].items.length; ii++) {
+          await prisma.menuItem.create({ data: { categoryId: c.id, name: PASTELERIA_CATS[ci].items[ii].name, price: PASTELERIA_CATS[ci].items[ii].price, position: ii } });
+        }
+      }
+    }
+
+    const counter = await prisma.dailyOrderCounter.findUnique({ where: { restaurantId_date: { restaurantId: restaurant.id, date: dateKey } } });
+    let orderNum = counter?.lastNumber ?? 0;
+
+    for (let j = 0; j < ordersCount; j++) {
+      const cust = rand(CUSTOMERS);
+      const orderItems = rand(DEMO_ORDERS);
+      const customer = await prisma.customer.upsert({
+        where: { restaurantId_phone: { restaurantId: restaurant.id, phone: cust.phone } },
+        update: { name: cust.name, lastAddress: cust.address },
+        create: { restaurantId: restaurant.id, name: cust.name, phone: cust.phone, lastAddress: cust.address },
+      });
+      orderNum++;
+      let status: string;
+      if (isToday) {
+        status = j < 2 ? "PAYMENT_PENDING" : "PAYMENT_CONFIRMED";
+      } else {
+        status = Math.random() < 0.88 ? "PAYMENT_CONFIRMED" : "CANCELLED";
+      }
+      const total = orderItems.reduce((s, i) => s + i.price * i.qty, 0);
+      const orderCreatedAt = new Date(date);
+      orderCreatedAt.setUTCHours(14 + j % 5, j * 11 % 60, 0, 0);
+      await prisma.order.create({
+        data: {
+          restaurantId: restaurant.id,
+          customerId: customer.id,
+          customerName: cust.name,
+          orderDate: dateKey,
+          orderNumber: orderNum,
+          status: status as never,
+          total: new Prisma.Decimal(total),
+          address: cust.address,
+          createdAt: orderCreatedAt,
+          items: {
+            create: orderItems.map(i => ({
+              soup: "", protein: "", side: "", drink: "",
+              price: new Prisma.Decimal(i.price * i.qty),
+              catalogCategory: i.cat,
+              catalogItem: i.item,
+              quantity: i.qty,
+              unitPrice: new Prisma.Decimal(i.price),
+            })),
+          },
+        },
+      });
+    }
+    await prisma.dailyOrderCounter.upsert({
+      where: { restaurantId_date: { restaurantId: restaurant.id, date: dateKey } },
+      update: { lastNumber: orderNum },
+      create: { restaurantId: restaurant.id, date: dateKey, lastNumber: orderNum },
+    });
+  }
+  revalidatePath("/admin");
+  revalidatePath(`/restaurant/${restaurant.slug}`);
+}
+
 /** Admin: activate or renew a restaurant's subscription. */
 export async function setRestaurantSubscription(formData: FormData) {
   const { getSession } = await import("@/lib/auth");
