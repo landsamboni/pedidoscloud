@@ -115,7 +115,9 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ rest
               return (
                 <div key={`${item.category}::${item.name}`}>
                   <div className="flex items-baseline justify-between gap-3 text-sm">
-                    <span className="font-medium text-stone-900">{item.name}</span>
+                    <span className="font-medium text-stone-900">
+                      {item.category} · {item.name}
+                    </span>
                     <span className="shrink-0 text-stone-500">
                       <strong className={ratio >= 0.75 ? "text-emerald-600" : "text-stone-900"}>{item.qty} uds</strong>
                       {" · "}{formatMoney(item.revenue)}
@@ -127,7 +129,6 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ rest
                       style={{ width: `${Math.max(ratio * 100, 3)}%` }}
                     />
                   </div>
-                  <p className="mt-0.5 text-xs text-stone-400">{item.category}</p>
                 </div>
               );
             })}
