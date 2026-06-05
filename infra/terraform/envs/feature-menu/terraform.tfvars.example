@@ -1,0 +1,38 @@
+# Feature branch environment — flexible menu (dynamic categories).
+# Copy to terraform.tfvars and fill in. terraform.tfvars is gitignored.
+# This env shares the same AWS account as staging but creates SEPARATE resources
+# (separate RDS, S3 bucket, Amplify app) so staging is never affected.
+
+aws_region = "us-east-1"
+
+# GitHub connection for Amplify
+github_repository_url = "https://github.com/landsamboni/pedidoscloud"
+github_access_token   = "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+amplify_branch        = "feature/flexible-menu"
+
+# Database
+db_password = "change-me-strong-password"
+# MUST include 0.0.0.0/0: Amplify WEB_COMPUTE SSR is not in a VPC here, so it
+# reaches RDS over the public endpoint from non-fixed AWS IPs. Removing 0.0.0.0/0
+# breaks the app. Add your laptop /32 for migrations. Protected by password + SSL.
+# Find your current IP: curl -s https://checkip.amazonaws.com
+db_allowed_cidr_blocks = ["203.0.113.10/32", "0.0.0.0/0"]
+
+# JWT session secret — generate with: openssl rand -base64 32
+auth_secret = "change-me-generate-with-openssl-rand-base64-32"
+
+# Operator auth — admin logs in at /login with this password.
+# (Restaurants log in with a bcrypt password stored in the DB, not here.)
+admin_password = "change-me-admin"
+
+# Optional admin MFA (TOTP / authenticator app). Empty = disabled.
+# Generate: cd apps/web && node -e "console.log(require('otplib').authenticator.generateSecret())"
+# admin_totp_secret = "BASE32SECRET..."
+
+# Monitoring — email for CloudWatch alarm notifications.
+# Leave empty ("") to see alarms in CloudWatch console only (no email).
+# After first apply you must confirm the subscription in the email AWS sends.
+alert_email = "tu-email@ejemplo.com"
+
+# Optional
+enable_secrets_manager = false
