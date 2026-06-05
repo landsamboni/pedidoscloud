@@ -49,8 +49,8 @@ export function MenuTypeForm({
             onChange={e => setMenuType(e.target.value)}
             value={menuType}
           >
-            <option value="combo">Menú del día — el cliente arma su combo eligiendo sopa, proteína, principio y bebida (ideal para restaurantes de almuerzos)</option>
-            <option value="catalog">Catálogo de productos — el cliente elige cuántas unidades de cada producto quiere y cada uno tiene su propio precio (ideal para reposterías, cafeterías, etc.)</option>
+            <option value="combo">Menú del día (restaurantes de almuerzos) — sopa, proteína, principio y bebida con precio base</option>
+            <option value="catalog">Catálogo fijo (reposterías, cafeterías, tiendas) — lista de productos cada uno con su precio</option>
           </select>
         </label>
 
