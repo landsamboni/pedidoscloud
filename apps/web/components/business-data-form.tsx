@@ -19,8 +19,8 @@ export function BusinessDataForm({
   returnPath: string;
 }) {
   return (
-    <section className="card mt-4">
-      <h2 className="text-xl font-bold">Datos del negocio</h2>
+    <details className="card mt-4">
+      <summary className="cursor-pointer text-xl font-bold">Datos del negocio</summary>
 
       <FeedbackForm action={updateBusinessPhone} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
         <input name="restaurantId" type="hidden" value={restaurantId} />
@@ -56,6 +56,6 @@ export function BusinessDataForm({
           </SubmitButton>
         </FeedbackForm>
       )}
-    </section>
+    </details>
   );
 }

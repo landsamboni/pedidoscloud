@@ -69,19 +69,21 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
         </div>
       )}
 
-      <div className="rounded-xl border border-stone-200 p-4">
-        <h3 className="text-lg font-semibold">Domicilio y entrega</h3>
-        <div className="mt-4">
-          <DeliveryForm
-            allowPickup={restaurant.allowPickup}
-            deliveryFee={restaurant.deliveryFee ? Number(restaurant.deliveryFee.toString()) : null}
-            deliveryMode={restaurant.deliveryMode}
-            deliveryNote={restaurant.deliveryNote}
-            restaurantId={restaurant.id}
-            returnPath={returnPath}
-          />
+      {/* Base price — only for restaurant operator in combo mode (admin manages it via MenuTypeForm) */}
+      {hidePassword && !isCatalog && (
+        <div className="rounded-xl border border-stone-200 p-4">
+          <h3 className="text-lg font-semibold">Precio del almuerzo</h3>
+          <FeedbackForm action={updateBasePrice} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+            <input name="restaurantId" type="hidden" value={restaurant.id} />
+            <input name="returnPath" type="hidden" value={returnPath} />
+            <label className="text-sm font-medium text-stone-700">
+              Precio base de cada almuerzo
+              <input className="input mt-1 text-base" defaultValue={restaurant.basePrice.toString()} min="1" name="basePrice" required step="1" type="number" />
+            </label>
+            <SubmitButton className="button-primary self-end">Guardar precio</SubmitButton>
+          </FeedbackForm>
         </div>
-      </div>
+      )}
 
       <div className="rounded-xl border border-stone-200 p-4">
         <h3 className="text-lg font-semibold">
@@ -174,11 +176,26 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
         </FeedbackForm>
       </div>
 
-      <div className="rounded-xl border border-stone-200 p-4">
-        <h3 className="text-lg font-semibold">Medios de pago</h3>
+      {/* Domicilio — after image section */}
+      <details className="rounded-xl border border-stone-200 p-4">
+        <summary className="cursor-pointer text-lg font-semibold">Domicilio y entrega</summary>
+        <div className="mt-4">
+          <DeliveryForm
+            allowPickup={restaurant.allowPickup}
+            deliveryFee={restaurant.deliveryFee ? Number(restaurant.deliveryFee.toString()) : null}
+            deliveryMode={restaurant.deliveryMode}
+            deliveryNote={restaurant.deliveryNote}
+            restaurantId={restaurant.id}
+            returnPath={returnPath}
+          />
+        </div>
+      </details>
+
+      {/* Medios de pago — collapsible */}
+      <details className="rounded-xl border border-stone-200 p-4">
+        <summary className="cursor-pointer text-lg font-semibold">Medios de pago</summary>
         <p className="mt-1 text-sm text-stone-500">Datos que verá el cliente para pagar y subir su comprobante.</p>
 
-        {/* Nequi principal (con QR) */}
         <FeedbackForm action={updatePaymentSettings} className="mt-4 grid gap-3 sm:grid-cols-2">
           <input name="restaurantId" type="hidden" value={restaurant.id} />
           <input name="returnPath" type="hidden" value={returnPath} />
@@ -205,12 +222,10 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
           <SubmitButton className="button-primary sm:col-span-2">Guardar Nequi</SubmitButton>
         </FeedbackForm>
 
-        {/* Otros medios de pago */}
         <div className="mt-6 border-t border-stone-100 pt-4">
           <p className="text-sm font-semibold text-stone-700">
             Otros medios <span className="font-normal text-stone-400">(Daviplata, segunda llave, cuenta bancaria…)</span>
           </p>
-
           {restaurant.paymentMethods.length > 0 && (
             <ul className="mt-3 space-y-2">
               {restaurant.paymentMethods.map((m) => (
@@ -237,12 +252,11 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
               ))}
             </ul>
           )}
-
           <div className="mt-4">
             <PaymentMethodForm restaurantId={restaurant.id} returnPath={returnPath} />
           </div>
         </div>
-      </div>
+      </details>
 
       {/* Password section — only shown to admin (hidePassword=true in restaurant console) */}
       {!hidePassword && (
