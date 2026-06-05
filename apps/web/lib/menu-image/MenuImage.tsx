@@ -81,7 +81,9 @@ export function MenuImage({ restaurantName, basePriceLabel, groups, backgroundDa
         >
           <div style={{ display: "flex", textAlign: "center", fontSize: 56, color: M.accent }}>{restaurantName}</div>
           <div style={{ display: "flex", fontSize: 24, color: M.muted, letterSpacing: 5, marginTop: 8 }}>MENÚ DEL DÍA</div>
-          <div style={{ display: "flex", fontSize: 30, color: M.ink, marginTop: 16 }}>Almuerzo {basePriceLabel}</div>
+          {basePriceLabel ? (
+            <div style={{ display: "flex", fontSize: 30, color: M.ink, marginTop: 16 }}>Almuerzo {basePriceLabel}</div>
+          ) : null}
 
           {groups.map((g) => (
             <div key={g.label} style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: gapGroups }}>

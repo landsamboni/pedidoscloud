@@ -55,19 +55,32 @@ export async function GET(req: Request, { params }: { params: Promise<{ restaura
     return new Response("No hay menú publicado para hoy.", { status: 404 });
   }
 
-  const categories: [keyof typeof CATEGORY_LABELS, string[]][] = [
-    ["soups", menu.soups],
-    ["proteins", menu.proteins],
-    ["sides", menu.sides],
-    ["drinks", menu.drinks],
-  ];
-  const groups = categories.map(([key, options]) => ({
-    label: CATEGORY_LABELS[key],
-    items: options.map((raw) => {
-      const surcharge = parseSurcharge(raw);
-      return { name: parseItemName(raw), surcharge: surcharge > 0 ? formatSurcharge(surcharge) : "" };
-    }),
-  }));
+  const isCatalog = restaurant.menuType === "catalog";
+
+  const groups = isCatalog
+    ? // Catalog mode: use dynamic categories with per-item prices.
+      menu.categories.map((cat) => ({
+        label: cat.name,
+        items: cat.items.map((item) => ({
+          name: item.name,
+          surcharge: Number(item.price) > 0 ? formatMoney(Number(item.price)) : "",
+        })),
+      }))
+    : // Combo mode: use fixed categories (soups/proteins/sides/drinks).
+      (
+        [
+          ["soups", menu.soups],
+          ["proteins", menu.proteins],
+          ["sides", menu.sides],
+          ["drinks", menu.drinks],
+        ] as [keyof typeof CATEGORY_LABELS, string[]][]
+      ).map(([key, options]) => ({
+        label: CATEGORY_LABELS[key],
+        items: options.map((raw) => {
+          const surcharge = parseSurcharge(raw);
+          return { name: parseItemName(raw), surcharge: surcharge > 0 ? formatSurcharge(surcharge) : "" };
+        }),
+      }));
 
   const { DEFAULT_LOGO_PATH } = await import("@/lib/branding");
   const [background, logo] = await Promise.all([
@@ -81,7 +94,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ restaura
       (
         <MenuImage
           restaurantName={restaurant.name}
-          basePriceLabel={formatMoney(Number(restaurant.basePrice))}
+          basePriceLabel={isCatalog ? "" : formatMoney(Number(restaurant.basePrice))}
           groups={groups}
           backgroundDataUri={background}
           logoDataUri={logo}
@@ -102,7 +115,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ restaura
       (
         <MenuImage
           restaurantName={restaurant.name}
-          basePriceLabel={formatMoney(Number(restaurant.basePrice))}
+          basePriceLabel={isCatalog ? "" : formatMoney(Number(restaurant.basePrice))}
           groups={groups}
           backgroundDataUri={null}
           logoDataUri={null}
