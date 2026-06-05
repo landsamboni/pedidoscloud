@@ -45,7 +45,7 @@ export function DeliveryForm({
         <label className="text-sm font-medium text-stone-700">
           Cobro del domicilio
           <select className="input mt-1" name="deliveryMode" onChange={(e) => setMode(e.target.value)} value={mode}>
-            <option value="separate">Se paga aparte (al recibir / lo coordina el restaurante)</option>
+            <option value="separate">Cliente paga domicilio al recibir</option>
             <option value="fixed">Tarifa fija</option>
             <option value="free">Gratis</option>
           </select>

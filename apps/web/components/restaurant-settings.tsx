@@ -55,16 +55,19 @@ export function RestaurantSettings({ menu, restaurant, returnPath, restaurantSlu
   return (
     <div className="space-y-3">
       {/* Menu type selector */}
-      <div className="rounded-xl border border-stone-200 p-4">
-        <h3 className="text-lg font-semibold">Tipo de negocio</h3>
-        <MenuTypeForm
-          basePrice={restaurant.basePrice.toString()}
-          menuType={restaurant.menuType}
-          orderUnitLabel={restaurant.orderUnitLabel}
-          restaurantId={restaurant.id}
-          returnPath={returnPath}
-        />
-      </div>
+      {/* Only platform admin can change the business type — not the restaurant operator. */}
+      {!hidePassword && (
+        <div className="rounded-xl border border-stone-200 p-4">
+          <h3 className="text-lg font-semibold">Tipo de negocio</h3>
+          <MenuTypeForm
+            basePrice={restaurant.basePrice.toString()}
+            menuType={restaurant.menuType}
+            orderUnitLabel={restaurant.orderUnitLabel}
+            restaurantId={restaurant.id}
+            returnPath={returnPath}
+          />
+        </div>
+      )}
 
       <div className="rounded-xl border border-stone-200 p-4">
         <h3 className="text-lg font-semibold">Domicilio y entrega</h3>
