@@ -741,7 +741,7 @@ export async function changePasswordAction(
   }
 }
 
-export type ActionState = { ok: boolean; message: string; ts: number };
+export type ActionState = { ok: boolean; message: string; ts: number; data?: Record<string, string | null> };
 export type MenuFormState = ActionState;
 
 export async function updateTodayMenu(_prev: MenuFormState, formData: FormData): Promise<MenuFormState> {
@@ -1003,7 +1003,12 @@ export async function updateMenuItemDetails(_prev: ActionState, formData: FormDa
       },
     });
     revalidatePath(returnPath);
-    return { ok: true, message: "Detalles actualizados.", ts: Date.now() };
+    // Return the final imagePath so the client can update its local state
+    // without a router.refresh() (which resets the CatalogMenuEditor state).
+    const finalImagePath = imagePath !== undefined
+      ? imagePath
+      : (await prisma.menuItem.findUnique({ where: { id: itemId }, select: { imagePath: true } }))?.imagePath ?? null;
+    return { ok: true, message: "Detalles actualizados.", ts: Date.now(), data: { imagePath: finalImagePath } };
   } catch (e) {
     console.error("[updateMenuItemDetails]", e);
     return { ok: false, message: "No se pudo guardar los detalles.", ts: Date.now() };

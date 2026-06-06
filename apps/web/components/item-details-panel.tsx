@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { updateMenuItemDetails } from "@/app/actions";
 import { FileInput, Toast } from "@/components/feedback-form";
 import { resolveFileUrl } from "@/lib/file-url";
@@ -29,7 +28,6 @@ export function ItemDetailsPanel({
   const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const router = useRouter();
 
   function save(clearImage = false) {
     const fd = new FormData();
@@ -42,7 +40,6 @@ export function ItemDetailsPanel({
       if (file) fd.append("image", file);
     }
 
-    const hadFile = !clearImage && !!(fileRef.current?.files?.[0]);
     startTransition(async () => {
       const result = await updateMenuItemDetails({ ok: false, message: "", ts: 0 }, fd);
       if (result.ok) {
@@ -50,8 +47,11 @@ export function ItemDetailsPanel({
         setToast("Detalles actualizados.");
         setTimeout(() => setToast(null), 3500);
         if (fileRef.current) fileRef.current.value = "";
-        // Refresh so the component remounts with the new imagePath from the server.
-        if (hadFile || clearImage) router.refresh();
+        // Update local imagePath from the action result — no router.refresh() needed,
+        // which would reset the CatalogMenuEditor state.
+        if (result.data && "imagePath" in result.data) {
+          setImagePath(result.data.imagePath ?? null);
+        }
       } else {
         setError(result.message);
       }
