@@ -52,11 +52,13 @@ export default async function RestaurantConsolePage({ params }: { params: Promis
       )}
 
       <section className="card">
-        <div className="flex flex-wrap gap-3">
-          <Link className="button-primary" href={`/restaurant/${restaurantSlug}/orders`}>Pedidos de hoy</Link>
-          <Link className="button-secondary" href={`/restaurant/${restaurantSlug}/history`}>Historial</Link>
-          <Link className="button-secondary" href={`/restaurant/${restaurantSlug}/analytics`}>Analíticas</Link>
-          <Link className="button-primary" href={`/r/${restaurantSlug}`} rel="noreferrer" style={{ backgroundColor: "#7B61FF" }} target="_blank">Link para pedidos de clientes ↗</Link>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-3">
+            <Link className="button-primary" href={`/restaurant/${restaurantSlug}/orders`}>Pedidos de hoy</Link>
+            <Link className="button-secondary" href={`/restaurant/${restaurantSlug}/history`}>Historial</Link>
+            <Link className="button-secondary" href={`/restaurant/${restaurantSlug}/analytics`}>Analíticas</Link>
+          </div>
+          <Link className="button-primary shrink-0" href={`/r/${restaurantSlug}`} rel="noreferrer" style={{ backgroundColor: "#7B61FF" }} target="_blank">Link para pedidos de clientes ↗</Link>
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-4">
           <Summary label="Pedidos de hoy" value={String(restaurant.orders.length)} />

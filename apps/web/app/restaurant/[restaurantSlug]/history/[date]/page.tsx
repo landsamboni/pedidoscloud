@@ -47,7 +47,10 @@ export default async function HistoryDatePage({
             {confirmed.length} confirmados · {formatMoney(totalConfirmed)} facturados
           </p>
         </div>
-        <Link className="button-secondary" href={`/restaurant/${restaurantSlug}/history`}>Historial</Link>
+        <div className="flex gap-2">
+          <Link className="button-secondary" href={`/restaurant/${restaurantSlug}/history`}>← Historial</Link>
+          <Link className="button-secondary" href={`/restaurant/${restaurantSlug}`}>Consola</Link>
+        </div>
       </header>
 
       {orders.length === 0 ? (
