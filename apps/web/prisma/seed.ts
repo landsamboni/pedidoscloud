@@ -23,11 +23,11 @@ function todayUtc() {
 // Minimal demo menu — 2 categories, 5 products.
 const PASTELERIA_CATEGORIES = [
   {
-    name: "Torticas",
+    name: "Tortas",
     items: [
-      { name: "Tortica Castilla", price: 26000 },
-      { name: "Tortica Red Velvet", price: 26000 },
-      { name: "Tortica Zanahoria", price: 26000 },
+      { name: "Torta Castilla", price: 26000 },
+      { name: "Torta Red Velvet", price: 26000 },
+      { name: "Torta Zanahoria", price: 26000 },
     ],
   },
   {

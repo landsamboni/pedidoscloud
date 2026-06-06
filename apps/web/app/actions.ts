@@ -470,16 +470,16 @@ export async function populateCatalogDemoData(formData: FormData) {
 
   // Realistic product combos (popular items for a bakery demo)
   const DEMO_ORDERS = [
-    [{ cat: "Torticas", item: "Tortica Castilla", price: 26000, qty: 1 }],
-    [{ cat: "Torticas", item: "Tortica Red Velvet", price: 26000, qty: 1 }],
-    [{ cat: "Torticas", item: "Tortica Zanahoria", price: 26000, qty: 2 }],
+    [{ cat: "Tortas", item: "Torta Castilla", price: 26000, qty: 1 }],
+    [{ cat: "Tortas", item: "Torta Red Velvet", price: 26000, qty: 1 }],
+    [{ cat: "Tortas", item: "Torta Zanahoria", price: 26000, qty: 2 }],
     [{ cat: "Cinnamon Rolls", item: "Cinnamon Rolls x 4", price: 26000, qty: 1 }],
     [{ cat: "Cinnamon Rolls", item: "Cinnamon Rolls x 6", price: 32000, qty: 1 }],
-    [{ cat: "Torticas", item: "Tortica Castilla", price: 26000, qty: 1 }, { cat: "Cinnamon Rolls", item: "Cinnamon Rolls x 4", price: 26000, qty: 1 }],
-    [{ cat: "Torticas", item: "Tortica Red Velvet", price: 26000, qty: 2 }],
+    [{ cat: "Tortas", item: "Torta Castilla", price: 26000, qty: 1 }, { cat: "Cinnamon Rolls", item: "Cinnamon Rolls x 4", price: 26000, qty: 1 }],
+    [{ cat: "Tortas", item: "Torta Red Velvet", price: 26000, qty: 2 }],
     [{ cat: "Cinnamon Rolls", item: "Cinnamon Rolls x 6", price: 32000, qty: 2 }],
-    [{ cat: "Torticas", item: "Tortica Zanahoria", price: 26000, qty: 1 }, { cat: "Cinnamon Rolls", item: "Cinnamon Rolls x 6", price: 32000, qty: 1 }],
-    [{ cat: "Torticas", item: "Tortica Castilla", price: 26000, qty: 3 }],
+    [{ cat: "Tortas", item: "Torta Zanahoria", price: 26000, qty: 1 }, { cat: "Cinnamon Rolls", item: "Cinnamon Rolls x 6", price: 32000, qty: 1 }],
+    [{ cat: "Tortas", item: "Torta Castilla", price: 26000, qty: 3 }],
   ];
 
   const rand = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
@@ -504,7 +504,7 @@ export async function populateCatalogDemoData(formData: FormData) {
     // Seed categories if empty
     if (menu.categories.length === 0) {
       const PASTELERIA_CATS = [
-        { name: "Torticas", items: [{ name: "Tortica Castilla", price: 26000 }, { name: "Tortica Red Velvet", price: 26000 }, { name: "Tortica Zanahoria", price: 26000 }] },
+        { name: "Tortas", items: [{ name: "Torta Castilla", price: 26000 }, { name: "Torta Red Velvet", price: 26000 }, { name: "Torta Zanahoria", price: 26000 }] },
         { name: "Cinnamon Rolls", items: [{ name: "Cinnamon Rolls x 4", price: 26000 }, { name: "Cinnamon Rolls x 6", price: 32000 }] },
       ];
       for (let ci = 0; ci < PASTELERIA_CATS.length; ci++) {
