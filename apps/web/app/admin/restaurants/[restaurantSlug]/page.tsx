@@ -50,27 +50,21 @@ export default async function AdminRestaurantPage({ params }: { params: Promise<
           <p className="text-sm text-stone-500">/{restaurant.slug} · {formatMoney(Number(restaurant.basePrice))}</p>
         </div>
         <div className="flex w-full flex-col gap-2">
-          {/* Row 1: navigation */}
-          <div className="flex flex-wrap gap-2">
-            <Link className="button-primary" href={`/restaurant/${restaurant.slug}/orders`} rel="noreferrer" target="_blank">Pedidos de hoy ↗</Link>
-            <Link className="button-secondary" href={`/restaurant/${restaurant.slug}/history`} rel="noreferrer" target="_blank">Historial ↗</Link>
-            <Link className="button-secondary" href={`/restaurant/${restaurant.slug}/analytics`} rel="noreferrer" target="_blank">Analíticas ↗</Link>
-            <Link className="button-secondary" href={`/restaurant/${restaurant.slug}/customers`} rel="noreferrer" target="_blank">Clientes ↗</Link>
-          </div>
-          {/* Row 2: primary actions — together on the left */}
+          {/* Row 1: primary actions */}
           <div className="flex flex-wrap items-center gap-2">
-            <Link
-              className="button-primary shrink-0"
-              href={`/restaurant/${restaurant.slug}`}
-              rel="noreferrer"
-              style={{ backgroundColor: "#F59E0B" }}
-              target="_blank"
-            >
+            <Link className="button-primary shrink-0" href={`/restaurant/${restaurant.slug}`} rel="noreferrer" style={{ backgroundColor: "#F59E0B" }} target="_blank">
               Consola del negocio ↗
             </Link>
             <Link className="button-primary shrink-0" href={`/r/${restaurant.slug}`} rel="noreferrer" style={{ backgroundColor: "#7B61FF" }} target="_blank">
               Link para pedidos de clientes ↗
             </Link>
+          </div>
+          {/* Row 2: navigation */}
+          <div className="flex flex-wrap gap-2">
+            <Link className="button-primary" href={`/restaurant/${restaurant.slug}/orders`} rel="noreferrer" target="_blank">Pedidos de hoy ↗</Link>
+            <Link className="button-secondary" href={`/restaurant/${restaurant.slug}/history`} rel="noreferrer" target="_blank">Historial ↗</Link>
+            <Link className="button-secondary" href={`/restaurant/${restaurant.slug}/analytics`} rel="noreferrer" target="_blank">Analíticas ↗</Link>
+            <Link className="button-secondary" href={`/restaurant/${restaurant.slug}/customers`} rel="noreferrer" target="_blank">Clientes ↗</Link>
           </div>
         </div>
       </header>
