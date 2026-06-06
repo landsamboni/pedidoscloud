@@ -328,7 +328,7 @@ function OrderCard({ order, restaurantSlug, restaurantName, now, readOnly, onVie
               <StatusButton id={order.id} slug={restaurantSlug} status="PAYMENT_REVIEW" secondary>↩ Reactivar pedido</StatusButton>
             )}
             {order.paymentProofPath && order.status !== "PAYMENT_REJECTED" && (
-              <StatusButton id={order.id} slug={restaurantSlug} status="PAYMENT_REJECTED" secondary>Rechazar</StatusButton>
+              <StatusButton id={order.id} slug={restaurantSlug} status="PAYMENT_REJECTED" secondary>Solicitar nuevo comprobante</StatusButton>
             )}
             <StatusButton id={order.id} slug={restaurantSlug} status="CANCELLED" secondary>Cancelar</StatusButton>
           </div>
