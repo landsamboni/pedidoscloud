@@ -29,13 +29,16 @@ export function ItemDetailsPanel({
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  function save() {
+  function save(clearImage = false) {
     const fd = new FormData();
     fd.append("itemId", itemId);
     fd.append("returnPath", returnPath);
-    fd.append("description", description);
-    const file = fileRef.current?.files?.[0];
-    if (file) fd.append("image", file);
+    fd.append("description", clearImage ? description : description);
+    if (clearImage) fd.append("clearImage", "1");
+    else {
+      const file = fileRef.current?.files?.[0];
+      if (file) fd.append("image", file);
+    }
 
     startTransition(async () => {
       const result = await updateMenuItemDetails({ ok: false, message: "", ts: 0 }, fd);
@@ -54,6 +57,15 @@ export function ItemDetailsPanel({
     <div className="mt-2 grid gap-2">
       <label className="text-xs font-medium text-stone-600">
         Descripción
+        {description && (
+          <button
+            className="ml-2 text-xs font-medium text-red-600 hover:underline"
+            onClick={() => { setDescription(""); }}
+            type="button"
+          >
+            Quitar
+          </button>
+        )}
         <textarea
           className="input mt-1 min-h-20 resize-none text-xs"
           maxLength={300}
@@ -68,7 +80,16 @@ export function ItemDetailsPanel({
           <div className="mt-1 flex items-center gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img alt="foto" className="h-12 w-12 rounded-lg border object-cover" src={resolveFileUrl(imagePath) ?? ""} />
-            <span className="text-xs text-teal-600">Foto configurada. Sube otra para reemplazarla.</span>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs text-teal-600">Foto configurada.</span>
+              <button
+                className="text-xs font-medium text-red-600 hover:underline text-left"
+                onClick={() => { setImagePath(null); void save(true); }}
+                type="button"
+              >
+                Quitar foto
+              </button>
+            </div>
           </div>
         )}
         <FileInput accept="image/jpeg,image/png,image/webp" className="input mt-1 text-xs" ref={fileRef} type="file" />
@@ -77,7 +98,7 @@ export function ItemDetailsPanel({
       <button
         className="button-secondary text-xs"
         disabled={pending}
-        onClick={save}
+        onClick={() => save()}
         type="button"
       >
         {pending ? "Guardando…" : "Guardar descripción y foto"}

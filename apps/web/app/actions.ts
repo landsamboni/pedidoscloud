@@ -983,9 +983,12 @@ export async function updateMenuItemDetails(_prev: ActionState, formData: FormDa
     const itemId = String(formData.get("itemId"));
     const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
     const description = String(formData.get("description") ?? "").trim() || null;
+    const clearImage = formData.get("clearImage") === "1";
     const file = formData.get("image");
-    let imagePath: string | null = undefined as unknown as null;
-    if (file instanceof File && file.size > 0) {
+    let imagePath: string | null | undefined = undefined;
+    if (clearImage) {
+      imagePath = null; // explicitly clear
+    } else if (file instanceof File && file.size > 0) {
       try {
         imagePath = await saveUpload(file, "menu-item");
       } catch (e) {
