@@ -15,6 +15,7 @@ export async function getRestaurantCustomersWithStats(slug: string) {
       name: true,
       phone: true,
       lastAddress: true,
+      favorite: true,
       orders: {
         where: { status: "PAYMENT_CONFIRMED" },
         select: { total: true, createdAt: true, orderNumber: true, orderDate: true },
@@ -34,6 +35,7 @@ export async function getRestaurantCustomersWithStats(slug: string) {
       name: c.name,
       phone: c.phone,
       lastAddress: c.lastAddress,
+      favorite: c.favorite,
       totalOrders: c._count.orders,
       confirmedOrders: confirmed.length,
       totalSpent,

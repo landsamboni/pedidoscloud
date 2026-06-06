@@ -117,6 +117,7 @@ model Customer {
   name         String
   phone        String
   lastAddress  String
+  favorite     Boolean    @default(false)
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   orders       Order[]
 

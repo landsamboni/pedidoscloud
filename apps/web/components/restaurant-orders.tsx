@@ -19,7 +19,7 @@ type Order = {
   createdAtMs: number;
   paymentProofPath: string | null;
   paymentSubmittedAtLabel: string | null;
-  customer: { name: string; phone: string };
+  customer: { name: string; phone: string; favorite?: boolean };
   items: { id: string; soup: string; protein: string; side: string; drink: string; catalogCategory: string; catalogItem: string; quantity: number; unitPrice: string }[];
 };
 
@@ -214,7 +214,11 @@ function OrderCard({ order, restaurantSlug, restaurantName, now, readOnly, onVie
       </div>
 
       <div className="mt-4 space-y-1.5 text-base">
-        <p><span className="text-stone-500">Cliente</span> <strong>{order.customer.name}</strong></p>
+        <p>
+          <span className="text-stone-500">Cliente</span>{" "}
+          <strong>{order.customer.name}</strong>
+          {order.customer.favorite && <span className="ml-1" title="Cliente favorito">⭐</span>}
+        </p>
         <div className="flex items-center gap-2">
           <p><span className="text-stone-500">Tel.</span> <strong>{order.customer.phone}</strong></p>
           {customerWaUrl && !readOnly && (

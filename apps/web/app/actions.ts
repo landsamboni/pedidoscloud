@@ -963,6 +963,21 @@ export async function updateMenuTemplate(_prev: ActionState, formData: FormData)
 }
 
 /** Update the description and optional photo of a catalog menu item. */
+export async function toggleCustomerFavorite(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    const customerId = String(formData.get("customerId"));
+    const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
+    const current = await prisma.customer.findUnique({ where: { id: customerId }, select: { favorite: true } });
+    if (!current) return { ok: false, message: "Cliente no encontrado.", ts: Date.now() };
+    await prisma.customer.update({ where: { id: customerId }, data: { favorite: !current.favorite } });
+    revalidatePath(returnPath);
+    return { ok: true, message: current.favorite ? "Favorito eliminado." : "Marcado como favorito.", ts: Date.now() };
+  } catch (e) {
+    console.error("[toggleCustomerFavorite]", e);
+    return { ok: false, message: "No se pudo actualizar.", ts: Date.now() };
+  }
+}
+
 export async function updateMenuItemDetails(_prev: ActionState, formData: FormData): Promise<ActionState> {
   try {
     const itemId = String(formData.get("itemId"));

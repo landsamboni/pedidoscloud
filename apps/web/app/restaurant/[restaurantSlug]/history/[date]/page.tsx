@@ -28,7 +28,7 @@ export default async function HistoryDatePage({
     paymentProofPath: resolveFileUrl(order.paymentProofPath),
     paymentSubmittedAtLabel: order.paymentSubmittedAt ? formatTime(order.paymentSubmittedAt) : null,
     items: order.items.map((item) => ({ ...item, price: item.price.toString(), unitPrice: item.unitPrice.toString() })),
-    customer: { ...order.customer, name: order.customerName },
+    customer: { ...order.customer, name: order.customerName, favorite: order.customer.favorite },
   }));
 
   const confirmed = orders.filter((o) => o.status === "PAYMENT_CONFIRMED");

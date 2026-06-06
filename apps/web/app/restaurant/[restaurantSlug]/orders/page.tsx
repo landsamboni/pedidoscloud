@@ -34,7 +34,7 @@ export default async function RestaurantOrdersPage({ params }: { params: Promise
       paymentProofPath: resolveFileUrl(order.paymentProofPath),
       paymentSubmittedAtLabel: order.paymentSubmittedAt ? formatTime(order.paymentSubmittedAt) : null,
       items: order.items.map((item) => ({ ...item, price: item.price.toString(), unitPrice: item.unitPrice.toString() })),
-      customer: { ...order.customer, name: order.customerName },
+      customer: { ...order.customer, name: order.customerName, favorite: order.customer.favorite },
     }))
     .sort((a, b) => {
       const pa = STATUS_PRIORITY[a.status] ?? 9;
