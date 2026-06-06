@@ -49,12 +49,14 @@ export default async function AdminRestaurantPage({ params }: { params: Promise<
           <h1 className="mt-1 text-3xl font-bold">{restaurant.name}</h1>
           <p className="text-sm text-stone-500">/{restaurant.slug} · {formatMoney(Number(restaurant.basePrice))}</p>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Link className="button-secondary" href={`/restaurant/${restaurant.slug}/orders`} rel="noreferrer" target="_blank">Pedidos de hoy ↗</Link>
-          <Link className="button-secondary" href={`/restaurant/${restaurant.slug}/history`} rel="noreferrer" target="_blank">Historial ↗</Link>
-          <Link className="button-secondary" href={`/restaurant/${restaurant.slug}/analytics`} rel="noreferrer" target="_blank">Analíticas ↗</Link>
-          <Link className="button-secondary" href={`/restaurant/${restaurant.slug}`} rel="noreferrer" target="_blank">Consola ↗</Link>
-          <Link className="button-secondary" href={`/admin/customers/${restaurant.slug}`}>Clientes</Link>
+        <div className="flex w-full flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-2">
+            <Link className="button-primary" href={`/restaurant/${restaurant.slug}/orders`} rel="noreferrer" target="_blank">Pedidos de hoy ↗</Link>
+            <Link className="button-secondary" href={`/restaurant/${restaurant.slug}/history`} rel="noreferrer" target="_blank">Historial ↗</Link>
+            <Link className="button-secondary" href={`/restaurant/${restaurant.slug}/analytics`} rel="noreferrer" target="_blank">Analíticas ↗</Link>
+            <Link className="button-secondary" href={`/restaurant/${restaurant.slug}`} rel="noreferrer" target="_blank">Consola ↗</Link>
+            <Link className="button-secondary" href={`/admin/customers/${restaurant.slug}`}>Clientes</Link>
+          </div>
           <Link className="button-primary shrink-0" href={`/r/${restaurant.slug}`} rel="noreferrer" style={{ backgroundColor: "#7B61FF" }} target="_blank">
             Link para pedidos de clientes ↗
           </Link>
