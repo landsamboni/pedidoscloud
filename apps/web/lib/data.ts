@@ -1,6 +1,51 @@
 import { prisma } from "@/lib/prisma";
 import { dateKeyDaysAgo, dateKeyToUtcDate, localDateKey } from "@/lib/format";
 
+export async function getRestaurantCustomersWithStats(slug: string) {
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { slug },
+    select: { id: true, name: true, slug: true },
+  });
+  if (!restaurant) return null;
+
+  const customers = await prisma.customer.findMany({
+    where: { restaurantId: restaurant.id },
+    select: {
+      id: true,
+      name: true,
+      phone: true,
+      lastAddress: true,
+      orders: {
+        where: { status: "PAYMENT_CONFIRMED" },
+        select: { total: true, createdAt: true, orderNumber: true, orderDate: true },
+        orderBy: { createdAt: "desc" },
+      },
+      _count: { select: { orders: true } },
+    },
+  });
+
+  const withStats = customers.map((c) => {
+    const confirmed = c.orders;
+    const totalSpent = confirmed.reduce((s, o) => s + Number(o.total), 0);
+    const avgOrder = confirmed.length > 0 ? totalSpent / confirmed.length : 0;
+    const lastOrder = confirmed[0] ?? null;
+    return {
+      id: c.id,
+      name: c.name,
+      phone: c.phone,
+      lastAddress: c.lastAddress,
+      totalOrders: c._count.orders,
+      confirmedOrders: confirmed.length,
+      totalSpent,
+      avgOrder,
+      lastOrderDate: lastOrder?.createdAt ?? null,
+      lastOrderNumber: lastOrder?.orderNumber ?? null,
+    };
+  }).sort((a, b) => b.totalSpent - a.totalSpent);
+
+  return { restaurant, customers: withStats };
+}
+
 export async function getRestaurantCustomers(slug: string) {
   const restaurant = await prisma.restaurant.findUnique({
     where: { slug },

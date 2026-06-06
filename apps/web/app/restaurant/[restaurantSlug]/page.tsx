@@ -57,6 +57,7 @@ export default async function RestaurantConsolePage({ params }: { params: Promis
             <Link className="button-primary" href={`/restaurant/${restaurantSlug}/orders`}>Pedidos de hoy</Link>
             <Link className="button-secondary" href={`/restaurant/${restaurantSlug}/history`}>Historial</Link>
             <Link className="button-secondary" href={`/restaurant/${restaurantSlug}/analytics`}>Analíticas</Link>
+            <Link className="button-secondary" href={`/restaurant/${restaurantSlug}/customers`}>Clientes</Link>
           </div>
           <Link className="button-primary shrink-0" href={`/r/${restaurantSlug}`} rel="noreferrer" style={{ backgroundColor: "#7B61FF" }} target="_blank">Link para pedidos de clientes ↗</Link>
         </div>
