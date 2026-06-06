@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import React, { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import type { ActionState } from "@/app/actions";
 
@@ -61,10 +61,10 @@ export function FeedbackForm({
  * File input that validates size client-side immediately on selection.
  * Prevents large phone photos from causing a silent 413 crash.
  */
-export function FileInput({
-  maxMB = 12,
-  ...props
-}: React.InputHTMLAttributes<HTMLInputElement> & { maxMB?: number }) {
+export const FileInput = React.forwardRef<
+  HTMLInputElement,
+  React.InputHTMLAttributes<HTMLInputElement> & { maxMB?: number }
+>(function FileInput({ maxMB = 12, ...props }, ref) {
   const [sizeError, setSizeError] = useState<string | null>(null);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -80,11 +80,11 @@ export function FileInput({
 
   return (
     <>
-      <input {...props} onChange={handleChange} />
+      <input {...props} ref={ref} onChange={handleChange} />
       {sizeError && <p className="mt-1 text-sm font-medium text-red-600">{sizeError}</p>}
     </>
   );
-}
+});
 
 /** Submit button that shows a pending label while its form is submitting. */
 export function SubmitButton({

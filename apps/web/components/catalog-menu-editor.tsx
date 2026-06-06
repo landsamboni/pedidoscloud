@@ -1,9 +1,9 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { unpublishCatalogMenu, updateCatalogMenu, updateMenuItemDetails, type CatalogCategory, type CatalogMenuState } from "@/app/actions";
-import { FeedbackForm, FileInput, SubmitButton, Toast } from "@/components/feedback-form";
-import { resolveFileUrl } from "@/lib/file-url";
+import { unpublishCatalogMenu, updateCatalogMenu, type CatalogCategory, type CatalogMenuState } from "@/app/actions";
+import { SubmitButton, Toast } from "@/components/feedback-form";
+import { ItemDetailsPanel } from "@/components/item-details-panel";
 import { formatMoney } from "@/lib/format";
 
 const INITIAL: CatalogMenuState = { ok: false, message: "", ts: 0 };
@@ -160,38 +160,20 @@ export function CatalogMenuEditor({ restaurantId, returnPath, publishedToday, in
                         </button>
                       )}
                     </div>
-                    {/* Details panel — only for saved items (have an id) */}
+                    {/* Details panel — only for saved items (have an id). Rendered
+                        as a sibling component, NOT as a nested <form>, to avoid
+                        the React "form unexpectedly submitted" error. */}
                     {item.id && (
                       <details className="mt-2">
                         <summary className="cursor-pointer text-xs font-medium text-brand-purple hover:underline">
                           {item.description || item.imagePath ? "✓ Tiene descripción/foto · Editar" : "+ Agregar descripción y foto (opcional)"}
                         </summary>
-                        <FeedbackForm action={updateMenuItemDetails} className="mt-2 grid gap-2">
-                          <input name="itemId" type="hidden" value={item.id} />
-                          <input name="returnPath" type="hidden" value={returnPath} />
-                          <label className="text-xs font-medium text-stone-600">
-                            Descripción
-                            <textarea
-                              className="input mt-1 min-h-20 resize-none text-xs"
-                              defaultValue={item.description ?? ""}
-                              maxLength={300}
-                              name="description"
-                              placeholder="Ingredientes, tamaño, sabor especial, etc."
-                            />
-                          </label>
-                          <label className="text-xs font-medium text-stone-600">
-                            Foto del producto <span className="font-normal text-stone-400">(JPG/PNG/WEBP, opcional)</span>
-                            {item.imagePath && (
-                              <div className="mt-1 flex items-center gap-2">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img alt="foto" className="h-12 w-12 rounded-lg border object-cover" src={resolveFileUrl(item.imagePath) ?? ""} />
-                                <span className="text-xs text-teal-600">Foto configurada. Sube otra para reemplazarla.</span>
-                              </div>
-                            )}
-                            <FileInput accept="image/jpeg,image/png,image/webp" className="input mt-1 text-xs" name="image" type="file" />
-                          </label>
-                          <SubmitButton className="button-secondary text-xs" pendingLabel="Guardando…">Guardar descripción y foto</SubmitButton>
-                        </FeedbackForm>
+                        <ItemDetailsPanel
+                          initialDescription={item.description}
+                          initialImagePath={item.imagePath}
+                          itemId={item.id}
+                          returnPath={returnPath}
+                        />
                       </details>
                     )}
                   </div>
