@@ -295,7 +295,7 @@ export function CatalogOrderForm({ restaurantSlug, orderUnitLabel, categories, d
             <div className="overflow-auto">
               {detailItem.imagePath && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img alt={detailItem.name} className="h-56 w-full object-cover" src={resolveFileUrl(detailItem.imagePath) ?? ""} />
+                <img alt={detailItem.name} className="w-full object-contain max-h-[55vh]" src={resolveFileUrl(detailItem.imagePath) ?? ""} />
               )}
               {detailItem.description && (
                 <p className="px-5 py-4 text-base leading-relaxed text-stone-700">{detailItem.description}</p>
