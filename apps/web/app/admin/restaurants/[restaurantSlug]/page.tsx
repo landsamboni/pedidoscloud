@@ -57,8 +57,8 @@ export default async function AdminRestaurantPage({ params }: { params: Promise<
             <Link className="button-secondary" href={`/restaurant/${restaurant.slug}/analytics`} rel="noreferrer" target="_blank">Analíticas ↗</Link>
             <Link className="button-secondary" href={`/restaurant/${restaurant.slug}/customers`} rel="noreferrer" target="_blank">Clientes ↗</Link>
           </div>
-          {/* Row 2: primary actions */}
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          {/* Row 2: primary actions — together on the left */}
+          <div className="flex flex-wrap items-center gap-2">
             <Link
               className="button-primary shrink-0"
               href={`/restaurant/${restaurant.slug}`}
