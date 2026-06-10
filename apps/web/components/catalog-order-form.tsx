@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { resolveFileUrl } from "@/lib/file-url";
 import { createCatalogOrder } from "@/app/actions";
 import { formatMoney } from "@/lib/format";
+import { addressMessage as validateAddress, nameMessage as validateFullName, normalizePhone, phoneMessage as validatePhone } from "@/lib/validation";
 
 type CatalogItem = { id: string; name: string; price: number; description?: string | null; imagePath?: string | null };
 type CatalogCategory = { id: string; name: string; items: CatalogItem[] };
@@ -14,27 +15,6 @@ type Props = {
   categories: CatalogCategory[];
   delivery: { mode: string; fee: number; note: string | null; allowPickup: boolean };
 };
-
-function validateFullName(v: string) {
-  const c = v.trim();
-  if (!c) return "Escribe tu nombre y apellido.";
-  if (c.length < 5) return "El nombre debe tener al menos 5 caracteres.";
-  if (c.split(" ").filter(Boolean).length < 2) return "Incluye nombre y apellido completos.";
-  return null;
-}
-function validatePhone(v: string) {
-  const d = v.replace(/\D/g, "");
-  if (d.length !== 10) return "El teléfono debe tener 10 dígitos.";
-  if (!d.startsWith("3")) return "Ingresa un celular colombiano válido (comienza con 3).";
-  return null;
-}
-function validateAddress(v: string) {
-  const c = v.trim();
-  if (!c) return "Escribe tu dirección.";
-  if (c.length < 10) return "La dirección debe ser más específica.";
-  if (!/\d/.test(c)) return "La dirección debe incluir un número.";
-  return null;
-}
 
 export function CatalogOrderForm({ restaurantSlug, orderUnitLabel, categories, delivery }: Props) {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -201,39 +181,42 @@ export function CatalogOrderForm({ restaurantSlug, orderUnitLabel, categories, d
 
         <div>
           <input
+            aria-describedby={nameError ? "name-error" : undefined}
             aria-invalid={!!nameError}
-            className={`input text-base ${nameError ? "border-red-400" : ""}`}
+            className={`input text-base ${nameError ? "border-red-400 focus:border-red-400 focus:ring-red-100" : ""}`}
             onBlur={() => setNameError(validateFullName(name))}
             onChange={e => { setName(e.target.value); if (nameError) setNameError(validateFullName(e.target.value)); }}
             placeholder="Nombre y Apellido"
             value={name}
           />
-          {nameError && <p className="mt-1 text-sm text-red-600">{nameError}</p>}
+          {nameError && <p className="mt-1 text-sm text-red-600" id="name-error">{nameError}</p>}
         </div>
         <div>
           <input
+            aria-describedby={phoneError ? "phone-error" : undefined}
             aria-invalid={!!phoneError}
-            className={`input text-base ${phoneError ? "border-red-400" : ""}`}
+            className={`input text-base ${phoneError ? "border-red-400 focus:border-red-400 focus:ring-red-100" : ""}`}
             inputMode="tel"
             maxLength={10}
             onBlur={() => setPhoneError(validatePhone(phone))}
-            onChange={e => { const v = e.target.value.replace(/\D/g, "").slice(0, 10); setPhone(v); if (phoneError) setPhoneError(validatePhone(v)); }}
+            onChange={e => { const v = normalizePhone(e.target.value); setPhone(v); if (phoneError) setPhoneError(validatePhone(v)); }}
             placeholder="Teléfono celular (10 dígitos)"
             value={phone}
           />
-          {phoneError && <p className="mt-1 text-sm text-red-600">{phoneError}</p>}
+          {phoneError && <p className="mt-1 text-sm text-red-600" id="phone-error">{phoneError}</p>}
         </div>
         {!isPickup && (
           <div>
             <textarea
+              aria-describedby={addressError ? "address-error" : undefined}
               aria-invalid={!!addressError}
-              className={`input min-h-24 text-base ${addressError ? "border-red-400" : ""}`}
+              className={`input min-h-24 text-base ${addressError ? "border-red-400 focus:border-red-400 focus:ring-red-100" : ""}`}
               onBlur={() => setAddressError(validateAddress(address))}
               onChange={e => { setAddress(e.target.value); if (addressError) setAddressError(validateAddress(e.target.value)); }}
               placeholder="Dirección de entrega (ej. Cra 5 #12-34, apto 301)"
               value={address}
             />
-            {addressError && <p className="mt-1 text-sm text-red-600">{addressError}</p>}
+            {addressError && <p className="mt-1 text-sm text-red-600" id="address-error">{addressError}</p>}
           </div>
         )}
       </section>

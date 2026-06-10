@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { createOrder } from "@/app/actions";
 import { formatMoney } from "@/lib/format";
 import { formatSurcharge, parseItemName, parseSurcharge, SIN_SOPA } from "@/lib/menu";
+import { addressMessage as validateAddress, nameMessage as validateName, normalizePhone, phoneMessage as validatePhone } from "@/lib/validation";
 
 type Lunch = { soup: string; protein: string; side: string; drink: string };
 
@@ -25,29 +26,6 @@ function firstLunch(menu: Props["menu"]): Lunch {
 
 function lunchTotal(basePrice: number, item: Lunch): number {
   return basePrice + parseSurcharge(item.soup) + parseSurcharge(item.protein) + parseSurcharge(item.side) + parseSurcharge(item.drink);
-}
-
-function validateName(value: string): string | null {
-  const clean = value.trim();
-  if (!clean) return "Escribe tu nombre y apellido.";
-  if (clean.length < 5) return "El nombre debe tener al menos 5 caracteres.";
-  if (clean.split(" ").filter(Boolean).length < 2) return "Incluye nombre y apellido completos.";
-  return null;
-}
-
-function validatePhone(value: string): string | null {
-  const digits = value.replace(/\D/g, "");
-  if (digits.length !== 10) return "El teléfono debe tener 10 dígitos (ej. 3001234567).";
-  if (!digits.startsWith("3")) return "Ingresa un celular colombiano válido (comienza con 3).";
-  return null;
-}
-
-function validateAddress(value: string): string | null {
-  const clean = value.trim();
-  if (!clean) return "Escribe tu dirección de entrega.";
-  if (clean.length < 10) return "La dirección debe ser más específica (mínimo 10 caracteres).";
-  if (!/\d/.test(clean)) return "La dirección debe incluir un número (ej. Cra 5 #12-34, apto 301).";
-  return null;
 }
 
 export function CustomerOrderForm({ restaurantSlug, basePrice, menu, delivery }: Props) {
@@ -87,7 +65,7 @@ export function CustomerOrderForm({ restaurantSlug, basePrice, menu, delivery }:
   }
 
   function handlePhoneChange(value: string) {
-    setPhone(value.replace(/\D/g, "").slice(0, 10));
+    setPhone(normalizePhone(value));
   }
 
   function submit() {
@@ -180,7 +158,7 @@ export function CustomerOrderForm({ restaurantSlug, basePrice, menu, delivery }:
           {nameError && <p className="mt-1 text-sm text-red-600" id="name-error">{nameError}</p>}
         </div>
         <div>
-          <input aria-describedby={phoneError ? "phone-error" : undefined} aria-invalid={!!phoneError} className={`input text-base ${phoneError ? "border-red-400 focus:border-red-400 focus:ring-red-100" : ""}`} inputMode="tel" maxLength={10} placeholder="Teléfono celular (10 dígitos)" value={phone} onBlur={() => setPhoneError(validatePhone(phone))} onChange={(e) => { handlePhoneChange(e.target.value); if (phoneError) setPhoneError(validatePhone(e.target.value.replace(/\D/g, "").slice(0, 10))); }} />
+          <input aria-describedby={phoneError ? "phone-error" : undefined} aria-invalid={!!phoneError} className={`input text-base ${phoneError ? "border-red-400 focus:border-red-400 focus:ring-red-100" : ""}`} inputMode="tel" maxLength={10} placeholder="Teléfono celular (10 dígitos)" value={phone} onBlur={() => setPhoneError(validatePhone(phone))} onChange={(e) => { handlePhoneChange(e.target.value); if (phoneError) setPhoneError(validatePhone(normalizePhone(e.target.value))); }} />
           {phoneError && <p className="mt-1 text-sm text-red-600" id="phone-error">{phoneError}</p>}
         </div>
         {!isPickup && (
