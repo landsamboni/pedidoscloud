@@ -148,10 +148,37 @@ Abre [http://localhost:3000](http://localhost:3000) → te redirige a `/login`.
 | `npm run build` | `prisma generate && next build` |
 | `npm run start` | Servidor de producción |
 | `npm run lint` | ESLint (next lint) |
+| `npm test` | Tests unitarios (vitest, una pasada) |
+| `npm run test:watch` | Tests en modo watch |
 | `npm run db:migrate` | Crea/aplica migraciones en dev |
 | `npm run db:deploy` | Aplica migraciones en producción (no crea nuevas) |
 | `npm run db:seed` | Carga restaurantes y menús de ejemplo |
 | `npm run db:studio` | Prisma Studio (explorador visual de BD) |
+
+### Tests
+
+`npm test` corre los tests unitarios (vitest) de la lógica crítica: aislamiento
+multi-tenant ([lib/authz.ts](apps/web/lib/authz.ts)), validación de inputs,
+parsing de precios/recargos, suscripciones y rate limiting. Los archivos `*.test.ts`
+se excluyen del build de Next (vitest los ejecuta vía esbuild).
+
+### Variables de entorno
+
+En local los valores por defecto de `.env.example` bastan. En la nube se inyectan
+por Amplify (vía Terraform). Las principales:
+
+| Variable | Requerida | Descripción |
+|---|---|---|
+| `DATABASE_URL` | sí | Cadena Postgres de Prisma. En la nube incluye `sslmode=require` + `connection_limit` (pooling serverless). |
+| `AUTH_SECRET` | sí (prod) | Clave para firmar el JWT de sesión (`openssl rand -base64 32`). La app falla en prod sin ella. |
+| `ADMIN_USER` / `ADMIN_PASSWORD` | sí | Credenciales del admin de plataforma. Si la clave está vacía, el login admin queda deshabilitado. |
+| `ADMIN_TOTP_SECRET` | no | Secreto TOTP para MFA del admin. Vacío = MFA off. |
+| `STORAGE_DRIVER` | no | `local` (dev) o `s3` (nube). |
+| `S3_REGION` / `S3_BUCKET` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | con `s3` | Bucket privado de uploads (nombres `S3_` porque Amplify prohíbe el prefijo `AWS`). |
+| `LOG_LEVEL` | no | `debug` \| `info` \| `warn` \| `error`. Default: `info` en prod, `debug` en dev. |
+
+> Los secretos reales viven en `terraform.tfvars` (gitignored) y en las variables de
+> entorno de Amplify — **nunca** en el repo. Ver [Seguridad](#seguridad).
 
 ## Rutas principales
 
@@ -344,3 +371,45 @@ Ver [DEPLOYMENT.md](DEPLOYMENT.md): Terraform → Amplify → Cloudflare DNS.
   (`connection_limit`) — ver [Escalabilidad](#escalabilidad). Los recursos de VPC/SG
   creados quedan listos por si en el futuro se habilita la conectividad VPC.
 - Sin pipeline CI/CD para Terraform (se aplica manualmente desde el laptop).
+
+## Changelog
+
+### Auditoría integral (2026-06)
+
+Mejora transversal organizada por fases. Ninguna rompe funcionalidad existente.
+
+**Seguridad**
+- 🔒 **Aislamiento multi-tenant garantizado**: nueva capa [lib/authz.ts](apps/web/lib/authz.ts);
+  toda Server Action con alcance de restaurante verifica propiedad
+  (`canManageRestaurant*`/`canManageCustomer`/`canManageMenuItem`) y las de
+  plataforma exigen `requireAdmin()`. Se cerraron `setRestaurantPassword` y
+  `createRestaurant`, que no tenían control.
+- 🔑 **Secreto removido del repo**: `apps/web/.env.rds-backup` (contenía el
+  `DATABASE_URL` con la contraseña de RDS) se dejó de trackear y se amplió el
+  `.gitignore` a `.env.*`. *(Pendiente: rotar la contraseña maestra de RDS, que
+  sigue en el historial.)*
+- Login admin con comparación en **tiempo constante**; **rate limiting** de login
+  (best-effort en memoria) en [lib/rate-limit.ts](apps/web/lib/rate-limit.ts).
+- `rds.force_ssl` a nivel de motor, `statement_timeout`/`idle_in_transaction_timeout`,
+  guard de path-traversal en `/api/files`, límites de longitud en inputs.
+
+**Correcciones / refactor**
+- Validación de inputs unificada en [lib/validation.ts](apps/web/lib/validation.ts)
+  (antes triplicada).
+- Bugs: recargos de demo omitían principio/bebida; aritmética `Decimal` en totales
+  de catálogo; casts inseguros `as never` → `OrderStatus`.
+
+**Rendimiento / escala (20–50+ restaurantes)**
+- Índices: `OrderItem(orderId)`, `Order(customerId)`, `Order(restaurantId, status)`.
+- Pooling de conexiones Prisma (`connection_limit`) en `DATABASE_URL`.
+- Polling del tablero/seguimiento pausado en pestañas en segundo plano.
+
+**Observabilidad**
+- Logging estructurado JSON con niveles ([lib/logger.ts](apps/web/lib/logger.ts), `LOG_LEVEL`).
+- CloudWatch: alarmas de disco y latencia de RDS, alarma 5xx de Amplify, dashboard,
+  presupuesto de costos (AWS Budgets), retención de logs, SNS en prod.
+- Health check `GET /api/health`.
+
+**Calidad**
+- Tests unitarios con vitest (31) sobre la lógica crítica; `npm test`.
+- Dependencias: patches seguros (next 15.5.19, react 19.2.7, aws-sdk); majors diferidos.
