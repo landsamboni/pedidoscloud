@@ -6,10 +6,11 @@ node_modules/
 out/
 *.tsbuildinfo
 
-# Env files (never commit secrets)
+# Env files (never commit secrets). Ignore every .env* variant (including backups
+# like .env.rds-backup) and keep only the committed template.
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
 # Logs
 *.log
