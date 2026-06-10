@@ -14,11 +14,15 @@ export function AutoRefresh({ intervalMs = 20000, active = true }: AutoRefreshPr
 
   useEffect(() => {
     if (!active) return;
+    // Skip refreshes while the tab is hidden to avoid needless load at scale.
     const timer = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
       router.refresh();
       setCount((c) => c + 1);
     }, intervalMs);
-    return () => clearInterval(timer);
+    const onVisible = () => { if (document.visibilityState === "visible") router.refresh(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { clearInterval(timer); document.removeEventListener("visibilitychange", onVisible); };
   }, [router, intervalMs, active]);
 
   if (!active) return null;

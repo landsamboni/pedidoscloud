@@ -20,48 +20,48 @@ enum OrderStatus {
 }
 
 model Restaurant {
-  id            String              @id @default(cuid())
-  name          String
-  slug          String              @unique
-  basePrice     Decimal             @db.Decimal(12, 2)
+  id                    String              @id @default(cuid())
+  name                  String
+  slug                  String              @unique
+  basePrice             Decimal             @db.Decimal(12, 2)
   // "combo" = fixed categories (soups/proteins/sides/drinks), original behavior.
   // "catalog" = dynamic categories with per-item prices and free quantities.
-  menuType      String              @default("combo")
+  menuType              String              @default("combo")
   // Display label for a single order unit shown to the customer (e.g. "almuerzo",
   // "pedido", "caja"). Used in totals and confirmations.
-  orderUnitLabel String             @default("almuerzo")
-  nequiAccountName String?
-  nequiPhone       String?
-  nequiQrPath      String?
-  menuTemplatePath String?           // currently selected background for the shareable menu PNG
-  menuTemplateHistory String[] @default([]) // last 4 uploaded templates (most recent first)
-  logoPath         String?           // restaurant logo (customer page header + menu image)
-  deliveryMode     String   @default("separate") // "free" | "fixed" | "separate"
-  deliveryFee      Decimal? @db.Decimal(12, 2)   // used when deliveryMode = "fixed"
-  deliveryNote     String?           // optional note shown to the customer about delivery
-  allowPickup      Boolean  @default(true) // offer "Recoger en restaurante" (no fee)
-  whatsappPhone    String?
-  passwordHash     String?           // bcrypt hash — set by admin, changeable by restaurant
-  subscriptionStartedAt DateTime?   // date admin confirmed payment
-  subscriptionEndsAt    DateTime?   // startedAt + 30 days (or extended)
-  active        Boolean             @default(true)
-  createdAt     DateTime            @default(now())
-  menus         Menu[]
-  customers     Customer[]
-  orders        Order[]
-  dailyCounters DailyOrderCounter[]
-  paymentMethods PaymentMethod[]
+  orderUnitLabel        String              @default("almuerzo")
+  nequiAccountName      String?
+  nequiPhone            String?
+  nequiQrPath           String?
+  menuTemplatePath      String? // currently selected background for the shareable menu PNG
+  menuTemplateHistory   String[]            @default([]) // last 4 uploaded templates (most recent first)
+  logoPath              String? // restaurant logo (customer page header + menu image)
+  deliveryMode          String              @default("separate") // "free" | "fixed" | "separate"
+  deliveryFee           Decimal?            @db.Decimal(12, 2) // used when deliveryMode = "fixed"
+  deliveryNote          String? // optional note shown to the customer about delivery
+  allowPickup           Boolean             @default(true) // offer "Recoger en restaurante" (no fee)
+  whatsappPhone         String?
+  passwordHash          String? // bcrypt hash — set by admin, changeable by restaurant
+  subscriptionStartedAt DateTime? // date admin confirmed payment
+  subscriptionEndsAt    DateTime? // startedAt + 30 days (or extended)
+  active                Boolean             @default(true)
+  createdAt             DateTime            @default(now())
+  menus                 Menu[]
+  customers             Customer[]
+  orders                Order[]
+  dailyCounters         DailyOrderCounter[]
+  paymentMethods        PaymentMethod[]
 }
 
 model PaymentMethod {
   id           String     @id @default(cuid())
   restaurantId String
-  label        String     // e.g. "Daviplata", "Nequi secundario", "Bancolombia"
-  phone        String     // number / key / account number to display and copy
-  accountName  String     // account holder name
-  qrPath       String?    // optional QR image (like Nequi)
-  accountType  String?    // "ahorros" | "corriente" — only for bank accounts
-  idNumber     String?    // cédula — only for bank accounts
+  label        String // e.g. "Daviplata", "Nequi secundario", "Bancolombia"
+  phone        String // number / key / account number to display and copy
+  accountName  String // account holder name
+  qrPath       String? // optional QR image (like Nequi)
+  accountType  String? // "ahorros" | "corriente" — only for bank accounts
+  idNumber     String? // cédula — only for bank accounts
   position     Int        @default(0)
   createdAt    DateTime   @default(now())
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
@@ -90,7 +90,7 @@ model Menu {
 model MenuCategory {
   id       String     @id @default(cuid())
   menuId   String
-  name     String     // e.g. "Pasteles", "Rolls", "Bebidas"
+  name     String // e.g. "Pasteles", "Rolls", "Bebidas"
   position Int        @default(0)
   menu     Menu       @relation(fields: [menuId], references: [id], onDelete: Cascade)
   items    MenuItem[]
@@ -99,13 +99,13 @@ model MenuCategory {
 }
 
 model MenuItem {
-  id         String       @id @default(cuid())
-  categoryId String
-  name        String       // e.g. "Pastel de chocolate"
+  id          String       @id @default(cuid())
+  categoryId  String
+  name        String // e.g. "Pastel de chocolate"
   price       Decimal      @db.Decimal(12, 2)
   position    Int          @default(0)
-  description String?      // optional product detail shown in the customer popup
-  imagePath   String?      // optional product photo (S3 key or /uploads/...)
+  description String? // optional product detail shown in the customer popup
+  imagePath   String? // optional product photo (S3 key or /uploads/...)
   category    MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@index([categoryId])
@@ -125,47 +125,55 @@ model Customer {
 }
 
 model Order {
-  id           String      @id @default(cuid())
-  publicToken  String      @unique @default(uuid())
-  restaurantId String
-  customerId   String
-  orderDate    String
-  orderNumber  Int
-  status       OrderStatus @default(NEW)
-  total        Decimal     @db.Decimal(12, 2)
-  deliveryFee  Decimal     @default(0) @db.Decimal(12, 2)
-  fulfillment  String      @default("delivery") // "delivery" | "pickup"
-  address      String
-  customerName String
-  paymentProofPath String?
+  id                 String      @id @default(cuid())
+  publicToken        String      @unique @default(uuid())
+  restaurantId       String
+  customerId         String
+  orderDate          String
+  orderNumber        Int
+  status             OrderStatus @default(NEW)
+  total              Decimal     @db.Decimal(12, 2)
+  deliveryFee        Decimal     @default(0) @db.Decimal(12, 2)
+  fulfillment        String      @default("delivery") // "delivery" | "pickup"
+  address            String
+  customerName       String
+  paymentProofPath   String?
   paymentSubmittedAt DateTime?
-  createdAt    DateTime    @default(now())
-  restaurant   Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  customer     Customer    @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  items        OrderItem[]
+  createdAt          DateTime    @default(now())
+  restaurant         Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  customer           Customer    @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  items              OrderItem[]
 
   @@unique([restaurantId, orderDate, orderNumber])
   @@index([restaurantId, orderDate, createdAt])
+  // Customer stats and customer deletion query orders by customerId.
+  @@index([customerId])
+  // Analytics (groupBy status / orderDate) scan by restaurant + status.
+  @@index([restaurantId, status])
 }
 
 // Unified order item — supports both combo and catalog modes.
 // combo: soup/protein/side/drink filled, catalogCategory/catalogItem/quantity unused.
 // catalog: catalogCategory/catalogItem/quantity/unitPrice filled, soup-drink empty.
 model OrderItem {
-  id        String  @id @default(cuid())
-  orderId   String
+  id              String  @id @default(cuid())
+  orderId         String
   // combo mode (legacy, kept for backward compat)
-  soup      String  @default("")
-  protein   String  @default("")
-  side      String  @default("")
-  drink     String  @default("")
-  price     Decimal @default(0) @db.Decimal(12, 2)  // total price for combo row
+  soup            String  @default("")
+  protein         String  @default("")
+  side            String  @default("")
+  drink           String  @default("")
+  price           Decimal @default(0) @db.Decimal(12, 2) // total price for combo row
   // catalog mode
   catalogCategory String  @default("") // category name snapshot
   catalogItem     String  @default("") // item name snapshot
   quantity        Int     @default(1)
   unitPrice       Decimal @default(0) @db.Decimal(12, 2)
-  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order           Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // FK index — Postgres does not auto-create it. Every order listing joins items
+  // on orderId, and cascade deletes scan by it. Critical as order volume grows.
+  @@index([orderId])
 }
 
 model DailyOrderCounter {

@@ -91,9 +91,21 @@ export function RestaurantOrders({ restaurantSlug, restaurantName = "", orders, 
   useEffect(() => {
     setNow(Date.now());
     if (readOnly) return;
-    const refresh = window.setInterval(() => router.refresh(), 10_000);
-    const tick    = window.setInterval(() => setNow(Date.now()), 30_000);
-    return () => { window.clearInterval(refresh); window.clearInterval(tick); };
+    // Only poll while the tab is visible. Operators typically keep the dashboard
+    // in a background tab; pausing then keeps DB load flat as the number of
+    // restaurants grows. On returning to the tab we refresh once immediately so
+    // the operator never sees stale orders.
+    const refresh = window.setInterval(() => {
+      if (document.visibilityState === "visible") router.refresh();
+    }, 10_000);
+    const tick = window.setInterval(() => setNow(Date.now()), 30_000);
+    const onVisible = () => { if (document.visibilityState === "visible") router.refresh(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(refresh);
+      window.clearInterval(tick);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [router, readOnly]);
 
   const byStatus = useMemo(() => {
