@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 import { getRestaurantMenu } from "@/lib/data";
 import { formatMoney } from "@/lib/format";
+import { logger } from "@/lib/logger";
 import { formatSurcharge, parseItemName, parseSurcharge } from "@/lib/menu";
 import { MenuImage } from "@/lib/menu-image/MenuImage";
 import { CATEGORY_LABELS, MENU_IMAGE } from "@/lib/menu-image/template-spec";
@@ -111,7 +112,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ restaura
   } catch (e) {
     // Satori can fail on malformed/incompatible images. Return a fallback
     // (no background) instead of crashing and triggering a client-side error.
-    console.error("[menu-image]", e);
+    logger.error("menu_image_generation_failed", { err: e });
     return new ImageResponse(
       (
         <MenuImage

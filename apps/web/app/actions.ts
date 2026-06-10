@@ -12,6 +12,7 @@ import {
   requireAdmin,
 } from "@/lib/authz";
 import { dateKeyToUtcDate, localDateKey } from "@/lib/format";
+import { logger } from "@/lib/logger";
 import { itemSurcharge, parseItemName, parseSurcharge, SIN_SOPA } from "@/lib/menu";
 import { prisma } from "@/lib/prisma";
 import { saveUpload } from "@/lib/storage";
@@ -185,6 +186,7 @@ export async function createOrder(input: CreateOrderInput) {
 
   revalidatePath(`/restaurant/${input.restaurantSlug}/orders`);
   revalidatePath("/admin");
+  logger.info("order_created", { mode: "combo", restaurantSlug: input.restaurantSlug, orderNumber: order.orderNumber });
   return { orderNumber: order.orderNumber, publicToken: order.publicToken };
 }
 
@@ -866,7 +868,7 @@ export async function updateLogo(_prev: ActionState, formData: FormData): Promis
     revalidatePath(`/r/${restaurant.slug}`);
     return { ok: true, message: "Logo actualizado.", ts: Date.now() };
   } catch (e) {
-    console.error("[updateLogo]", e);
+    logger.error("update_logo_failed", { err: e });
     return { ok: false, message: "No se pudo guardar el logo. Intenta de nuevo.", ts: Date.now() };
   }
 }
@@ -979,7 +981,7 @@ export async function updateMenuTemplate(_prev: ActionState, formData: FormData)
     if (current) revalidatePath(`/r/${current.slug}`);
     return { ok: true, message: "Plantilla actualizada.", ts: Date.now() };
   } catch (e) {
-    console.error("[updateMenuTemplate]", e);
+    logger.error("update_menu_template_failed", { err: e });
     return { ok: false, message: "No se pudo guardar la plantilla. Intenta de nuevo.", ts: Date.now() };
   }
 }
@@ -997,7 +999,7 @@ export async function toggleCustomerFavorite(_prev: ActionState, formData: FormD
     revalidatePath(returnPath);
     return { ok: true, message: current.favorite ? "Favorito eliminado." : "Marcado como favorito.", ts: Date.now() };
   } catch (e) {
-    console.error("[toggleCustomerFavorite]", e);
+    logger.error("toggle_customer_favorite_failed", { err: e });
     return { ok: false, message: "No se pudo actualizar.", ts: Date.now() };
   }
 }
@@ -1039,7 +1041,7 @@ export async function updateMenuItemDetails(_prev: ActionState, formData: FormDa
       : (await prisma.menuItem.findUnique({ where: { id: itemId }, select: { imagePath: true } }))?.imagePath ?? null;
     return { ok: true, message: "Detalles actualizados.", ts: Date.now(), data: { imagePath: finalImagePath } };
   } catch (e) {
-    console.error("[updateMenuItemDetails]", e);
+    logger.error("update_menu_item_details_failed", { err: e });
     return { ok: false, message: "No se pudo guardar los detalles.", ts: Date.now() };
   }
 }
@@ -1131,9 +1133,9 @@ export async function deletePaymentMethod(_prev: ActionState, formData: FormData
 export type PaymentProofState = { error: string; success: boolean };
 
 export async function uploadPaymentProof(_: PaymentProofState, formData: FormData): Promise<PaymentProofState> {
+  const restaurantSlug = String(formData.get("restaurantSlug"));
+  const publicToken = String(formData.get("publicToken"));
   try {
-    const restaurantSlug = String(formData.get("restaurantSlug"));
-    const publicToken = String(formData.get("publicToken"));
     const file = formData.get("paymentProof");
     if (!(file instanceof File)) throw new Error("Selecciona un comprobante.");
     const paymentProofPath = await saveUpload(file, "payment-proof");
@@ -1155,8 +1157,10 @@ export async function uploadPaymentProof(_: PaymentProofState, formData: FormDat
     revalidatePath(`/restaurant/${restaurantSlug}/orders`);
     revalidatePath(`/r/${restaurantSlug}/orders/${publicToken}`);
     revalidatePath("/admin");
+    logger.info("payment_proof_uploaded", { restaurantSlug });
     return { error: "", success: true };
   } catch (cause) {
+    logger.warn("payment_proof_upload_failed", { restaurantSlug, err: cause });
     return {
       error: cause instanceof Error ? cause.message : "No pudimos guardar el comprobante.",
       success: false,
@@ -1245,7 +1249,7 @@ export async function updateCatalogMenu(
     if (restaurant) revalidatePath(`/r/${restaurant.slug}`);
     return { ok: true, message: "Menú publicado y visible para tus clientes.", ts: Date.now() };
   } catch (e) {
-    console.error("[updateCatalogMenu]", e);
+    logger.error("update_catalog_menu_failed", { err: e });
     return { ok: false, message: "No se pudo guardar el menú. Intenta de nuevo.", ts: Date.now() };
   }
 }
@@ -1267,7 +1271,7 @@ export async function unpublishCatalogMenu(
     if (restaurant) revalidatePath(`/r/${restaurant.slug}`);
     return { ok: true, message: "Menú despublicado. Tus clientes ya no lo ven.", ts: Date.now() };
   } catch (e) {
-    console.error("[unpublishCatalogMenu]", e);
+    logger.error("unpublish_catalog_menu_failed", { err: e });
     return { ok: false, message: "No se pudo despublicar el menú.", ts: Date.now() };
   }
 }
@@ -1292,7 +1296,7 @@ export async function updateMenuType(_prev: ActionState, formData: FormData): Pr
     revalidatePath(returnPath);
     return { ok: true, message: "Tipo de menú actualizado.", ts: Date.now() };
   } catch (e) {
-    console.error("[updateMenuType]", e);
+    logger.error("update_menu_type_failed", { err: e });
     return { ok: false, message: "No se pudo actualizar el tipo de menú.", ts: Date.now() };
   }
 }
@@ -1394,8 +1398,10 @@ export async function createCatalogOrder(input: CreateCatalogOrderInput) {
 
     revalidatePath(`/restaurant/${input.restaurantSlug}/orders`);
     revalidatePath("/admin");
+    logger.info("order_created", { mode: "catalog", restaurantSlug: input.restaurantSlug, orderNumber: order.orderNumber });
     return { orderNumber: order.orderNumber, publicToken: order.publicToken };
   } catch (cause) {
+    logger.warn("catalog_order_failed", { restaurantSlug: input.restaurantSlug, err: cause });
     throw cause;
   }
 }

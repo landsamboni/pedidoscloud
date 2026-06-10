@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 
 // Lightweight liveness + DB-readiness probe for uptime monitors and the load
 // balancer. Public by design (middleware does not match /api), returns no
@@ -13,7 +14,8 @@ export async function GET() {
       { status: "ok", db: "up", latencyMs: Date.now() - startedAt },
       { headers: { "Cache-Control": "no-store" } },
     );
-  } catch {
+  } catch (err) {
+    logger.error("health_check_db_down", { err });
     return Response.json(
       { status: "error", db: "down" },
       { status: 503, headers: { "Cache-Control": "no-store" } },
