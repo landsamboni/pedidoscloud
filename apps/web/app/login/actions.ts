@@ -4,6 +4,12 @@ import { timingSafeEqual } from "node:crypto";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { createSession, clearSession } from "@/lib/auth";
+import { rateLimit, rateLimitReset } from "@/lib/rate-limit";
+
+// Brute-force throttle: max attempts per username per window (best-effort,
+// per-instance — Cloudflare Rate Limiting on /login is the authoritative control).
+const LOGIN_MAX_ATTEMPTS = 10;
+const LOGIN_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 
 export type LoginState = { error: string; needsTotp?: boolean };
 
@@ -24,6 +30,11 @@ export async function loginAction(_: LoginState, formData: FormData): Promise<Lo
     return { error: "Ingresa tu usuario y contraseña." };
   }
 
+  const throttle = rateLimit(`login:${username}`, LOGIN_MAX_ATTEMPTS, LOGIN_WINDOW_MS);
+  if (!throttle.allowed) {
+    return { error: `Demasiados intentos. Espera ${throttle.retryAfterSeconds} s e intenta de nuevo.` };
+  }
+
   // Admin login — credentials from env vars (no DB, no bcrypt)
   const adminUser = process.env.ADMIN_USER ?? "admin";
   const adminPass = process.env.ADMIN_PASSWORD ?? "";
@@ -41,6 +52,7 @@ export async function loginAction(_: LoginState, formData: FormData): Promise<Lo
       }
     }
 
+    rateLimitReset(`login:${username}`);
     await createSession({ role: "admin" });
     redirect(from && from.startsWith("/admin") ? from : "/admin");
   }
@@ -60,6 +72,7 @@ export async function loginAction(_: LoginState, formData: FormData): Promise<Lo
   const valid = await compare(password, restaurant.passwordHash);
   if (!valid) return { error: "Credenciales inválidas." };
 
+  rateLimitReset(`login:${username}`);
   await createSession({
     role: "restaurant",
     restaurantSlug: restaurant.slug,
