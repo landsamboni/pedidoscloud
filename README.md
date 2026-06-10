@@ -24,11 +24,12 @@ pedidoscloud/
 │       │   ├── restaurant/       # Tablero, consola, analítica e historial 🔒
 │       │   ├── admin/            # Panel de administración de plataforma 🔒
 │       │   ├── api/files/        # Proxy same-origin para archivos S3 privados
+│       │   ├── api/health/       # Health check (liveness + readiness de BD)
 │       │   ├── layout.tsx        # Layout raíz + fuente Inter (next/font)
 │       │   └── globals.css       # Sistema de estilos (tokens .card/.input/.button-*)
 │       ├── components/           # Componentes React (formularios, tablero, etc.)
-│       ├── lib/                  # auth, subscription, prisma, storage, file-url,
-│       │                         #   runtime-env, data, format, menu
+│       ├── lib/                  # auth, authz, validation, subscription, prisma,
+│       │                         #   storage, file-url, runtime-env, data, format, menu
 │       ├── prisma/               # Schema, migraciones y seed
 │       ├── middleware.ts         # Auth de sesión (JWT) para /admin y /restaurant
 │       ├── next.config.ts        # Cabeceras de seguridad, límites de Server Actions
@@ -37,9 +38,11 @@ pedidoscloud/
 │   └── terraform/
 │       ├── envs/
 │       │   ├── staging/          # Entorno de staging (rama staging-aws)
+│       │   ├── feature-menu/     # Entorno de feature efímero (recursos separados)
 │       │   └── prod/             # Entorno de producción (rama main)
 │       └── modules/
-│           ├── rds-postgres/     # RDS PostgreSQL + alarmas CloudWatch
+│           ├── rds-postgres/     # RDS PostgreSQL + parámetros + alarmas CloudWatch
+│           ├── monitoring/       # Dashboard, alarma Amplify 5xx, presupuesto de costos
 │           ├── s3-uploads/       # Bucket privado + ciclo de vida
 │           ├── amplify-app/      # Amplify Hosting (WEB_COMPUTE / SSR)
 │           ├── iam/              # Usuario IAM con acceso mínimo al bucket
@@ -64,25 +67,37 @@ pedidoscloud/
 
 ## Funcionalidades
 
+**Dos modos de menú** — cada negocio elige cómo vende:
+- **Combo** (almuerzos): categorías fijas (sopa, proteína, principio, bebida) con
+  recargos opcionales por opción y un precio base por almuerzo.
+- **Catálogo** (reposterías, panaderías, etc.): **categorías dinámicas** con nombre
+  libre, **precio por producto**, **cantidades libres**, y **fichas de producto**
+  con descripción y foto en un popup para el cliente.
+
 **Cliente final (público)**
 - **Pedido por enlace**: el negocio comparte `pedidoscloud.com/r/mi-restaurante` por WhatsApp.
-- **Formulario de pedido**: el cliente elige del menú del día (sopa, proteína, principio, bebida),
-  con validación de nombre, celular colombiano y dirección, y soporte para varios almuerzos.
-- **Comprobante Nequi**: el cliente sube foto/PDF del pago para que el negocio lo revise.
-- **Seguimiento en tiempo real**: la página del pedido se refresca sola cada 20 s mientras el negocio revisa el pago.
-- **WhatsApp Click-to-Chat**: botón para consultar el estado directamente con el restaurante.
-- **Guardar enlace de pedido**: el cliente puede copiar o enviarse el link de seguimiento.
+- **Formulario de pedido**: arma su pedido según el modo del negocio (combo o catálogo),
+  con validación compartida de nombre, celular colombiano y dirección.
+- **Domicilio o recogida**: domicilio gratis, fijo o pagado aparte; o recoger en el local.
+- **Comprobante de pago**: sube foto/PDF del pago (Nequi/Daviplata/cuenta bancaria) para revisión.
+- **Seguimiento en tiempo real**: la página del pedido se actualiza mientras el negocio revisa el pago
+  (pausada cuando la pestaña está en segundo plano para no recargar el servidor).
+- **WhatsApp Click-to-Chat** y **guardar enlace** del pedido.
 
 **Operador del restaurante (🔒 autenticado)**
-- **Tablero de pedidos del día**: agrupado por estado, con resaltado de urgencia y refresco cada 10 s.
+- **Tablero de pedidos del día**: agrupado por estado, con resaltado de urgencia y refresco automático.
 - **Revisión de pagos**: ver el comprobante en un modal, confirmar, rechazar o cancelar.
-- **Consola**: configura menú del día, precio base, métodos de pago (Nequi/Daviplata/etc.) y QR.
-- **Analítica**: ventas e ingredientes más pedidos por mes.
-- **Historial**: pedidos por fecha.
-- **Cambio de contraseña** del propio restaurante.
+- **Consola**: configura el menú del día (combo o catálogo), precio base / precios por producto,
+  métodos de pago (Nequi/Daviplata/banco) con QR, logo, y opciones de entrega.
+- **Imagen de menú para WhatsApp**: genera un PNG del menú sobre una plantilla para compartir.
+- **Clientes**: estadísticas por cliente (podio del top 3, total gastado, pedidos, ticket
+  promedio, última compra), marcar **favoritos** y contacto directo por WhatsApp.
+- **Analítica**: ventas, ingredientes (combo) o productos más vendidos (catálogo) por mes.
+- **Historial**: pedidos por fecha. **Cambio de contraseña** del propio restaurante.
 
 **Admin de plataforma (🔒 autenticado)**
-- **Multi-tenant**: alta, edición y baja de restaurantes.
+- **Multi-tenant aislado**: alta, edición y baja de restaurantes — cada uno totalmente
+  independiente (ver [Aislamiento multi-tenant](#aislamiento-multi-tenant)).
 - **Suscripciones**: registrar pago (renueva 30 días), suspender, ver estado (activa/por vencer/suspendida).
 - **Contraseñas**: asignar/restablecer la contraseña de cada restaurante.
 - **Generador de datos demo** y limpieza de pedidos por restaurante o por fecha.
@@ -149,8 +164,10 @@ Abre [http://localhost:3000](http://localhost:3000) → te redirige a `/login`.
 | `/restaurant/{slug}/orders` | Operador — tablero de pedidos del día | 🔒 Sesión |
 | `/restaurant/{slug}/analytics` | Operador — analítica | 🔒 Sesión |
 | `/restaurant/{slug}/history[/date]` | Operador — historial | 🔒 Sesión |
+| `/restaurant/{slug}/customers` | Operador — estadísticas de clientes | 🔒 Sesión |
 | `/admin` | Propietario de plataforma | 🔒 Sesión (admin) |
 | `/api/files/{key}` | Proxy S3 (solo con `STORAGE_DRIVER=s3`) | Interno |
+| `/api/health` | Monitor de uptime / balanceador | Pública |
 
 ## Auth de operadores
 
@@ -171,6 +188,32 @@ HttpOnly (`pcloud_session`, TTL 12 h). Ver [lib/auth.ts](apps/web/lib/auth.ts) y
   (`openssl rand -base64 32`); en producción la app falla si no está definida.
 
 **Próximo paso de auth**: NextAuth o Amazon Cognito con cuentas por restaurante.
+
+## Aislamiento multi-tenant
+
+Cada restaurante es un **inquilino (tenant) totalmente independiente**: sus pedidos,
+clientes, menús y configuración nunca se cruzan con los de otro. **Solo el admin de
+plataforma** puede gestionar todos los restaurantes. La garantía se aplica en **dos
+capas**, porque cubren superficies de ataque distintas:
+
+1. **Lecturas — middleware** ([middleware.ts](apps/web/middleware.ts), Edge Runtime).
+   Una sesión de restaurante solo puede abrir `/restaurant/<su-propio-slug>/*`;
+   cualquier otro slug redirige al login. El admin puede ver cualquiera.
+
+2. **Escrituras — capa de autorización** ([lib/authz.ts](apps/web/lib/authz.ts)).
+   Las Server Actions son endpoints POST que **no** están atados a la ruta: reciben
+   un `restaurantId` / `slug` / `customerId` / `itemId` en el formulario. Cada acción
+   con alcance de restaurante empieza verificando la propiedad con
+   `canManageRestaurantById` / `canManageRestaurantBySlug` / `canManageCustomer` /
+   `canManageMenuItem`, que resuelven el restaurante dueño y comprueban que el
+   solicitante sea **el admin o el operador de ese mismo restaurante**. Las acciones
+   de plataforma (borrar restaurante, suscripciones, datos demo, contraseñas) exigen
+   `requireAdmin()`. Sin esa comprobación, un operador podría pasar el id de otro
+   negocio y modificar sus datos — eso queda bloqueado.
+
+`lib/authz.ts` es código exclusivo de servidor (lee la cookie de sesión y consulta la
+BD) y **nunca** se importa en el middleware (Edge) ni en componentes de cliente, para
+no filtrar Prisma al bundle del Edge.
 
 ## Ciclo de vida del pedido
 
@@ -199,19 +242,86 @@ URL del browser, permitiendo migrar entre drivers sin romper registros existente
 
 ## Seguridad
 
+- **Aislamiento multi-tenant** garantizado en dos capas (ver
+  [Aislamiento multi-tenant](#aislamiento-multi-tenant)): middleware para lecturas
+  + `lib/authz.ts` para cada Server Action.
+- **Autorización en Server Actions**: toda acción con alcance de restaurante verifica
+  propiedad; las de plataforma exigen rol admin.
+- **Login del admin** con comparación en **tiempo constante** (`timingSafeEqual`) para
+  no filtrar la contraseña por temporización; queda deshabilitado si `ADMIN_PASSWORD`
+  está vacío. MFA TOTP opcional (`ADMIN_TOTP_SECRET`).
+- **Validación de entradas** centralizada en [lib/validation.ts](apps/web/lib/validation.ts)
+  (cliente y servidor comparten reglas) y **límites de longitud** en textos del menú,
+  descripciones y datos del cliente para acotar abuso/almacenamiento.
+- **Subidas de archivos**: validación de tipo MIME **y magic bytes**, límite de 12 MB,
+  y el proxy `/api/files` solo sirve prefijos conocidos y rechaza path traversal.
 - **Cabeceras HTTP** en `next.config.ts`: `X-Frame-Options`, `X-Content-Type-Options`,
   `Referrer-Policy`, `Permissions-Policy`, y `noindex` en las páginas `/r/*`.
   (HSTS lo aplica Cloudflare; el CSP queda pendiente de auditar.)
 - **S3 privado**: todo acceso público bloqueado, cifrado en reposo (AES-256),
   versionado y ciclo de vida que limpia uploads multipart incompletos y versiones antiguas.
 - **IAM de mínimo privilegio**: el usuario de la app solo puede operar sobre el bucket de uploads.
-- **RDS**: cifrado en reposo, SSL forzado (`sslmode=require`), autoescalado de
-  almacenamiento y alarmas de CPU/memoria/conexiones en CloudWatch. El acceso al
-  puerto 5432 se controla por security group. **Nota**: como el SSR de Amplify
-  (WEB_COMPUTE) no se puede conectar a la VPC en esta cuenta, el Lambda llega a
-  RDS por el **endpoint público** desde IPs de AWS no fijas; por eso
-  `db_allowed_cidr_blocks` **debe** incluir `0.0.0.0/0` (la app deja de conectar
-  si se quita). El riesgo se mitiga con contraseña fuerte + SSL obligatorio.
+- **RDS**: cifrado en reposo, **TLS forzado a nivel de motor** (`rds.force_ssl`, además
+  del `sslmode=require` del cliente), `statement_timeout` e
+  `idle_in_transaction_session_timeout` para que una consulta colgada no bloquee una
+  conexión, autoescalado de almacenamiento y `deletion_protection` en staging/prod.
+  El acceso al puerto 5432 se controla por security group. **Nota**: como el SSR de
+  Amplify (WEB_COMPUTE) no se puede conectar a la VPC en esta cuenta, el Lambda llega
+  a RDS por el **endpoint público** desde IPs de AWS no fijas; por eso
+  `db_allowed_cidr_blocks` **debe** incluir `0.0.0.0/0` (la app deja de conectar si se
+  quita). El riesgo se mitiga con contraseña fuerte + SSL obligatorio.
+- **Rate limiting**: se recomienda activar **Cloudflare Rate Limiting** sobre `/login`
+  (y los POST de Server Actions) como control de fuerza bruta a nivel de borde, ya que
+  el SSR serverless no mantiene estado entre invocaciones.
+
+## Escalabilidad
+
+Diseñado para sostener **decenas de restaurantes (20–50+) concurrentes** sobre Amplify
+SSR (Lambda) + RDS PostgreSQL:
+
+- **Pooling de conexiones (Prisma)**: el `DATABASE_URL` incluye
+  `connection_limit`, `pool_timeout` y `connect_timeout`. En serverless, cada instancia
+  de Lambda abre su propio pool, así que el total de conexiones ≈
+  `connection_limit × Lambdas calientes concurrentes`, acotado por el `max_connections`
+  de la instancia (~112 en `db.t3.micro`, ~225 en `db.t3.small`). `connection_limit` se
+  configura por entorno (`db_connection_limit`); `pool_timeout` hace que las ráfagas
+  cortas **esperen** en vez de fallar.
+  > RDS Proxy sería el pooler ideal para Lambda, pero es solo-VPC y el SSR de Amplify
+  > no está en la VPC en esta cuenta; por eso se usa el pooling de Prisma + tuning de RDS.
+- **Polling consciente de visibilidad**: el tablero de pedidos y la página de
+  seguimiento **pausan el refresco cuando la pestaña está en segundo plano** y refrescan
+  al volver. Como los operadores suelen tener la pestaña de fondo, esto mantiene la carga
+  de BD plana al crecer el número de restaurantes, sin cambiar la experiencia en primer plano.
+- **Índices**: además de las claves únicas por tenant, hay índices en
+  `OrderItem(orderId)`, `Order(customerId)` y `Order(restaurantId, status)` para que los
+  listados de pedidos, las estadísticas de clientes y la analítica no hagan *scans*
+  (migración `20260610000000_add_performance_indexes`).
+- **Tuning de RDS**: `log_min_duration_statement` registra consultas lentas y
+  **Performance Insights** (gratis, 7 días) permite diagnosticar carga a medida que crece.
+- **Cómo escalar más**: subir `db_instance_class` (p. ej. `db.t3.small`/`medium`) eleva
+  `max_connections` y memoria; ajustar `db_connection_limit` en consecuencia. La alarma
+  de `DatabaseConnections` avisa cuando el pool se acerca al límite.
+
+## Monitoreo (CloudWatch)
+
+Observabilidad por entorno, con notificaciones por correo vía SNS (`alert_email`):
+
+- **Alarmas de RDS** (módulo `rds-postgres`): CPU, memoria libre, conexiones,
+  **espacio libre en disco**, y **latencia de lectura/escritura**.
+- **Alarma de Amplify** (módulo `monitoring`): respuestas `5xxErrors` del front-end SSR.
+- **Dashboard de CloudWatch**: un tablero por entorno con CPU/conexiones, memoria/disco,
+  latencias de RDS y tráfico/errores de Amplify, todo en una vista.
+- **Presupuesto de costos** (AWS Budgets): alerta al 80% (real) y 100% (proyectado) del
+  `monthly_budget_usd` configurado por entorno.
+- **Retención de logs**: los grupos `postgresql` y `upgrade` de RDS tienen retención
+  acotada (`log_retention_days`) para que el costo de logs no crezca sin límite.
+- **Health check**: `GET /api/health` devuelve `200`/`503` según la conectividad a la BD
+  — apto para monitores de uptime externos y health checks de balanceador.
+
+> **Al aplicar en un RDS ya existente** (p. ej. staging) Terraform creará los grupos de
+> logs y el grupo de parámetros nuevos; si los grupos de logs ya existen, impórtalos una
+> vez (el comando está documentado en el módulo `rds-postgres/main.tf`). El grupo de
+> parámetros con `rds.force_ssl` puede requerir un reinicio de la instancia.
 
 ## Despliegue en AWS
 
@@ -226,8 +336,11 @@ Ver [DEPLOYMENT.md](DEPLOYMENT.md): Terraform → Amplify → Cloudflare DNS.
 ## Límites conocidos del MVP
 
 - Login de admin con un único usuario/clave por variables de entorno (no por persona).
-- Sin WhatsApp Cloud API ni pasarela de pagos (comprobantes Nequi manuales).
+  Se recomienda activar Cloudflare Rate Limiting sobre `/login` (ver [Seguridad](#seguridad)).
+- Sin WhatsApp Cloud API ni pasarela de pagos (comprobantes Nequi/Daviplata manuales).
 - El SSR de Amplify (WEB_COMPUTE) no soporta conectividad VPC en esta cuenta, así
-  que RDS debe quedar accesible desde `0.0.0.0/0` (protegido por contraseña + SSL).
-  Los recursos de VPC/SG creados quedan listos por si en el futuro se habilita.
+  que RDS debe quedar accesible desde `0.0.0.0/0` (protegido por contraseña + SSL forzado).
+  Por la misma razón no se usa RDS Proxy; el pooling se hace con Prisma
+  (`connection_limit`) — ver [Escalabilidad](#escalabilidad). Los recursos de VPC/SG
+  creados quedan listos por si en el futuro se habilita la conectividad VPC.
 - Sin pipeline CI/CD para Terraform (se aplica manualmente desde el laptop).
