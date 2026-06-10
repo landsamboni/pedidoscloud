@@ -87,6 +87,52 @@ variable "skip_final_snapshot" {
   default     = true
 }
 
+# ---- Engine tuning (parameter group) ----
+
+variable "parameter_group_family" {
+  description = "RDS parameter group family. Must match the engine major version (e.g. postgres16)."
+  type        = string
+  default     = "postgres16"
+}
+
+variable "statement_timeout_ms" {
+  description = "Server-side statement_timeout in ms — kills runaway app queries so one bad query can't pin a connection. Generous enough for normal queries and migrations. 0 disables."
+  type        = number
+  default     = 30000 # 30s
+}
+
+variable "idle_in_transaction_timeout_ms" {
+  description = "idle_in_transaction_session_timeout in ms — reclaims connections leaked mid-transaction (a common failure mode under serverless load). 0 disables."
+  type        = number
+  default     = 60000 # 60s
+}
+
+variable "slow_query_log_ms" {
+  description = "log_min_duration_statement in ms — log queries slower than this to CloudWatch for diagnosis. -1 disables."
+  type        = number
+  default     = 1000 # 1s
+}
+
+variable "performance_insights_enabled" {
+  description = "Enable RDS Performance Insights (free with 7-day retention) to diagnose load as tenant count grows."
+  type        = bool
+  default     = true
+}
+
+# ---- Connection pooling (Prisma) ----
+
+variable "connection_limit" {
+  description = "Prisma connection_limit appended to DATABASE_URL — the max DB connections ONE SSR Lambda instance opens. Keep small on serverless: connections = connection_limit x concurrent warm Lambdas, capped by the instance's max_connections (~112 for db.t3.micro, ~225 for db.t3.small)."
+  type        = number
+  default     = 5
+}
+
+variable "pool_timeout_s" {
+  description = "Prisma pool_timeout (seconds) — how long a query waits for a free connection before erroring. Lets short bursts queue instead of failing."
+  type        = number
+  default     = 15
+}
+
 # ---- CloudWatch alarms ----
 
 variable "alarm_topic_arn" {
@@ -105,6 +151,30 @@ variable "alarm_connections_threshold" {
   description = "DatabaseConnections alarm threshold. Scale at ~50-80 for db.t3.micro."
   type        = number
   default     = 40
+}
+
+variable "alarm_free_storage_threshold_bytes" {
+  description = "FreeStorageSpace alarm threshold in bytes — alert before the disk fills (a hard outage). Default 2 GB."
+  type        = number
+  default     = 2147483648 # 2 GB
+}
+
+variable "alarm_read_latency_seconds" {
+  description = "ReadLatency alarm threshold in seconds. Default 20 ms."
+  type        = number
+  default     = 0.02
+}
+
+variable "alarm_write_latency_seconds" {
+  description = "WriteLatency alarm threshold in seconds. Default 20 ms."
+  type        = number
+  default     = 0.02
+}
+
+variable "log_retention_days" {
+  description = "Retention for the RDS CloudWatch log groups (postgresql, upgrade). Bounds log storage cost."
+  type        = number
+  default     = 30
 }
 
 variable "tags" {

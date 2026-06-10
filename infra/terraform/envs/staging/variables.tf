@@ -61,6 +61,12 @@ variable "db_allocated_storage" {
   default = 20
 }
 
+variable "db_connection_limit" {
+  description = "Prisma connection_limit per SSR Lambda instance. Keep small on serverless: total connections = this x concurrent warm Lambdas, bounded by the instance's max_connections (~112 on db.t3.micro)."
+  type        = number
+  default     = 5
+}
+
 variable "db_publicly_accessible" {
   description = "Keep true: the Amplify SSR Lambda is NOT in the VPC (WEB_COMPUTE VPC connectivity is unavailable here), so it reaches RDS over the public endpoint. Access is restricted by the security group / db_allowed_cidr_blocks."
   type        = bool
@@ -105,6 +111,12 @@ variable "alert_email" {
   description = "Email address for CloudWatch alarm notifications (RDS memory, connections). Leave empty to create alarms without email (visible in CloudWatch console only)."
   type        = string
   default     = ""
+}
+
+variable "monthly_budget_usd" {
+  description = "Monthly AWS cost budget in USD; emails alert_email at 80% actual and 100% forecast. 0 disables the budget."
+  type        = number
+  default     = 50
 }
 
 # ---- Optional ----

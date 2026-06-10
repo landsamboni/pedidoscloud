@@ -167,6 +167,7 @@ module "rds" {
   allowed_cidr_blocks         = var.db_allowed_cidr_blocks
   alarm_topic_arn             = aws_sns_topic.alerts.arn
   alarm_connections_threshold = 40
+  connection_limit            = var.db_connection_limit
   deletion_protection         = false
   skip_final_snapshot         = true
   tags                        = local.tags
@@ -215,6 +216,18 @@ module "amplify" {
   custom_subdomains = ["app", "staging"]
 
   tags = local.tags
+}
+
+module "monitoring" {
+  source                 = "../../modules/monitoring"
+  name                   = local.name
+  region                 = var.aws_region
+  db_instance_identifier = module.rds.instance_identifier
+  amplify_app_id         = module.amplify.app_id
+  alarm_topic_arn        = aws_sns_topic.alerts.arn
+  alert_email            = var.alert_email
+  monthly_budget_usd     = var.monthly_budget_usd
+  tags                   = local.tags
 }
 
 module "secrets" {

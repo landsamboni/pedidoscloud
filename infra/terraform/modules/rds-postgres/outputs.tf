@@ -3,6 +3,11 @@ output "endpoint" {
   value       = aws_db_instance.this.address
 }
 
+output "instance_identifier" {
+  description = "DBInstanceIdentifier — used as the CloudWatch dimension."
+  value       = aws_db_instance.this.identifier
+}
+
 output "port" {
   description = "Port of the RDS instance."
   value       = aws_db_instance.this.port
@@ -14,9 +19,12 @@ output "db_name" {
 }
 
 output "database_url" {
-  description = "Ready-to-use Prisma connection string (set as DATABASE_URL)."
-  value       = "postgresql://${var.username}:${var.password}@${aws_db_instance.this.address}:${aws_db_instance.this.port}/${aws_db_instance.this.db_name}?schema=public&sslmode=require"
-  sensitive   = true
+  description = "Ready-to-use Prisma connection string (set as DATABASE_URL). Includes connection pooling tuned for serverless SSR."
+  # connection_limit caps connections opened by ONE Lambda instance; pool_timeout
+  # lets short bursts queue instead of erroring; connect_timeout fails fast on a
+  # dead DB rather than hanging the request.
+  value     = "postgresql://${var.username}:${var.password}@${aws_db_instance.this.address}:${aws_db_instance.this.port}/${aws_db_instance.this.db_name}?schema=public&sslmode=require&connection_limit=${var.connection_limit}&pool_timeout=${var.pool_timeout_s}&connect_timeout=10"
+  sensitive = true
 }
 
 output "security_group_id" {

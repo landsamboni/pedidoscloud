@@ -53,11 +53,51 @@ resource "aws_vpc_security_group_egress_rule" "db_all_outbound" {
   tags              = var.tags
 }
 
+# Engine tuning. force_ssl enforces TLS at the server (not just the client's
+# sslmode=require), and the timeouts/slow-query log keep the DB healthy and
+# observable as load grows. Most of these are dynamic; force_ssl is static and
+# applies on the next reboot (apply_immediately reboots when needed).
+resource "aws_db_parameter_group" "this" {
+  name        = "${var.identifier}-pg"
+  family      = var.parameter_group_family
+  description = "Tuning + TLS enforcement for ${var.identifier}"
+  tags        = var.tags
+
+  parameter {
+    name         = "rds.force_ssl"
+    value        = "1"
+    apply_method = "pending-reboot"
+  }
+  parameter {
+    name  = "log_min_duration_statement"
+    value = tostring(var.slow_query_log_ms)
+  }
+  parameter {
+    name  = "statement_timeout"
+    value = tostring(var.statement_timeout_ms)
+  }
+  parameter {
+    name  = "idle_in_transaction_session_timeout"
+    value = tostring(var.idle_in_transaction_timeout_ms)
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
 resource "aws_db_instance" "this" {
   identifier     = var.identifier
   engine         = "postgres"
   engine_version = var.engine_version
   instance_class = var.instance_class
+
+  parameter_group_name = aws_db_parameter_group.this.name
+
+  # Performance Insights — free with 7-day retention. Essential for diagnosing
+  # query/connection load as the number of restaurants grows.
+  performance_insights_enabled          = var.performance_insights_enabled
+  performance_insights_retention_period = var.performance_insights_enabled ? 7 : null
 
   allocated_storage = var.allocated_storage
   # Storage autoscaling: let RDS grow storage up to this cap automatically so the
@@ -144,7 +184,7 @@ resource "aws_cloudwatch_metric_alarm" "database_connections" {
   period              = 300
   statistic           = "Average"
   threshold           = var.alarm_connections_threshold
-  alarm_description   = "${var.identifier}: DatabaseConnections above ${var.alarm_connections_threshold} — check for connection leaks or scale up"
+  alarm_description   = "${var.identifier}: DatabaseConnections above ${var.alarm_connections_threshold} — connection pool may be saturating. Lower Prisma connection_limit or scale the instance."
   alarm_actions       = local.alarm_actions
   ok_actions          = local.alarm_actions
   treat_missing_data  = "notBreaching"
@@ -154,4 +194,87 @@ resource "aws_cloudwatch_metric_alarm" "database_connections" {
   }
 
   tags = var.tags
+}
+
+# Disk full is a hard outage. Storage autoscaling helps, but alarm before it.
+resource "aws_cloudwatch_metric_alarm" "free_storage_space" {
+  alarm_name          = "${var.identifier}-low-storage"
+  comparison_operator = "LessThanThreshold"
+  evaluation_periods  = 1
+  metric_name         = "FreeStorageSpace"
+  namespace           = "AWS/RDS"
+  period              = 300
+  statistic           = "Average"
+  threshold           = var.alarm_free_storage_threshold_bytes
+  alarm_description   = "${var.identifier}: FreeStorageSpace below ${floor(var.alarm_free_storage_threshold_bytes / 1073741824)} GB — disk may fill (hard outage)."
+  alarm_actions       = local.alarm_actions
+  ok_actions          = local.alarm_actions
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    DBInstanceIdentifier = aws_db_instance.this.id
+  }
+
+  tags = var.tags
+}
+
+# Latency alarms surface slow disks / missing indexes / overload early.
+resource "aws_cloudwatch_metric_alarm" "read_latency" {
+  alarm_name          = "${var.identifier}-high-read-latency"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 3
+  metric_name         = "ReadLatency"
+  namespace           = "AWS/RDS"
+  period              = 300
+  statistic           = "Average"
+  threshold           = var.alarm_read_latency_seconds
+  alarm_description   = "${var.identifier}: ReadLatency above ${var.alarm_read_latency_seconds * 1000} ms — check slow queries / missing indexes."
+  alarm_actions       = local.alarm_actions
+  ok_actions          = local.alarm_actions
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    DBInstanceIdentifier = aws_db_instance.this.id
+  }
+
+  tags = var.tags
+}
+
+resource "aws_cloudwatch_metric_alarm" "write_latency" {
+  alarm_name          = "${var.identifier}-high-write-latency"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 3
+  metric_name         = "WriteLatency"
+  namespace           = "AWS/RDS"
+  period              = 300
+  statistic           = "Average"
+  threshold           = var.alarm_write_latency_seconds
+  alarm_description   = "${var.identifier}: WriteLatency above ${var.alarm_write_latency_seconds * 1000} ms — check disk I/O / lock contention."
+  alarm_actions       = local.alarm_actions
+  ok_actions          = local.alarm_actions
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    DBInstanceIdentifier = aws_db_instance.this.id
+  }
+
+  tags = var.tags
+}
+
+# ---- CloudWatch log retention ----
+# RDS exports the "postgresql" and "upgrade" logs (see enabled_cloudwatch_logs_exports).
+# Without a managed log group the retention is "never expire" → unbounded cost.
+# NOTE: for an ALREADY-RUNNING instance these groups exist; import them once:
+#   terraform import 'module.rds.aws_cloudwatch_log_group.postgresql' '/aws/rds/instance/<identifier>/postgresql'
+#   terraform import 'module.rds.aws_cloudwatch_log_group.upgrade'    '/aws/rds/instance/<identifier>/upgrade'
+resource "aws_cloudwatch_log_group" "postgresql" {
+  name              = "/aws/rds/instance/${var.identifier}/postgresql"
+  retention_in_days = var.log_retention_days
+  tags              = var.tags
+}
+
+resource "aws_cloudwatch_log_group" "upgrade" {
+  name              = "/aws/rds/instance/${var.identifier}/upgrade"
+  retention_in_days = var.log_retention_days
+  tags              = var.tags
 }

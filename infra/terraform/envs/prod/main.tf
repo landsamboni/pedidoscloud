@@ -21,6 +21,19 @@ locals {
   }
 }
 
+# ---- SNS alerts topic ----
+resource "aws_sns_topic" "alerts" {
+  name = "${local.name}-alerts"
+  tags = local.tags
+}
+
+resource "aws_sns_topic_subscription" "email" {
+  count     = var.alert_email != "" ? 1 : 0
+  topic_arn = aws_sns_topic.alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}
+
 module "s3_uploads" {
   source        = "../../modules/s3-uploads"
   bucket_name   = "${local.name}-uploads"
@@ -45,6 +58,8 @@ module "rds" {
   allocated_storage     = var.db_allocated_storage
   publicly_accessible   = var.db_publicly_accessible
   allowed_cidr_blocks   = var.db_allowed_cidr_blocks
+  alarm_topic_arn       = aws_sns_topic.alerts.arn
+  connection_limit      = var.db_connection_limit
   deletion_protection   = true  # prevent accidental prod deletion
   skip_final_snapshot   = false # take a final snapshot on destroy
   backup_retention_days = 14
@@ -61,7 +76,9 @@ module "amplify" {
 
   # Amplify rejects env var names starting with "AWS"; see lib/storage.ts.
   # AMPLIFY_MONOREPO_APP_ROOT is handled by the module at the app level (not here).
+  # AUTH_SECRET is REQUIRED — the app throws on boot without it in production.
   environment_variables = {
+    AUTH_SECRET          = var.auth_secret
     DATABASE_URL         = module.rds.database_url
     STORAGE_DRIVER       = "s3"
     S3_REGION            = var.aws_region
@@ -70,11 +87,22 @@ module "amplify" {
     S3_SECRET_ACCESS_KEY = module.iam.secret_access_key
     ADMIN_USER           = var.admin_user
     ADMIN_PASSWORD       = var.admin_password
-    RESTAURANT_USER      = var.restaurant_user
-    RESTAURANT_PASSWORD  = var.restaurant_password
+    ADMIN_TOTP_SECRET    = var.admin_totp_secret
   }
 
   tags = local.tags
+}
+
+module "monitoring" {
+  source                 = "../../modules/monitoring"
+  name                   = local.name
+  region                 = var.aws_region
+  db_instance_identifier = module.rds.instance_identifier
+  amplify_app_id         = module.amplify.app_id
+  alarm_topic_arn        = aws_sns_topic.alerts.arn
+  alert_email            = var.alert_email
+  monthly_budget_usd     = var.monthly_budget_usd
+  tags                   = local.tags
 }
 
 module "secrets" {
