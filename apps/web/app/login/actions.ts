@@ -1,10 +1,19 @@
 "use server";
 
+import { timingSafeEqual } from "node:crypto";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { createSession, clearSession } from "@/lib/auth";
 
 export type LoginState = { error: string; needsTotp?: boolean };
+
+/** Constant-time string comparison — avoids leaking the admin password via timing. */
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a, "utf8");
+  const bb = Buffer.from(b, "utf8");
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
 
 export async function loginAction(_: LoginState, formData: FormData): Promise<LoginState> {
   const username = String(formData.get("username") ?? "").trim().toLowerCase();
@@ -19,7 +28,7 @@ export async function loginAction(_: LoginState, formData: FormData): Promise<Lo
   const adminUser = process.env.ADMIN_USER ?? "admin";
   const adminPass = process.env.ADMIN_PASSWORD ?? "";
   if (username === adminUser) {
-    if (!adminPass || password !== adminPass) return { error: "Credenciales inválidas." };
+    if (!adminPass || !safeEqual(password, adminPass)) return { error: "Credenciales inválidas." };
 
     // Optional MFA: only enforced when ADMIN_TOTP_SECRET is configured.
     const totpSecret = process.env.ADMIN_TOTP_SECRET;

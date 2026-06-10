@@ -3,10 +3,28 @@
 import { OrderStatus, Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import {
+  canManageCustomer,
+  canManageMenuItem,
+  canManageRestaurantById,
+  canManageRestaurantBySlug,
+  isAdmin,
+  requireAdmin,
+} from "@/lib/authz";
 import { dateKeyToUtcDate, localDateKey } from "@/lib/format";
-import { parseItemName, parseSurcharge, SIN_SOPA } from "@/lib/menu";
+import { itemSurcharge, parseItemName, parseSurcharge, SIN_SOPA } from "@/lib/menu";
 import { prisma } from "@/lib/prisma";
 import { saveUpload } from "@/lib/storage";
+import { addressMessage, nameMessage, normalizePhone, phoneMessage } from "@/lib/validation";
+
+/** Standard "not authorized" state for actions that return an ActionState. */
+const UNAUTHORIZED = (): ActionState => ({ ok: false, message: "No autorizado.", ts: Date.now() });
+
+// Upper bounds on operator-entered text, to keep storage and the UI bounded.
+const MAX_MENU_OPTION_LEN = 120; // a single combo option line ("Costilla BBQ +3000")
+const MAX_CATEGORY_NAME_LEN = 60;
+const MAX_ITEM_NAME_LEN = 80;
+const MAX_ITEM_DESCRIPTION_LEN = 300;
 
 type LunchInput = {
   soup: string;
@@ -30,26 +48,24 @@ function required(value: string, field: string) {
   return clean;
 }
 
+// Authoritative server-side validation — delegates to the shared rules in
+// lib/validation.ts (same rules the client forms use) and throws on failure.
 function validateFullName(value: string) {
-  const clean = value.trim();
-  if (!clean) throw new Error("Escribe tu nombre y apellido.");
-  if (clean.length < 5) throw new Error("El nombre debe tener al menos 5 caracteres.");
-  if (clean.split(" ").filter(Boolean).length < 2) throw new Error("Incluye nombre y apellido completos.");
-  return clean;
+  const message = nameMessage(value);
+  if (message) throw new Error(message);
+  return value.trim();
 }
 
 function validatePhone(value: string) {
-  const digits = value.replace(/\D/g, "");
-  if (digits.length !== 10) throw new Error("El teléfono debe tener 10 dígitos (ej. 3001234567).");
-  if (!digits.startsWith("3")) throw new Error("Ingresa un celular colombiano válido (comienza con 3).");
-  return digits;
+  const message = phoneMessage(value);
+  if (message) throw new Error(message);
+  return normalizePhone(value);
 }
 
 function validateAddress(value: string) {
-  const clean = value.trim();
-  if (!clean) throw new Error("Escribe tu dirección de entrega.");
-  if (clean.length < 10) throw new Error("La dirección debe ser más específica (mínimo 10 caracteres).");
-  return clean;
+  const message = addressMessage(value);
+  if (message) throw new Error(message);
+  return value.trim();
 }
 
 function splitOptions(value: FormDataEntryValue | null) {
@@ -204,8 +220,9 @@ export async function updateOrderStatus(formData: FormData) {
   const status = String(formData.get("status")) as OrderStatus;
   if (!Object.values(OrderStatus).includes(status)) throw new Error("Estado inválido.");
 
-  const restaurant = await prisma.restaurant.findUnique({ where: { slug } });
-  if (!restaurant) throw new Error("Restaurante no encontrado.");
+  // Tenant isolation: only the admin or the owning restaurant may change a status.
+  const restaurant = await canManageRestaurantBySlug(slug);
+  if (!restaurant) throw new Error("No autorizado.");
   const order = await prisma.order.findFirst({ where: { id, restaurantId: restaurant.id } });
   if (!order) throw new Error("Pedido no encontrado.");
   await prisma.order.update({ where: { id: order.id }, data: { status } });
@@ -221,6 +238,7 @@ export async function createRestaurant(
   formData: FormData,
 ): Promise<CreateRestaurantState> {
   try {
+    if (!(await isAdmin())) return { error: "No autorizado.", success: false };
     const name = required(String(formData.get("name") ?? ""), "nombre");
     const slug = required(String(formData.get("slug") ?? ""), "slug")
       .toLowerCase()
@@ -254,9 +272,7 @@ export async function createRestaurant(
  * accidental data loss. OrderItems are cascade-deleted by the DB constraint.
  */
 export async function deleteRestaurantOrders(formData: FormData) {
-  const { getSession } = await import("@/lib/auth");
-  const session = await getSession();
-  if (!session || session.role !== "admin") throw new Error("No autorizado.");
+  await requireAdmin();
 
   const restaurantId = String(formData.get("restaurantId"));
   const confirmation = String(formData.get("confirmation") ?? "").trim();
@@ -281,9 +297,7 @@ export async function deleteRestaurantOrders(formData: FormData) {
 
 /** Admin: delete orders for a restaurant on a specific date. */
 export async function deleteRestaurantOrdersByDate(formData: FormData) {
-  const { getSession } = await import("@/lib/auth");
-  const session = await getSession();
-  if (!session || session.role !== "admin") throw new Error("No autorizado.");
+  await requireAdmin();
 
   const restaurantId = String(formData.get("restaurantId"));
   const date = String(formData.get("date") ?? "").trim();
@@ -304,9 +318,7 @@ export async function deleteRestaurantOrdersByDate(formData: FormData) {
 
 /** Admin: populate realistic demo orders for the last N days (for demos/sales presentations). */
 export async function populateDemoData(formData: FormData) {
-  const { getSession } = await import("@/lib/auth");
-  const session = await getSession();
-  if (!session || session.role !== "admin") throw new Error("No autorizado.");
+  await requireAdmin();
 
   const restaurantId = String(formData.get("restaurantId"));
   const restaurant = await prisma.restaurant.findUnique({
@@ -396,10 +408,10 @@ export async function populateDemoData(formData: FormData) {
         drink: rand(DEMO_MENU.drinks),
       }));
 
-      const { parseSurcharge } = await import("@/lib/menu");
-      const total = items.reduce((sum, item) => {
-        return sum + Number(restaurant.basePrice) + parseSurcharge(item.protein) + parseSurcharge(item.soup);
-      }, 0);
+      // Per-lunch price = basePrice + all four surcharges (matches createOrder).
+      const lunchPrice = (item: { soup: string; protein: string; side: string; drink: string }) =>
+        Number(restaurant.basePrice) + itemSurcharge(item.soup, item.protein, item.side, item.drink);
+      const total = items.reduce((sum, item) => sum + lunchPrice(item), 0);
 
       // Set a realistic createdAt (10am-2pm Bogota = 3pm-7pm UTC)
       const orderCreatedAt = new Date(date);
@@ -412,7 +424,7 @@ export async function populateDemoData(formData: FormData) {
           customerName: cust.name,
           orderDate: dateKey,
           orderNumber: orderNum,
-          status: status as never,
+          status: status as OrderStatus,
           total: new Prisma.Decimal(total),
           address: cust.address,
           createdAt: orderCreatedAt,
@@ -420,7 +432,7 @@ export async function populateDemoData(formData: FormData) {
           items: {
             create: items.map((item) => ({
               ...item,
-              price: new Prisma.Decimal(Number(restaurant.basePrice) + parseSurcharge(item.protein)),
+              price: new Prisma.Decimal(lunchPrice(item)),
             })),
           },
         },
@@ -443,9 +455,7 @@ export async function populateDemoData(formData: FormData) {
 
 /** Admin: populate catalog demo orders for mi-pasteleria (for sales demos). */
 export async function populateCatalogDemoData(formData: FormData) {
-  const { getSession } = await import("@/lib/auth");
-  const session = await getSession();
-  if (!session || session.role !== "admin") throw new Error("No autorizado.");
+  await requireAdmin();
 
   const restaurantId = String(formData.get("restaurantId"));
   const restaurant = await prisma.restaurant.findUnique({
@@ -527,11 +537,11 @@ export async function populateCatalogDemoData(formData: FormData) {
         create: { restaurantId: restaurant.id, name: cust.name, phone: cust.phone, lastAddress: cust.address },
       });
       orderNum++;
-      let status: string;
+      let status: OrderStatus;
       if (isToday) {
-        status = j < 2 ? "PAYMENT_PENDING" : "PAYMENT_CONFIRMED";
+        status = j < 2 ? OrderStatus.PAYMENT_PENDING : OrderStatus.PAYMENT_CONFIRMED;
       } else {
-        status = Math.random() < 0.88 ? "PAYMENT_CONFIRMED" : "CANCELLED";
+        status = Math.random() < 0.88 ? OrderStatus.PAYMENT_CONFIRMED : OrderStatus.CANCELLED;
       }
       const total = orderItems.reduce((s, i) => s + i.price * i.qty, 0);
       const orderCreatedAt = new Date(date);
@@ -543,7 +553,7 @@ export async function populateCatalogDemoData(formData: FormData) {
           customerName: cust.name,
           orderDate: dateKey,
           orderNumber: orderNum,
-          status: status as never,
+          status,
           total: new Prisma.Decimal(total),
           address: cust.address,
           createdAt: orderCreatedAt,
@@ -572,9 +582,7 @@ export async function populateCatalogDemoData(formData: FormData) {
 
 /** Admin: activate or renew a restaurant's subscription. */
 export async function setRestaurantSubscription(formData: FormData) {
-  const { getSession } = await import("@/lib/auth");
-  const session = await getSession();
-  if (!session || session.role !== "admin") throw new Error("No autorizado.");
+  await requireAdmin();
 
   const restaurantId = String(formData.get("restaurantId"));
   const mode = String(formData.get("mode") ?? "renew");
@@ -615,9 +623,7 @@ export async function setRestaurantSubscription(formData: FormData) {
 
 /** Admin: update a customer's name, phone and last address. */
 export async function updateCustomer(formData: FormData) {
-  const { getSession } = await import("@/lib/auth");
-  const session = await getSession();
-  if (!session || session.role !== "admin") throw new Error("No autorizado.");
+  await requireAdmin();
 
   const id = String(formData.get("customerId"));
   const name = required(String(formData.get("name") ?? ""), "nombre");
@@ -632,9 +638,7 @@ export async function updateCustomer(formData: FormData) {
 
 /** Admin: delete a customer and ALL their orders (no order history preserved). */
 export async function deleteCustomer(formData: FormData) {
-  const { getSession } = await import("@/lib/auth");
-  const session = await getSession();
-  if (!session || session.role !== "admin") throw new Error("No autorizado.");
+  await requireAdmin();
 
   const customerId = String(formData.get("customerId"));
   const restaurantSlug = String(formData.get("restaurantSlug") ?? "");
@@ -649,9 +653,7 @@ export async function deleteCustomer(formData: FormData) {
 
 /** Admin: permanently delete a restaurant and ALL its data. Requires slug confirmation. */
 export async function deleteRestaurant(formData: FormData) {
-  const { getSession } = await import("@/lib/auth");
-  const session = await getSession();
-  if (!session || session.role !== "admin") throw new Error("No autorizado.");
+  await requireAdmin();
 
   const restaurantId = String(formData.get("restaurantId"));
   const confirmation = String(formData.get("confirmation") ?? "").trim();
@@ -665,9 +667,7 @@ export async function deleteRestaurant(formData: FormData) {
 
 /** Admin: immediately deactivate a restaurant's subscription (no grace period). */
 export async function deactivateRestaurantSubscription(formData: FormData) {
-  const { getSession } = await import("@/lib/auth");
-  const session = await getSession();
-  if (!session || session.role !== "admin") throw new Error("No autorizado.");
+  await requireAdmin();
 
   const restaurantId = String(formData.get("restaurantId"));
   // Set endsAt to one day in the past — guaranteed to be in the past regardless
@@ -683,6 +683,7 @@ export async function deactivateRestaurantSubscription(formData: FormData) {
 
 /** Admin: set or reset a restaurant's password. */
 export async function setRestaurantPassword(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  if (!(await isAdmin())) return UNAUTHORIZED();
   const restaurantId = String(formData.get("restaurantId"));
   const password = String(formData.get("password") ?? "").trim();
   if (password.length < 8) {
@@ -746,6 +747,8 @@ export type MenuFormState = ActionState;
 
 export async function updateTodayMenu(_prev: MenuFormState, formData: FormData): Promise<MenuFormState> {
   const restaurantId = String(formData.get("restaurantId"));
+  const auth = await canManageRestaurantById(restaurantId);
+  if (!auth) return UNAUTHORIZED();
   const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
   const menu = {
     soups: splitOptions(formData.get("soups")),
@@ -755,6 +758,9 @@ export async function updateTodayMenu(_prev: MenuFormState, formData: FormData):
   };
   if (Object.values(menu).some((options) => !options.length)) {
     return { ok: false, message: "Cada categoría necesita al menos una opción.", ts: Date.now() };
+  }
+  if (Object.values(menu).flat().some((option) => option.length > MAX_MENU_OPTION_LEN)) {
+    return { ok: false, message: `Cada opción debe tener máximo ${MAX_MENU_OPTION_LEN} caracteres.`, ts: Date.now() };
   }
 
   await prisma.menu.upsert({
@@ -781,6 +787,8 @@ export async function updateTodayMenu(_prev: MenuFormState, formData: FormData):
 /** Remove today's published menu so customers see the "no menu yet" state. */
 export async function unpublishTodayMenu(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const restaurantId = String(formData.get("restaurantId"));
+  const auth = await canManageRestaurantById(restaurantId);
+  if (!auth) return UNAUTHORIZED();
   const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
   await prisma.menu.deleteMany({
     where: { restaurantId, date: dateKeyToUtcDate(localDateKey()) },
@@ -794,6 +802,8 @@ export async function unpublishTodayMenu(_prev: ActionState, formData: FormData)
 
 export async function updateBasePrice(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const restaurantId = String(formData.get("restaurantId"));
+  const auth = await canManageRestaurantById(restaurantId);
+  if (!auth) return UNAUTHORIZED();
   const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
   const basePrice = Number(formData.get("basePrice"));
   if (!Number.isFinite(basePrice) || basePrice <= 0) {
@@ -813,6 +823,8 @@ export async function updateBasePrice(_prev: ActionState, formData: FormData): P
 
 export async function updateBusinessPhone(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const restaurantId = String(formData.get("restaurantId"));
+  const auth = await canManageRestaurantById(restaurantId);
+  if (!auth) return UNAUTHORIZED();
   const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
   const whatsappPhone = String(formData.get("whatsappPhone") ?? "").replace(/\D/g, "").slice(0, 15) || null;
 
@@ -830,6 +842,8 @@ export async function updateBusinessPhone(_prev: ActionState, formData: FormData
 export async function updateLogo(_prev: ActionState, formData: FormData): Promise<ActionState> {
   try {
     const restaurantId = String(formData.get("restaurantId"));
+    const auth = await canManageRestaurantById(restaurantId);
+    if (!auth) return UNAUTHORIZED();
     const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
     const file = formData.get("logo");
     let logoPath: string | null = null;
@@ -859,6 +873,8 @@ export async function updateLogo(_prev: ActionState, formData: FormData): Promis
 
 export async function updateDeliverySettings(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const restaurantId = String(formData.get("restaurantId"));
+  const auth = await canManageRestaurantById(restaurantId);
+  if (!auth) return UNAUTHORIZED();
   const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
   const modeRaw = String(formData.get("deliveryMode") ?? "separate");
   const deliveryMode = ["free", "fixed", "separate"].includes(modeRaw) ? modeRaw : "separate";
@@ -888,6 +904,8 @@ export async function updateDeliverySettings(_prev: ActionState, formData: FormD
 /** Remove the custom logo so the restaurant falls back to the default logo. */
 export async function resetLogo(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const restaurantId = String(formData.get("restaurantId"));
+  const auth = await canManageRestaurantById(restaurantId);
+  if (!auth) return UNAUTHORIZED();
   const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
   const restaurant = await prisma.restaurant.update({
     where: { id: restaurantId },
@@ -902,6 +920,8 @@ export async function resetLogo(_prev: ActionState, formData: FormData): Promise
 
 export async function updatePaymentSettings(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const restaurantId = String(formData.get("restaurantId"));
+  const auth = await canManageRestaurantById(restaurantId);
+  if (!auth) return UNAUTHORIZED();
   const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
   const nequiAccountName = String(formData.get("nequiAccountName") ?? "").trim();
   const nequiPhone = String(formData.get("nequiPhone") ?? "").trim();
@@ -932,6 +952,8 @@ export async function updatePaymentSettings(_prev: ActionState, formData: FormDa
 export async function updateMenuTemplate(_prev: ActionState, formData: FormData): Promise<ActionState> {
   try {
     const restaurantId = String(formData.get("restaurantId"));
+    const auth = await canManageRestaurantById(restaurantId);
+    if (!auth) return UNAUTHORIZED();
     const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
     const file = formData.get("menuTemplate");
 
@@ -966,6 +988,8 @@ export async function updateMenuTemplate(_prev: ActionState, formData: FormData)
 export async function toggleCustomerFavorite(_prev: ActionState, formData: FormData): Promise<ActionState> {
   try {
     const customerId = String(formData.get("customerId"));
+    const owner = await canManageCustomer(customerId);
+    if (!owner) return UNAUTHORIZED();
     const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
     const current = await prisma.customer.findUnique({ where: { id: customerId }, select: { favorite: true } });
     if (!current) return { ok: false, message: "Cliente no encontrado.", ts: Date.now() };
@@ -981,8 +1005,13 @@ export async function toggleCustomerFavorite(_prev: ActionState, formData: FormD
 export async function updateMenuItemDetails(_prev: ActionState, formData: FormData): Promise<ActionState> {
   try {
     const itemId = String(formData.get("itemId"));
+    const owner = await canManageMenuItem(itemId);
+    if (!owner) return UNAUTHORIZED();
     const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
     const description = String(formData.get("description") ?? "").trim() || null;
+    if (description && description.length > MAX_ITEM_DESCRIPTION_LEN) {
+      return { ok: false, message: `La descripción debe tener máximo ${MAX_ITEM_DESCRIPTION_LEN} caracteres.`, ts: Date.now() };
+    }
     const clearImage = formData.get("clearImage") === "1";
     const file = formData.get("image");
     let imagePath: string | null | undefined = undefined;
@@ -1018,6 +1047,8 @@ export async function updateMenuItemDetails(_prev: ActionState, formData: FormDa
 /** Clear the upload history so the 4 default presets are shown again. */
 export async function resetMenuTemplates(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const restaurantId = String(formData.get("restaurantId"));
+  const auth = await canManageRestaurantById(restaurantId);
+  if (!auth) return UNAUTHORIZED();
   const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
   await prisma.restaurant.update({ where: { id: restaurantId }, data: { menuTemplateHistory: [] } });
   revalidatePath("/admin");
@@ -1028,6 +1059,8 @@ export async function resetMenuTemplates(_prev: ActionState, formData: FormData)
 /** Select an existing template (a preset or one from the upload history). */
 export async function selectMenuTemplate(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const restaurantId = String(formData.get("restaurantId"));
+  const auth = await canManageRestaurantById(restaurantId);
+  if (!auth) return UNAUTHORIZED();
   const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
   const templatePath = String(formData.get("templatePath") ?? "");
 
@@ -1047,6 +1080,8 @@ export async function selectMenuTemplate(_prev: ActionState, formData: FormData)
 
 export async function createPaymentMethod(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const restaurantId = String(formData.get("restaurantId"));
+  const auth = await canManageRestaurantById(restaurantId);
+  if (!auth) return UNAUTHORIZED();
   const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
   const label = String(formData.get("label") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
@@ -1081,6 +1116,8 @@ export async function createPaymentMethod(_prev: ActionState, formData: FormData
 export async function deletePaymentMethod(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const id = String(formData.get("id"));
   const restaurantId = String(formData.get("restaurantId"));
+  const auth = await canManageRestaurantById(restaurantId);
+  if (!auth) return UNAUTHORIZED();
   const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
 
   const method = await prisma.paymentMethod.findFirst({ where: { id, restaurantId } });
@@ -1146,6 +1183,8 @@ export async function updateCatalogMenu(
 ): Promise<CatalogMenuState> {
   try {
     const restaurantId = String(formData.get("restaurantId"));
+    const auth = await canManageRestaurantById(restaurantId);
+    if (!auth) return UNAUTHORIZED();
     const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
     const rawCategories = String(formData.get("categories") ?? "[]");
 
@@ -1161,10 +1200,12 @@ export async function updateCatalogMenu(
     }
     for (const cat of categories) {
       if (!cat.name.trim()) return { ok: false, message: "Todas las categorías deben tener nombre.", ts: Date.now() };
+      if (cat.name.length > MAX_CATEGORY_NAME_LEN) return { ok: false, message: `El nombre de categoría "${cat.name.slice(0, 20)}…" es demasiado largo.`, ts: Date.now() };
       if (!cat.items.length) return { ok: false, message: `La categoría "${cat.name}" no tiene productos.`, ts: Date.now() };
       for (const item of cat.items) {
         if (!item.name.trim()) return { ok: false, message: `Un producto en "${cat.name}" no tiene nombre.`, ts: Date.now() };
-        if (item.price < 0) return { ok: false, message: `Precio inválido en "${cat.name}".`, ts: Date.now() };
+        if (item.name.length > MAX_ITEM_NAME_LEN) return { ok: false, message: `Un producto en "${cat.name}" tiene un nombre demasiado largo.`, ts: Date.now() };
+        if (!Number.isFinite(item.price) || item.price < 0) return { ok: false, message: `Precio inválido en "${cat.name}".`, ts: Date.now() };
       }
     }
 
@@ -1216,6 +1257,8 @@ export async function unpublishCatalogMenu(
 ): Promise<CatalogMenuState> {
   try {
     const restaurantId = String(formData.get("restaurantId"));
+    const auth = await canManageRestaurantById(restaurantId);
+    if (!auth) return UNAUTHORIZED();
     const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
     await prisma.menu.deleteMany({ where: { restaurantId, date: dateKeyToUtcDate(localDateKey()) } });
     const restaurant = await prisma.restaurant.findUnique({ where: { id: restaurantId }, select: { slug: true } });
@@ -1233,6 +1276,8 @@ export async function unpublishCatalogMenu(
 export async function updateMenuType(_prev: ActionState, formData: FormData): Promise<ActionState> {
   try {
     const restaurantId = String(formData.get("restaurantId"));
+    const auth = await canManageRestaurantById(restaurantId);
+    if (!auth) return UNAUTHORIZED();
     const returnPath = safeReturnPath(formData.get("returnPath"), "/admin");
     const menuType = formData.get("menuType") === "catalog" ? "catalog" : "combo";
     const orderUnitLabel = String(formData.get("orderUnitLabel") ?? "almuerzo").trim() || "almuerzo";
@@ -1308,11 +1353,18 @@ export async function createCatalogOrder(input: CreateCatalogOrderInput) {
         create: { restaurantId: restaurant.id, date: orderDate, lastNumber: 1 },
       });
 
-      const deliveryFee =
+      const deliveryFee = new Prisma.Decimal(
         fulfillment === "delivery" && restaurant.deliveryMode === "fixed"
-          ? Number(restaurant.deliveryFee ?? 0) : 0;
-      const itemsTotal = input.items.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
-      const total = itemsTotal + deliveryFee;
+          ? Number(restaurant.deliveryFee ?? 0) : 0,
+      );
+      // Decimal arithmetic throughout — avoids float rounding on line totals.
+      const lineTotal = (i: { unitPrice: number; quantity: number }) =>
+        new Prisma.Decimal(i.unitPrice).times(i.quantity);
+      const itemsTotal = input.items.reduce(
+        (acc, i) => acc.plus(lineTotal(i)),
+        new Prisma.Decimal(0),
+      );
+      const total = itemsTotal.plus(deliveryFee);
 
       return tx.order.create({
         data: {
@@ -1322,14 +1374,14 @@ export async function createCatalogOrder(input: CreateCatalogOrderInput) {
           orderDate,
           orderNumber: counter.lastNumber,
           status: OrderStatus.PAYMENT_PENDING,
-          total: new Prisma.Decimal(total),
-          deliveryFee: new Prisma.Decimal(deliveryFee),
+          total,
+          deliveryFee,
           fulfillment,
           address,
           items: {
             create: input.items.map(i => ({
               soup: "", protein: "", side: "", drink: "",
-              price: new Prisma.Decimal(i.unitPrice * i.quantity),
+              price: lineTotal(i),
               catalogCategory: i.categoryName,
               catalogItem: i.itemName,
               quantity: i.quantity,
