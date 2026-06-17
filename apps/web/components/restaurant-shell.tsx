@@ -58,15 +58,46 @@ function IconBell() {
   );
 }
 
+// ── Additional SVG icons for appointments ─────────────────────────────────────
+
+function IconCalendar() {
+  return (
+    <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+      <rect height="18" rx="2" width="18" x="3" y="4" />
+      <path d="M16 2v4M8 2v4M3 10h18" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconScissors() {
+  return (
+    <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+      <circle cx="6" cy="6" r="3" /><circle cx="6" cy="18" r="3" />
+      <path d="M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 // ── Nav config ────────────────────────────────────────────────────────────────
 
-const navItems = (slug: string) => [
+const ordersNavItems = (slug: string) => [
   { label: "Consola",        href: `/restaurant/${slug}`,           icon: <IconHome /> },
   { label: "Pedidos de hoy", href: `/restaurant/${slug}/orders`,    icon: <IconOrders /> },
   { label: "Historial",      href: `/restaurant/${slug}/history`,   icon: <IconHistory /> },
   { label: "Analíticas",     href: `/restaurant/${slug}/analytics`, icon: <IconChart /> },
   { label: "Clientes",       href: `/restaurant/${slug}/customers`, icon: <IconUsers /> },
 ];
+
+const appointmentsNavItems = (slug: string) => [
+  { label: "Consola",    href: `/restaurant/${slug}`,                icon: <IconHome /> },
+  { label: "Agenda",     href: `/restaurant/${slug}/appointments`,   icon: <IconCalendar /> },
+  { label: "Servicios",  href: `/restaurant/${slug}/services`,       icon: <IconScissors /> },
+  { label: "Analíticas", href: `/restaurant/${slug}/analytics`,      icon: <IconChart /> },
+  { label: "Clientes",   href: `/restaurant/${slug}/customers`,      icon: <IconUsers /> },
+];
+
+const navItems = (slug: string, businessType: string) =>
+  businessType === "barbershop" ? appointmentsNavItems(slug) : ordersNavItems(slug);
 
 // ── Initials helper ──────────────────────────────────────────────────────────
 
@@ -81,18 +112,23 @@ interface Props {
   restaurantName: string;
   restaurantSlug: string;
   pendingCount: number;
+  businessType: string;
 }
 
-export function RestaurantShell({ children, restaurantName, restaurantSlug, pendingCount }: Props) {
+export function RestaurantShell({ children, restaurantName, restaurantSlug, pendingCount, businessType }: Props) {
   const pathname = usePathname();
   const router = useRouter();
-  const nav = navItems(restaurantSlug);
+  const nav = navItems(restaurantSlug, businessType);
   const [query, setQuery] = useState("");
+
+  const isBarbershop = businessType === "barbershop";
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     const q = query.trim();
-    const dest = `/restaurant/${restaurantSlug}/orders`;
+    const dest = isBarbershop
+      ? `/restaurant/${restaurantSlug}/appointments`
+      : `/restaurant/${restaurantSlug}/orders`;
     router.push(q ? `${dest}?q=${encodeURIComponent(q)}` : dest);
   }
 
@@ -194,8 +230,10 @@ export function RestaurantShell({ children, restaurantName, restaurantSlug, pend
             {/* Bell with pending badge */}
             <Link
               className="relative flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100"
-              href={`/restaurant/${restaurantSlug}/orders`}
-              title={pendingCount > 0 ? `${pendingCount} pedidos pendientes` : "Sin pedidos pendientes"}
+              href={isBarbershop ? `/restaurant/${restaurantSlug}/appointments` : `/restaurant/${restaurantSlug}/orders`}
+              title={pendingCount > 0
+                ? isBarbershop ? `${pendingCount} citas pendientes` : `${pendingCount} pedidos pendientes`
+                : isBarbershop ? "Sin citas pendientes" : "Sin pedidos pendientes"}
             >
               <IconBell />
               {pendingCount > 0 && (

@@ -1722,6 +1722,257 @@ export async function updateMenuType(_prev: ActionState, formData: FormData): Pr
   }
 }
 
+// ─────────────────────────────────────────────────────────
+// Appointments — barbershop flow
+// ─────────────────────────────────────────────────────────
+
+const MAX_SERVICE_NAME_LEN = 80;
+const MAX_SERVICE_DESCRIPTION_LEN = 200;
+
+/** Public action — no auth required. Books an appointment on behalf of a customer. */
+export type BookAppointmentInput = {
+  restaurantSlug: string;
+  serviceId: string;
+  scheduledAt: string; // ISO 8601 UTC
+  clientName: string;
+  clientPhone: string;
+};
+
+export async function bookAppointment(input: BookAppointmentInput) {
+  const name = validateFullName(input.clientName);
+  const phone = validatePhone(input.clientPhone);
+
+  const restaurant = await prisma.restaurant.findFirst({
+    where: { slug: input.restaurantSlug, active: true },
+    select: { id: true, slug: true },
+  });
+  if (!restaurant) throw new Error("Negocio no encontrado.");
+
+  const service = await prisma.service.findFirst({
+    where: { id: input.serviceId, restaurantId: restaurant.id, active: true },
+  });
+  if (!service) throw new Error("Servicio no disponible.");
+
+  const scheduledAt = new Date(input.scheduledAt);
+  if (isNaN(scheduledAt.getTime())) throw new Error("Fecha u hora inválida.");
+  if (scheduledAt < new Date()) throw new Error("No puedes agendar en el pasado.");
+
+  // Conflict check: reject if the slot overlaps an existing PENDING or CONFIRMED appointment.
+  const slotEnd = new Date(scheduledAt.getTime() + service.durationMins * 60 * 1000);
+  const conflict = await prisma.appointment.findFirst({
+    where: {
+      restaurantId: restaurant.id,
+      status: { in: ["PENDING", "CONFIRMED"] },
+      AND: [
+        { scheduledAt: { lt: slotEnd } },
+        // scheduledAt + durationMins > scheduledAt → end > new start
+        // We can't express "existing end" in Prisma directly, so we check the other
+        // bound with a raw gte on a computed value. Instead, load narrow window & check in JS.
+      ],
+      scheduledAt: { gte: new Date(scheduledAt.getTime() - 24 * 60 * 60 * 1000) },
+    },
+    select: { scheduledAt: true, durationMins: true },
+  });
+  // Validate overlap in JS — more precise than trying to express it in Prisma WHERE.
+  if (conflict) {
+    const existingEnd = new Date(conflict.scheduledAt.getTime() + conflict.durationMins * 60 * 1000);
+    if (scheduledAt < existingEnd && slotEnd > conflict.scheduledAt) {
+      throw new Error("Ese horario ya fue reservado. Por favor elige otro.");
+    }
+  }
+
+  const appointment = await prisma.appointment.create({
+    data: {
+      restaurantId: restaurant.id,
+      serviceId: service.id,
+      serviceName: service.name,
+      durationMins: service.durationMins,
+      price: service.price,
+      clientName: name,
+      clientPhone: phone,
+      scheduledAt,
+    },
+  });
+
+  revalidatePath(`/restaurant/${restaurant.slug}/appointments`);
+  logger.info("appointment_booked", { restaurantSlug: restaurant.slug, serviceId: service.id });
+  return { publicToken: appointment.publicToken };
+}
+
+/** Operator action — update appointment status (confirm, complete, cancel). */
+export async function updateAppointmentStatus(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    const appointmentId = String(formData.get("appointmentId"));
+    const newStatus = String(formData.get("status"));
+    const VALID_STATUSES = ["CONFIRMED", "COMPLETED", "CANCELLED", "PENDING"];
+    if (!VALID_STATUSES.includes(newStatus)) return { ok: false, message: "Estado inválido.", ts: Date.now() };
+
+    const appointment = await prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      select: { restaurantId: true, restaurant: { select: { slug: true } } },
+    });
+    if (!appointment) return { ok: false, message: "Cita no encontrada.", ts: Date.now() };
+
+    const auth = await canManageRestaurantById(appointment.restaurantId);
+    if (!auth) return UNAUTHORIZED();
+
+    await prisma.appointment.update({
+      where: { id: appointmentId },
+      data: { status: newStatus as "CONFIRMED" | "COMPLETED" | "CANCELLED" | "PENDING" },
+    });
+
+    revalidatePath(`/restaurant/${appointment.restaurant.slug}/appointments`);
+    const labels: Record<string, string> = {
+      CONFIRMED: "Cita confirmada.",
+      COMPLETED: "Cita marcada como completada.",
+      CANCELLED: "Cita cancelada.",
+      PENDING: "Cita marcada como pendiente.",
+    };
+    return { ok: true, message: labels[newStatus] ?? "Estado actualizado.", ts: Date.now() };
+  } catch (e) {
+    logger.error("update_appointment_status_failed", { err: e });
+    return { ok: false, message: "No se pudo actualizar el estado.", ts: Date.now() };
+  }
+}
+
+/** Operator action — create a service in the catalog. */
+export async function createService(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    const restaurantId = String(formData.get("restaurantId"));
+    const auth = await canManageRestaurantById(restaurantId);
+    if (!auth) return UNAUTHORIZED();
+
+    const name = String(formData.get("name") ?? "").trim();
+    const description = String(formData.get("description") ?? "").trim() || null;
+    const durationMins = parseInt(String(formData.get("durationMins") ?? ""), 10);
+    const price = parseFloat(String(formData.get("price") ?? ""));
+
+    if (!name) return { ok: false, message: "El nombre del servicio es obligatorio.", ts: Date.now() };
+    if (name.length > MAX_SERVICE_NAME_LEN) return { ok: false, message: `El nombre debe tener máximo ${MAX_SERVICE_NAME_LEN} caracteres.`, ts: Date.now() };
+    if (description && description.length > MAX_SERVICE_DESCRIPTION_LEN) return { ok: false, message: `La descripción debe tener máximo ${MAX_SERVICE_DESCRIPTION_LEN} caracteres.`, ts: Date.now() };
+    if (!Number.isFinite(durationMins) || durationMins < 5 || durationMins > 480) return { ok: false, message: "La duración debe ser entre 5 y 480 minutos.", ts: Date.now() };
+    if (!Number.isFinite(price) || price < 0) return { ok: false, message: "El precio no es válido.", ts: Date.now() };
+
+    const count = await prisma.service.count({ where: { restaurantId } });
+    await prisma.service.create({
+      data: { restaurantId, name, description, durationMins, price: new Prisma.Decimal(price), position: count },
+    });
+
+    revalidatePath(`/restaurant/${auth.slug}/services`);
+    return { ok: true, message: "Servicio creado.", ts: Date.now() };
+  } catch (e) {
+    logger.error("create_service_failed", { err: e });
+    return { ok: false, message: "No se pudo crear el servicio.", ts: Date.now() };
+  }
+}
+
+/** Operator action — update an existing service. */
+export async function updateService(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    const serviceId = String(formData.get("serviceId"));
+    const service = await prisma.service.findUnique({
+      where: { id: serviceId },
+      select: { restaurantId: true },
+    });
+    if (!service) return { ok: false, message: "Servicio no encontrado.", ts: Date.now() };
+
+    const auth = await canManageRestaurantById(service.restaurantId);
+    if (!auth) return UNAUTHORIZED();
+
+    const name = String(formData.get("name") ?? "").trim();
+    const description = String(formData.get("description") ?? "").trim() || null;
+    const durationMins = parseInt(String(formData.get("durationMins") ?? ""), 10);
+    const price = parseFloat(String(formData.get("price") ?? ""));
+    const active = formData.get("active") !== "false";
+
+    if (!name) return { ok: false, message: "El nombre del servicio es obligatorio.", ts: Date.now() };
+    if (name.length > MAX_SERVICE_NAME_LEN) return { ok: false, message: `El nombre debe tener máximo ${MAX_SERVICE_NAME_LEN} caracteres.`, ts: Date.now() };
+    if (description && description.length > MAX_SERVICE_DESCRIPTION_LEN) return { ok: false, message: `La descripción debe tener máximo ${MAX_SERVICE_DESCRIPTION_LEN} caracteres.`, ts: Date.now() };
+    if (!Number.isFinite(durationMins) || durationMins < 5 || durationMins > 480) return { ok: false, message: "La duración debe ser entre 5 y 480 minutos.", ts: Date.now() };
+    if (!Number.isFinite(price) || price < 0) return { ok: false, message: "El precio no es válido.", ts: Date.now() };
+
+    await prisma.service.update({
+      where: { id: serviceId },
+      data: { name, description, durationMins, price: new Prisma.Decimal(price), active },
+    });
+
+    revalidatePath(`/restaurant/${auth.slug}/services`);
+    return { ok: true, message: "Servicio actualizado.", ts: Date.now() };
+  } catch (e) {
+    logger.error("update_service_failed", { err: e });
+    return { ok: false, message: "No se pudo actualizar el servicio.", ts: Date.now() };
+  }
+}
+
+/** Operator action — delete a service (only if it has no upcoming appointments). */
+export async function deleteService(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    const serviceId = String(formData.get("serviceId"));
+    const service = await prisma.service.findUnique({
+      where: { id: serviceId },
+      select: { restaurantId: true, _count: { select: { appointments: { where: { status: { in: ["PENDING", "CONFIRMED"] } } } } } },
+    });
+    if (!service) return { ok: false, message: "Servicio no encontrado.", ts: Date.now() };
+
+    const auth = await canManageRestaurantById(service.restaurantId);
+    if (!auth) return UNAUTHORIZED();
+
+    if (service._count.appointments > 0) {
+      return { ok: false, message: "Hay citas activas con este servicio. Cancélalas primero o márcalo como inactivo.", ts: Date.now() };
+    }
+
+    await prisma.service.delete({ where: { id: serviceId } });
+    revalidatePath(`/restaurant/${auth.slug}/services`);
+    return { ok: true, message: "Servicio eliminado.", ts: Date.now() };
+  } catch (e) {
+    logger.error("delete_service_failed", { err: e });
+    return { ok: false, message: "No se pudo eliminar el servicio.", ts: Date.now() };
+  }
+}
+
+/** Operator action — upsert all 7 days of business hours for a restaurant. */
+export async function saveBusinessHours(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    const restaurantId = String(formData.get("restaurantId"));
+    const auth = await canManageRestaurantById(restaurantId);
+    if (!auth) return UNAUTHORIZED();
+
+    const raw = String(formData.get("hours") ?? "[]");
+    let hours: { dayOfWeek: number; openTime: string; closeTime: string; closed: boolean }[];
+    try {
+      hours = JSON.parse(raw);
+    } catch {
+      return { ok: false, message: "Datos de horario inválidos.", ts: Date.now() };
+    }
+
+    const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+    for (const h of hours) {
+      if (h.dayOfWeek < 0 || h.dayOfWeek > 6) return { ok: false, message: "Día de semana inválido.", ts: Date.now() };
+      if (!h.closed) {
+        if (!TIME_RE.test(h.openTime) || !TIME_RE.test(h.closeTime)) return { ok: false, message: "Formato de hora inválido. Usa HH:MM.", ts: Date.now() };
+        if (h.openTime >= h.closeTime) return { ok: false, message: "La hora de apertura debe ser antes del cierre.", ts: Date.now() };
+      }
+    }
+
+    await prisma.$transaction(
+      hours.map((h) =>
+        prisma.businessHours.upsert({
+          where: { restaurantId_dayOfWeek: { restaurantId, dayOfWeek: h.dayOfWeek } },
+          update: { openTime: h.openTime, closeTime: h.closeTime, closed: h.closed },
+          create: { restaurantId, dayOfWeek: h.dayOfWeek, openTime: h.openTime, closeTime: h.closeTime, closed: h.closed },
+        }),
+      ),
+    );
+
+    revalidatePath(`/restaurant/${auth.slug}/services`);
+    revalidatePath(`/r/${auth.slug}`);
+    return { ok: true, message: "Horario guardado.", ts: Date.now() };
+  } catch (e) {
+    logger.error("save_business_hours_failed", { err: e });
+    return { ok: false, message: "No se pudo guardar el horario.", ts: Date.now() };
+  }
+}
+
 /** Create a catalog order (catalog mode restaurants). */
 export type CreateCatalogOrderInput = {
   restaurantSlug: string;

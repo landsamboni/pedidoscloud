@@ -358,3 +358,90 @@ export async function getRestaurantAnalytics(slug: string) {
 
   return { restaurant, daily, totals };
 }
+
+// ---- Appointments ----
+
+/** All active services for a restaurant (used by the customer booking page). */
+export async function getRestaurantForBooking(slug: string) {
+  return prisma.restaurant.findFirst({
+    where: { slug, active: true },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      businessType: true,
+      logoPath: true,
+      whatsappPhone: true,
+      nequiPhone: true,
+      businessHours: {
+        orderBy: { dayOfWeek: "asc" },
+      },
+      services: {
+        where: { active: true },
+        orderBy: { position: "asc" },
+      },
+    },
+  });
+}
+
+/** Appointments for a given calendar day (UTC date window). Used by the operator agenda. */
+export async function getDayAppointments(slug: string, dateKey: string) {
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { slug },
+    select: { id: true, name: true, slug: true, businessType: true },
+  });
+  if (!restaurant) return null;
+
+  // Build UTC window for the Bogotá day (UTC-5: day starts at 05:00 UTC, ends at 05:00 UTC next day)
+  const dayStart = new Date(`${dateKey}T05:00:00.000Z`);
+  const dayEnd   = new Date(`${dateKey}T05:00:00.000Z`);
+  dayEnd.setDate(dayEnd.getDate() + 1);
+
+  const appointments = await prisma.appointment.findMany({
+    where: {
+      restaurantId: restaurant.id,
+      scheduledAt: { gte: dayStart, lt: dayEnd },
+      status: { not: "CANCELLED" },
+    },
+    orderBy: { scheduledAt: "asc" },
+  });
+
+  return { restaurant, appointments };
+}
+
+/** All existing booked slots for a day — used by the booking form to compute free slots. */
+export async function getBookedSlots(restaurantId: string, dateKey: string) {
+  const dayStart = new Date(`${dateKey}T05:00:00.000Z`);
+  const dayEnd   = new Date(`${dateKey}T05:00:00.000Z`);
+  dayEnd.setDate(dayEnd.getDate() + 1);
+
+  return prisma.appointment.findMany({
+    where: {
+      restaurantId,
+      scheduledAt: { gte: dayStart, lt: dayEnd },
+      status: { in: ["PENDING", "CONFIRMED"] },
+    },
+    select: { scheduledAt: true, durationMins: true },
+  });
+}
+
+/** Services + business hours for the operator's service management page. */
+export async function getRestaurantServices(slug: string) {
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { slug },
+    select: { id: true, name: true, slug: true, businessType: true },
+  });
+  if (!restaurant) return null;
+
+  const services = await prisma.service.findMany({
+    where: { restaurantId: restaurant.id },
+    orderBy: { position: "asc" },
+  });
+
+  const businessHours = await prisma.businessHours.findMany({
+    where: { restaurantId: restaurant.id },
+    orderBy: { dayOfWeek: "asc" },
+  });
+
+  return { restaurant, services, businessHours };
+}

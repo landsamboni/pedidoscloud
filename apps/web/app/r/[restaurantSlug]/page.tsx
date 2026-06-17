@@ -1,19 +1,65 @@
 import { notFound } from "next/navigation";
 import { CustomerOrderForm } from "@/components/customer-order-form";
 import { CatalogOrderForm } from "@/components/catalog-order-form";
+import { AppointmentForm } from "@/components/appointment-form";
 import { FindOrderForm } from "@/components/find-order-form";
 import { formatMoney } from "@/lib/format";
 import { resolveFileUrl } from "@/lib/file-url";
 import { DEFAULT_LOGO_PATH } from "@/lib/branding";
-import { getRestaurantMenu } from "@/lib/data";
+import { getRestaurantMenu, getRestaurantForBooking, getBookedSlots } from "@/lib/data";
+import { localDateKey } from "@/lib/format";
 
 export default async function RestaurantMenuPage({ params }: { params: Promise<{ restaurantSlug: string }> }) {
   const { restaurantSlug } = await params;
+
+  // Barbershop flow — appointment booking instead of ordering
+  const baseRestaurant = await getRestaurantForBooking(restaurantSlug);
+  if (!baseRestaurant) notFound();
+
+  const isBarbershop = baseRestaurant.businessType === "barbershop";
+  const logoUrl = resolveFileUrl(baseRestaurant.logoPath) ?? DEFAULT_LOGO_PATH;
+
+  if (isBarbershop) {
+    const bookedRaw = await getBookedSlots(baseRestaurant.id, localDateKey());
+    const bookedSlots = bookedRaw.map((s) => ({
+      scheduledAt: s.scheduledAt,
+      durationMins: s.durationMins,
+    }));
+
+    return (
+      <main className="mx-auto max-w-2xl p-4 sm:p-6">
+        <header className="flex items-center gap-4 py-5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img alt={baseRestaurant.name} className="h-20 w-20 shrink-0 rounded-2xl border border-stone-200 bg-white object-contain p-1 shadow-sm" src={logoUrl} />
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-wide text-brand-blue">Agenda tu cita</p>
+            <h1 className="mt-1 text-3xl font-bold">{baseRestaurant.name}</h1>
+            <p className="mt-2 text-stone-600">Selecciona el servicio, fecha y hora disponible.</p>
+          </div>
+        </header>
+
+        <AppointmentForm
+          restaurantSlug={restaurantSlug}
+          services={baseRestaurant.services.map((s) => ({
+            id: s.id,
+            name: s.name,
+            description: s.description,
+            durationMins: s.durationMins,
+            price: Number(s.price),
+          }))}
+          businessHours={baseRestaurant.businessHours}
+          bookedSlots={bookedSlots}
+        />
+      </main>
+    );
+  }
+
+  // Orders flow (all other business types)
   const restaurant = await getRestaurantMenu(restaurantSlug);
   if (!restaurant) notFound();
 
   const menu = restaurant.menus[0];
-  const logoUrl = resolveFileUrl(restaurant.logoPath) ?? DEFAULT_LOGO_PATH;
+  const orderLogoUrl = resolveFileUrl(restaurant.logoPath) ?? DEFAULT_LOGO_PATH;
   const isCatalog = restaurant.menuType === "catalog";
   const deliveryProps = {
     mode: restaurant.deliveryMode,
@@ -26,7 +72,7 @@ export default async function RestaurantMenuPage({ params }: { params: Promise<{
     <main className="mx-auto max-w-2xl p-4 sm:p-6">
       <header className="flex items-center gap-4 py-5">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img alt={restaurant.name} className="h-20 w-20 shrink-0 rounded-2xl border border-stone-200 bg-white object-contain p-1 shadow-sm" src={logoUrl} />
+        <img alt={restaurant.name} className="h-20 w-20 shrink-0 rounded-2xl border border-stone-200 bg-white object-contain p-1 shadow-sm" src={orderLogoUrl} />
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-brand-blue">{isCatalog ? "Nuestros productos" : "Menú del día"}</p>
           <h1 className="mt-1 text-3xl font-bold">{restaurant.name}</h1>
