@@ -291,7 +291,7 @@ export default async function PublicOrderPage({ params }: { params: Promise<{ re
 
       {canUpload && !paymentConfigured && (
         <section className="card mt-4">
-          <p className="text-base text-stone-600">Comunícate con el restaurante para recibir las instrucciones de pago.</p>
+          <p className="text-base text-stone-600">Si necesitas ayuda adicional, puedes contactar al restaurante.</p>
         </section>
       )}
 

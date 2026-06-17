@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { createRestaurant } from "@/app/actions";
+import { BUSINESS_TYPES } from "@/lib/business-types";
 
 /** Convert a restaurant name to a URL-friendly slug. */
 function nameToSlug(name: string): string {
@@ -45,9 +46,10 @@ export function CreateRestaurantForm() {
         </div>
       )}
 
-      <form ref={formRef} action={action} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <form ref={formRef} action={action} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Row 1: name + slug + business type */}
         <div>
-          <label className="block text-xs font-medium text-stone-500 mb-0.5">Nombre</label>
+          <label className="block text-xs font-medium text-stone-500 mb-0.5">Nombre del negocio</label>
           <input
             className="input"
             name="name"
@@ -59,7 +61,7 @@ export function CreateRestaurantForm() {
 
         <div>
           <label className="block text-xs font-medium text-stone-500 mb-0.5">
-            Slug <span className="text-stone-400">(URL del restaurante)</span>
+            Slug <span className="text-stone-400">(URL del negocio)</span>
           </label>
           <input
             ref={slugRef}
@@ -72,8 +74,20 @@ export function CreateRestaurantForm() {
         </div>
 
         <div>
+          <label className="block text-xs font-medium text-stone-500 mb-0.5">Tipo de negocio</label>
+          <select className="input" defaultValue="restaurant" name="businessType">
+            {BUSINESS_TYPES.map((b) => (
+              <option key={b.value} value={b.value}>
+                {b.emoji} {b.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Row 2: base price + password + submit */}
+        <div>
           <label className="block text-xs font-medium text-stone-500 mb-0.5">Precio base (COP)</label>
-          <input className="input" min="1" name="basePrice" placeholder="14000" required type="number" />
+          <input className="input" min="0" name="basePrice" placeholder="14000" required type="number" />
         </div>
 
         <div>
@@ -85,7 +99,7 @@ export function CreateRestaurantForm() {
 
         <div className="flex flex-col justify-end">
           <button className="button-primary" disabled={pending} type="submit">
-            {pending ? "Creando…" : "Crear restaurante"}
+            {pending ? "Creando…" : "Crear negocio"}
           </button>
         </div>
       </form>

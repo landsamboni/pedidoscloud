@@ -216,6 +216,25 @@ export async function findTodayOrder(_: FindOrderState, formData: FormData): Pro
   redirect(`/r/${restaurantSlug}/orders/${order.publicToken}`);
 }
 
+/** Admin: update the display name of a restaurant. */
+export async function updateRestaurantName(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  if (!(await isAdmin())) return UNAUTHORIZED();
+  const restaurantId = String(formData.get("restaurantId"));
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) return { ok: false, message: "El nombre no puede estar vacío.", ts: Date.now() };
+  if (name.length > 100) return { ok: false, message: "El nombre es demasiado largo (máx. 100 caracteres).", ts: Date.now() };
+
+  const restaurant = await prisma.restaurant.update({
+    where: { id: restaurantId },
+    data: { name },
+    select: { slug: true },
+  });
+  revalidatePath("/admin");
+  revalidatePath(`/admin/restaurants/${restaurant.slug}`);
+  revalidatePath(`/r/${restaurant.slug}`);
+  return { ok: true, message: "Nombre actualizado.", ts: Date.now() };
+}
+
 export async function updateOrderStatus(formData: FormData) {
   const id = String(formData.get("id"));
   const slug = String(formData.get("slug"));
@@ -250,6 +269,12 @@ export async function createRestaurant(
     const basePrice = Number(formData.get("basePrice"));
     if (!Number.isFinite(basePrice) || basePrice <= 0) return { error: "El precio base debe ser mayor a 0.", success: false };
 
+    const { BUSINESS_TYPES } = await import("@/lib/business-types");
+    const validTypes = BUSINESS_TYPES.map((b) => b.value);
+    const businessType = validTypes.includes(String(formData.get("businessType") ?? "") as never)
+      ? String(formData.get("businessType"))
+      : "restaurant";
+
     const existing = await prisma.restaurant.findUnique({ where: { slug } });
     if (existing) return { error: `El slug "${slug}" ya está en uso. Elige otro.`, success: false };
 
@@ -260,7 +285,7 @@ export async function createRestaurant(
       passwordHash = await hash(rawPassword, 12);
     }
 
-    await prisma.restaurant.create({ data: { name, slug, basePrice, ...(passwordHash ? { passwordHash } : {}) } });
+    await prisma.restaurant.create({ data: { name, slug, basePrice, businessType, ...(passwordHash ? { passwordHash } : {}) } });
     revalidatePath("/admin");
     return { error: "", success: true, createdName: name };
   } catch (e) {
@@ -582,6 +607,305 @@ export async function populateCatalogDemoData(formData: FormData) {
   revalidatePath(`/restaurant/${restaurant.slug}`);
 }
 
+/**
+ * Admin: populate compelling demo data for ANY restaurant (combo or catalog).
+ * Covers every order status — including PAYMENT_REVIEW orders with a sample
+ * payment proof — so a full sales demo is possible on any account.
+ * Clears existing orders first to avoid duplicates on repeated runs.
+ */
+export async function populateDemoDataUniversal(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireAdmin();
+
+  const restaurantId = String(formData.get("restaurantId"));
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { id: restaurantId },
+    select: { id: true, slug: true, basePrice: true, menuType: true },
+  });
+  if (!restaurant) return { ok: false, message: "Restaurante no encontrado.", ts: Date.now() };
+
+  let totalCreated = 0;
+  const SAMPLE_PROOF = "/sample-comprobante.jpg";
+
+  const CUSTOMERS = [
+    { name: "Valentina Herrera",  phone: "3101234567", address: "Cra 7 #45-12 Bogotá" },
+    { name: "Santiago Morales",   phone: "3152345678", address: "Cll 50 #15-30 apto 201" },
+    { name: "Camila Rodríguez",   phone: "3003456789", address: "Cra 15 #80-10 Bogotá" },
+    { name: "Felipe Vargas",      phone: "3214567890", address: "Cll 100 #22-15 apto 501" },
+    { name: "Daniela Castro",     phone: "3115678901", address: "Cra 30 #63-40 Bogotá" },
+    { name: "Andrés Quintero",    phone: "3006789012", address: "Cll 72 #48-20 Bogotá" },
+    { name: "Juliana López",      phone: "3177890123", address: "Cra 24 #55-67 of 101" },
+    { name: "Mateo Sánchez",      phone: "3028901234", address: "Cll 85 #11-32 Bogotá" },
+    { name: "Isabella Torres",    phone: "3159012345", address: "Cra 45 #90-15 Bogotá" },
+    { name: "David Jiménez",      phone: "3100123456", address: "Cll 35 #28-50 apto 104" },
+    { name: "Sofía Ramírez",      phone: "3171234567", address: "Cra 9 #72-18 Bogotá" },
+    { name: "Nicolás Gómez",      phone: "3082345678", address: "Cll 60 #35-25 Bogotá" },
+  ];
+
+  const rand = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+  const randInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+  // Additive: no deleteMany — each click accumulates more orders.
+  // Counters are read below per-day so order numbers continue from the last value.
+
+  // ── Ensure a menu exists (today's or most recent) ────────────────────────
+  const today = dateKeyToUtcDate(localDateKey());
+  const todayKey = localDateKey();
+  const isCatalog = restaurant.menuType === "catalog";
+
+  // Default combo options when there's no existing menu
+  const DEFAULT_COMBO = {
+    soups: ["Sancocho de pollo", "Sopa de lentejas", "Crema de ahuyama"],
+    proteins: ["Pollo asado", "Carne a la plancha", "Mojarra frita", "Costilla BBQ +3000"],
+    sides: ["Frijoles", "Lentejas", "Papa salada", "Ensalada"],
+    drinks: ["Jugo de lulo", "Limonada", "Agua panela", "Jugo de maracuyá"],
+  };
+
+  // Default catalog categories when there's no existing menu
+  const DEFAULT_CATALOG = [
+    { name: "Platos principales", items: [{ name: "Especial del día", price: 18000 }, { name: "Bandeja familiar", price: 25000 }, { name: "Combo ejecutivo", price: 15000 }] },
+    { name: "Bebidas",            items: [{ name: "Jugo natural", price: 4000 }, { name: "Gaseosa", price: 3000 }, { name: "Agua mineral", price: 2000 }] },
+    { name: "Postres",            items: [{ name: "Brownie", price: 5000 }, { name: "Mousse de maracuyá", price: 6000 }] },
+  ];
+
+  // Upsert today's menu (keep existing if it already has content)
+  const existingMenu = await prisma.menu.findUnique({
+    where: { restaurantId_date: { restaurantId: restaurant.id, date: today } },
+    include: { categories: { include: { items: true } } },
+  });
+
+  let menu = existingMenu;
+  if (!menu) {
+    menu = await prisma.menu.create({
+      data: { restaurantId: restaurant.id, date: today, soups: [], proteins: [], sides: [], drinks: [] },
+      include: { categories: { include: { items: true } } },
+    });
+  }
+
+  // For combo: backfill combo arrays if empty
+  if (!isCatalog && existingMenu) {
+    const combo = existingMenu as typeof existingMenu & { soups: string[]; proteins: string[]; sides: string[]; drinks: string[] };
+    if (!combo.soups.length) {
+      await prisma.menu.update({ where: { id: menu.id }, data: DEFAULT_COMBO });
+    }
+  } else if (!isCatalog) {
+    await prisma.menu.update({ where: { id: menu.id }, data: DEFAULT_COMBO });
+  }
+
+  // For catalog: backfill categories if empty
+  let catalogItems: { categoryName: string; itemName: string; price: number }[] = [];
+  if (isCatalog) {
+    const cats = existingMenu?.categories ?? [];
+    if (cats.length === 0) {
+      for (let ci = 0; ci < DEFAULT_CATALOG.length; ci++) {
+        const cat = DEFAULT_CATALOG[ci];
+        const created = await prisma.menuCategory.create({ data: { menuId: menu.id, name: cat.name, position: ci } });
+        for (let ii = 0; ii < cat.items.length; ii++) {
+          await prisma.menuItem.create({ data: { categoryId: created.id, name: cat.items[ii].name, price: cat.items[ii].price, position: ii } });
+        }
+        cat.items.forEach(i => catalogItems.push({ categoryName: cat.name, itemName: i.name, price: i.price }));
+      }
+    } else {
+      catalogItems = cats.flatMap(c => c.items.map(i => ({ categoryName: c.name, itemName: i.name, price: Number(i.price) })));
+    }
+  }
+
+  // Refresh menu with updated data (needed for combo options after update)
+  const freshMenu = await prisma.menu.findUnique({
+    where: { id: menu.id },
+    include: { categories: { include: { items: true } } },
+  }) as (typeof menu & { soups: string[]; proteins: string[]; sides: string[]; drinks: string[] });
+
+  // ── Build order item creators ────────────────────────────────────────────
+  function makeComboItems(count: number) {
+    return Array.from({ length: count }, () => ({
+      soup: rand(freshMenu.soups),
+      protein: rand(freshMenu.proteins),
+      side: rand(freshMenu.sides),
+      drink: rand(freshMenu.drinks),
+    }));
+  }
+
+  function makeCatalogItems(count: number) {
+    const selected = Array.from({ length: count }, () => rand(catalogItems));
+    return selected.map(i => ({ categoryName: i.categoryName, itemName: i.itemName, price: i.price, qty: randInt(1, 3) }));
+  }
+
+  const basePrice = Number(restaurant.basePrice);
+
+  function comboTotal(items: ReturnType<typeof makeComboItems>): number {
+    return items.reduce((s, item) => s + basePrice + itemSurcharge(item.soup, item.protein, item.side, item.drink), 0);
+  }
+
+  function catalogTotal(items: ReturnType<typeof makeCatalogItems>): number {
+    return items.reduce((s, i) => s + i.price * i.qty, 0);
+  }
+
+  function comboOrderItems(items: ReturnType<typeof makeComboItems>) {
+    return items.map(item => ({
+      soup: item.soup, protein: item.protein, side: item.side, drink: item.drink,
+      price: new Prisma.Decimal(basePrice + itemSurcharge(item.soup, item.protein, item.side, item.drink)),
+    }));
+  }
+
+  function catalogOrderItems(items: ReturnType<typeof makeCatalogItems>) {
+    return items.map(i => ({
+      soup: "", protein: "", side: "", drink: "",
+      catalogCategory: i.categoryName, catalogItem: i.itemName,
+      quantity: i.qty, unitPrice: new Prisma.Decimal(i.price),
+      price: new Prisma.Decimal(i.price * i.qty),
+    }));
+  }
+
+  // ── Upsert demo customers ────────────────────────────────────────────────
+  const savedCustomers = await Promise.all(
+    CUSTOMERS.map(c =>
+      prisma.customer.upsert({
+        where: { restaurantId_phone: { restaurantId: restaurant.id, phone: c.phone } },
+        update: { name: c.name, lastAddress: c.address },
+        create: { restaurantId: restaurant.id, name: c.name, phone: c.phone, lastAddress: c.address },
+      })
+    )
+  );
+
+  // ── Generate today's orders: one per status category ────────────────────
+  // Statuses and their proof/submission config for a compelling demo view
+  // minsAgo: minutes before NOW when the order was created.
+  // Using relative time ensures orders look fresh regardless of the time of day.
+  type TodaySpec = { status: OrderStatus; proof: boolean; submitted: boolean; minsAgo: number };
+  const TODAY_ORDERS: TodaySpec[] = [
+    // Very recent — no urgency color yet (< 2 min)
+    { status: OrderStatus.NEW,               proof: false, submitted: false, minsAgo: 1  },
+    { status: OrderStatus.PAYMENT_PENDING,   proof: false, submitted: false, minsAgo: 3  },
+    // Recent pending — showing urgency (3-10 min)
+    { status: OrderStatus.PAYMENT_PENDING,   proof: false, submitted: false, minsAgo: 7  },
+    // PAYMENT_REVIEW × 4 — the key demo category, spread over last 5-30 min
+    { status: OrderStatus.PAYMENT_REVIEW,    proof: true,  submitted: true,  minsAgo: 5  },
+    { status: OrderStatus.PAYMENT_REVIEW,    proof: true,  submitted: true,  minsAgo: 10 },
+    { status: OrderStatus.PAYMENT_REVIEW,    proof: true,  submitted: true,  minsAgo: 18 },
+    { status: OrderStatus.PAYMENT_REVIEW,    proof: true,  submitted: true,  minsAgo: 28 },
+    // Older today orders — context for the day
+    { status: OrderStatus.PAYMENT_REJECTED,  proof: true,  submitted: true,  minsAgo: 50 },
+    { status: OrderStatus.PAYMENT_CONFIRMED, proof: true,  submitted: true,  minsAgo: 65 },
+    { status: OrderStatus.PAYMENT_CONFIRMED, proof: true,  submitted: true,  minsAgo: 85 },
+    { status: OrderStatus.PAYMENT_CONFIRMED, proof: true,  submitted: true,  minsAgo: 110},
+    { status: OrderStatus.CANCELLED,         proof: false, submitted: false,  minsAgo: 70 },
+  ];
+
+  // Continue from the last order number for today (additive).
+  const todayCounter = await prisma.dailyOrderCounter.findUnique({
+    where: { restaurantId_date: { restaurantId: restaurant.id, date: todayKey } },
+  });
+  let orderNum = todayCounter?.lastNumber ?? 0;
+
+  for (let j = 0; j < TODAY_ORDERS.length; j++) {
+    const spec = TODAY_ORDERS[j];
+    const cust = savedCustomers[j % savedCustomers.length];
+    // createdAt = NOW minus minsAgo — always relative to the current moment.
+    const createdAt = new Date(Date.now() - spec.minsAgo * 60_000);
+    orderNum++;
+
+    const comboItems = isCatalog ? [] : makeComboItems(randInt(1, 2));
+    const catItems   = isCatalog ? makeCatalogItems(randInt(1, 3)) : [];
+    const total      = isCatalog ? catalogTotal(catItems) : comboTotal(comboItems);
+
+    await prisma.order.create({
+      data: {
+        restaurantId: restaurant.id,
+        customerId: cust.id,
+        customerName: cust.name,
+        orderDate: todayKey,
+        orderNumber: orderNum,
+        status: spec.status,
+        total: new Prisma.Decimal(total),
+        address: cust.lastAddress,
+        fulfillment: "delivery",
+        createdAt,
+        ...(spec.submitted ? { paymentSubmittedAt: createdAt } : {}),
+        ...(spec.proof ? { paymentProofPath: SAMPLE_PROOF } : {}),
+        items: { create: isCatalog ? catalogOrderItems(catItems) : comboOrderItems(comboItems) },
+      },
+    });
+    totalCreated++;
+  }
+  await prisma.dailyOrderCounter.upsert({
+    where: { restaurantId_date: { restaurantId: restaurant.id, date: todayKey } },
+    update: { lastNumber: orderNum },
+    create: { restaurantId: restaurant.id, date: todayKey, lastNumber: orderNum },
+  });
+
+  // ── Historical orders: last 15 days ─────────────────────────────────────
+  const DAYS = 15;
+  for (let daysAgo = DAYS; daysAgo >= 1; daysAgo--) {
+    const date = new Date();
+    date.setDate(date.getDate() - daysAgo);
+    const dateKey = localDateKey(date);
+    const count = randInt(4, 8);
+
+    // Ensure menu exists for past days too
+    await prisma.menu.upsert({
+      where: { restaurantId_date: { restaurantId: restaurant.id, date: dateKeyToUtcDate(dateKey) } },
+      update: {},
+      create: isCatalog
+        ? { restaurantId: restaurant.id, date: dateKeyToUtcDate(dateKey), soups: [], proteins: [], sides: [], drinks: [] }
+        : { restaurantId: restaurant.id, date: dateKeyToUtcDate(dateKey), ...DEFAULT_COMBO },
+    });
+
+    const histCounter = await prisma.dailyOrderCounter.findUnique({
+      where: { restaurantId_date: { restaurantId: restaurant.id, date: dateKey } },
+    });
+    let histNum = histCounter?.lastNumber ?? 0;
+
+    for (let j = 0; j < count; j++) {
+      const cust = savedCustomers[Math.floor(Math.random() * savedCustomers.length)];
+      const status = Math.random() < 0.85 ? OrderStatus.PAYMENT_CONFIRMED : OrderStatus.CANCELLED;
+      const comboItems = isCatalog ? [] : makeComboItems(randInt(1, 2));
+      const catItems   = isCatalog ? makeCatalogItems(randInt(1, 3)) : [];
+      const total      = isCatalog ? catalogTotal(catItems) : comboTotal(comboItems);
+      // UTC 16-19 = 11am-2pm Bogotá (UTC-5) — realistic lunch service hours.
+      const createdAt  = new Date(date);
+      createdAt.setUTCHours(16 + j % 4, j * 9 % 60, 0, 0);
+      histNum++;
+
+      await prisma.order.create({
+        data: {
+          restaurantId: restaurant.id,
+          customerId: cust.id,
+          customerName: cust.name,
+          orderDate: dateKey,
+          orderNumber: histNum,
+          status,
+          total: new Prisma.Decimal(total),
+          address: cust.lastAddress,
+          fulfillment: "delivery",
+          createdAt,
+          paymentSubmittedAt: status === OrderStatus.PAYMENT_CONFIRMED ? createdAt : undefined,
+          paymentProofPath: status === OrderStatus.PAYMENT_CONFIRMED ? SAMPLE_PROOF : undefined,
+          items: { create: isCatalog ? catalogOrderItems(catItems) : comboOrderItems(comboItems) },
+        },
+      });
+      totalCreated++;
+    }
+    await prisma.dailyOrderCounter.upsert({
+      where: { restaurantId_date: { restaurantId: restaurant.id, date: dateKey } },
+      update: { lastNumber: histNum },
+      create: { restaurantId: restaurant.id, date: dateKey, lastNumber: histNum },
+    });
+  }
+
+  revalidatePath("/admin");
+  revalidatePath(`/admin/restaurants/${restaurant.slug}`);
+  revalidatePath(`/restaurant/${restaurant.slug}`);
+  revalidatePath(`/restaurant/${restaurant.slug}/orders`);
+  revalidatePath(`/restaurant/${restaurant.slug}/analytics`);
+  revalidatePath(`/restaurant/${restaurant.slug}/history`);
+
+  return {
+    ok: true,
+    message: `✓ Se agregaron ${totalCreated} pedidos (${TODAY_ORDERS.length} de hoy + ${totalCreated - TODAY_ORDERS.length} históricos).`,
+    ts: Date.now(),
+  };
+}
+
 /** Admin: activate or renew a restaurant's subscription. */
 export async function setRestaurantSubscription(formData: FormData) {
   await requireAdmin();
@@ -654,17 +978,19 @@ export async function deleteCustomer(formData: FormData) {
 }
 
 /** Admin: permanently delete a restaurant and ALL its data. Requires slug confirmation. */
-export async function deleteRestaurant(formData: FormData) {
-  await requireAdmin();
+export async function deleteRestaurant(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  if (!(await isAdmin())) return UNAUTHORIZED();
 
   const restaurantId = String(formData.get("restaurantId"));
   const confirmation = String(formData.get("confirmation") ?? "").trim();
   const slug = String(formData.get("slug") ?? "").trim();
 
-  if (confirmation !== slug) throw new Error("La confirmación no coincide con el slug.");
+  if (confirmation !== slug) {
+    return { ok: false, message: "La confirmación no coincide con el slug.", ts: Date.now() };
+  }
 
   await prisma.restaurant.delete({ where: { id: restaurantId } });
-  revalidatePath("/admin");
+  redirect("/admin");
 }
 
 /** Admin: immediately deactivate a restaurant's subscription (no grace period). */
@@ -697,6 +1023,101 @@ export async function setRestaurantPassword(_prev: ActionState, formData: FormDa
   await prisma.restaurant.update({ where: { id: restaurantId }, data: { passwordHash } });
   revalidatePath("/admin");
   return { ok: true, message: "Contraseña actualizada.", ts: Date.now() };
+}
+
+// ─────────────────────────────────────────────────────────
+// Restaurant users (admin-only — restaurants cannot manage
+// their own operator accounts)
+// ─────────────────────────────────────────────────────────
+
+/** Admin: create an additional operator account for a restaurant. */
+export async function createRestaurantUser(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  if (!(await isAdmin())) return UNAUTHORIZED();
+
+  const restaurantId = String(formData.get("restaurantId"));
+  const username = String(formData.get("username") ?? "").trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
+  const displayName = String(formData.get("displayName") ?? "").trim();
+  const password = String(formData.get("password") ?? "").trim();
+
+  if (!username || username.length < 3)
+    return { ok: false, message: "El usuario debe tener al menos 3 caracteres.", ts: Date.now() };
+  if (username.length > 50)
+    return { ok: false, message: "El usuario es demasiado largo (máx. 50 caracteres).", ts: Date.now() };
+  if (password.length < 8)
+    return { ok: false, message: "La contraseña debe tener al menos 8 caracteres.", ts: Date.now() };
+
+  const existing = await prisma.restaurantUser.findUnique({ where: { username } });
+  if (existing) return { ok: false, message: `El usuario "${username}" ya está en uso.`, ts: Date.now() };
+
+  const { hash } = await import("bcryptjs");
+  const passwordHash = await hash(password, 12);
+
+  await prisma.restaurantUser.create({
+    data: { restaurantId, username, passwordHash, displayName },
+  });
+
+  const restaurant = await prisma.restaurant.findUnique({ where: { id: restaurantId }, select: { slug: true } });
+  revalidatePath("/admin");
+  if (restaurant) revalidatePath(`/admin/restaurants/${restaurant.slug}`);
+  return { ok: true, message: `Usuario "${username}" creado.`, ts: Date.now() };
+}
+
+/** Admin: delete a restaurant operator account. */
+export async function deleteRestaurantUser(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  if (!(await isAdmin())) return UNAUTHORIZED();
+
+  const userId = String(formData.get("userId"));
+  const user = await prisma.restaurantUser.findUnique({
+    where: { id: userId },
+    select: { username: true, restaurant: { select: { slug: true } } },
+  });
+  if (!user) return { ok: false, message: "Usuario no encontrado.", ts: Date.now() };
+
+  await prisma.restaurantUser.delete({ where: { id: userId } });
+  revalidatePath("/admin");
+  revalidatePath(`/admin/restaurants/${user.restaurant.slug}`);
+  return { ok: true, message: `Usuario "${user.username}" eliminado.`, ts: Date.now() };
+}
+
+/** Admin: reset an operator account's password. */
+export async function resetRestaurantUserPassword(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  if (!(await isAdmin())) return UNAUTHORIZED();
+
+  const userId = String(formData.get("userId"));
+  const password = String(formData.get("password") ?? "").trim();
+  if (password.length < 8)
+    return { ok: false, message: "La contraseña debe tener al menos 8 caracteres.", ts: Date.now() };
+
+  const user = await prisma.restaurantUser.findUnique({
+    where: { id: userId },
+    select: { restaurant: { select: { slug: true } } },
+  });
+  if (!user) return { ok: false, message: "Usuario no encontrado.", ts: Date.now() };
+
+  const { hash } = await import("bcryptjs");
+  await prisma.restaurantUser.update({
+    where: { id: userId },
+    data: { passwordHash: await hash(password, 12) },
+  });
+
+  revalidatePath(`/admin/restaurants/${user.restaurant.slug}`);
+  return { ok: true, message: "Contraseña actualizada.", ts: Date.now() };
+}
+
+/** Admin: toggle active status of an operator account. */
+export async function toggleRestaurantUserActive(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  if (!(await isAdmin())) return UNAUTHORIZED();
+
+  const userId = String(formData.get("userId"));
+  const user = await prisma.restaurantUser.findUnique({
+    where: { id: userId },
+    select: { active: true, restaurant: { select: { slug: true } } },
+  });
+  if (!user) return { ok: false, message: "Usuario no encontrado.", ts: Date.now() };
+
+  await prisma.restaurantUser.update({ where: { id: userId }, data: { active: !user.active } });
+  revalidatePath(`/admin/restaurants/${user.restaurant.slug}`);
+  return { ok: true, message: user.active ? "Usuario desactivado." : "Usuario activado.", ts: Date.now() };
 }
 
 /** Restaurant: change their own password (requires current password). */

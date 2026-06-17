@@ -24,6 +24,9 @@ model Restaurant {
   name                  String
   slug                  String              @unique
   basePrice             Decimal             @db.Decimal(12, 2)
+  // Type of business — determines which flows (ordering vs. appointments) are available.
+  // "restaurant" | "bakery" | "barbershop" | "laundry" | "florist" | "other"
+  businessType          String              @default("restaurant")
   // "combo" = fixed categories (soups/proteins/sides/drinks), original behavior.
   // "catalog" = dynamic categories with per-item prices and free quantities.
   menuType              String              @default("combo")
@@ -51,6 +54,24 @@ model Restaurant {
   orders                Order[]
   dailyCounters         DailyOrderCounter[]
   paymentMethods        PaymentMethod[]
+  users                 RestaurantUser[]
+}
+
+// Additional operator accounts for a restaurant, managed exclusively by the
+// platform admin. Each user can log in with their username + password and gets
+// a session scoped to their restaurant (same as the main account). The
+// restaurant itself cannot create or delete these users.
+model RestaurantUser {
+  id           String     @id @default(cuid())
+  restaurantId String
+  username     String     @unique // login name (slug-safe, e.g. "panza-feliz-2")
+  passwordHash String
+  displayName  String     @default("") // e.g. "Turno mañana", "Encargada"
+  active       Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId])
 }
 
 model PaymentMethod {

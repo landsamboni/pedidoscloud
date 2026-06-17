@@ -1,17 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { deactivateRestaurantSubscription, deleteRestaurant, deleteRestaurantOrders, deleteRestaurantOrdersByDate, populateCatalogDemoData, populateDemoData, setRestaurantSubscription } from "@/app/actions";
+import { deactivateRestaurantSubscription, deleteRestaurantOrders, deleteRestaurantOrdersByDate, setRestaurantSubscription, updateRestaurantName } from "@/app/actions";
+import { DemoDataForm } from "@/components/demo-data-form";
+import { DeleteRestaurantForm } from "@/components/delete-restaurant-form";
+import { FeedbackForm, SubmitButton } from "@/components/feedback-form";
 import { getDaysRemaining, getSubscriptionStatus, STATUS_COLORS, STATUS_LABELS } from "@/lib/subscription";
 import { RestaurantSettings } from "@/components/restaurant-settings";
 import { BusinessDataForm } from "@/components/business-data-form";
 import { DeliveryCard, PaymentCard } from "@/components/settings-cards";
 import { formatMoney, formatOrderNumber } from "@/lib/format";
 import { getAdminRestaurant } from "@/lib/data";
+import { RestaurantUsersPanel } from "@/components/restaurant-users-panel";
 
 export const dynamic = "force-dynamic";
 
-const DEMO_SLUG = "panza-feliz";
-const CATALOG_DEMO_SLUG = "mi-pasteleria";
 
 export default async function AdminRestaurantPage({ params }: { params: Promise<{ restaurantSlug: string }> }) {
   const { restaurantSlug } = await params;
@@ -43,30 +45,77 @@ export default async function AdminRestaurantPage({ params }: { params: Promise<
 
   return (
     <main className="mx-auto max-w-4xl p-4 sm:p-6 3xl:max-w-5xl">
-      <header className="flex flex-wrap items-start justify-between gap-3 py-5">
-        <div>
-          <Link className="text-sm text-brand-purple hover:underline" href="/admin">← Todos los restaurantes</Link>
-          <h1 className="mt-1 text-3xl font-bold">{restaurant.name}</h1>
-          <p className="text-sm text-stone-500">/{restaurant.slug} · {formatMoney(Number(restaurant.basePrice))}</p>
-        </div>
-        <div className="flex w-full flex-col gap-2">
-          {/* Row 1: primary actions */}
-          <div className="flex flex-wrap items-center gap-2">
-            <Link className="button-primary shrink-0" href={`/restaurant/${restaurant.slug}`} rel="noreferrer" style={{ backgroundColor: "#F59E0B" }} target="_blank">
-              Consola del negocio ↗
-            </Link>
-            <Link className="button-primary shrink-0" href={`/r/${restaurant.slug}`} rel="noreferrer" style={{ backgroundColor: "#7B61FF" }} target="_blank">
-              Link para pedidos de clientes ↗
-            </Link>
+      <header className="space-y-5 py-5 border-b border-stone-100 mb-6">
+
+        {/* ── Level 1: identity + rename ───────────────────────────────── */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
+            <Link className="text-sm text-brand-purple hover:underline" href="/admin">← Todos los restaurantes</Link>
+            <h1 className="mt-1 text-3xl font-bold leading-tight truncate">{restaurant.name}</h1>
+            <p className="mt-0.5 text-sm text-stone-500">/{restaurant.slug} · {formatMoney(Number(restaurant.basePrice))}</p>
           </div>
-          {/* Row 2: navigation */}
-          <div className="flex flex-wrap gap-2">
-            <Link className="button-primary" href={`/restaurant/${restaurant.slug}/orders`} rel="noreferrer" target="_blank">Pedidos de hoy ↗</Link>
-            <Link className="button-secondary" href={`/restaurant/${restaurant.slug}/history`} rel="noreferrer" target="_blank">Historial ↗</Link>
-            <Link className="button-secondary" href={`/restaurant/${restaurant.slug}/analytics`} rel="noreferrer" target="_blank">Analíticas ↗</Link>
-            <Link className="button-secondary" href={`/restaurant/${restaurant.slug}/customers`} rel="noreferrer" target="_blank">Clientes ↗</Link>
-          </div>
+          <FeedbackForm action={updateRestaurantName} className="flex items-center gap-2 sm:shrink-0">
+            <input name="restaurantId" type="hidden" value={restaurant.id} />
+            <input
+              className="input text-sm py-1.5 min-w-0 flex-1 sm:w-48 sm:flex-none"
+              defaultValue={restaurant.name}
+              maxLength={100}
+              name="name"
+              placeholder="Nombre del restaurante"
+              required
+            />
+            <SubmitButton className="button-secondary text-sm py-1.5 shrink-0" pendingLabel="Guardando…">
+              Renombrar
+            </SubmitButton>
+          </FeedbackForm>
         </div>
+
+        {/* ── Level 2: primary CTAs ─────────────────────────────────────── */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Link
+            className="flex items-center justify-center rounded-2xl px-5 py-3.5 text-base font-bold text-white shadow-sm transition hover:opacity-90"
+            href={`/restaurant/${restaurant.slug}`}
+            rel="noreferrer"
+            style={{ backgroundColor: "#F59E0B" }}
+            target="_blank"
+          >
+            Consola del negocio ↗
+          </Link>
+          <Link
+            className="flex items-center justify-center rounded-2xl px-5 py-3.5 text-base font-bold text-white shadow-sm transition hover:opacity-90"
+            href={`/r/${restaurant.slug}`}
+            rel="noreferrer"
+            style={{ backgroundColor: "#7B61FF" }}
+            target="_blank"
+          >
+            Link para pedidos de clientes ↗
+          </Link>
+        </div>
+
+        {/* ── Level 3: secondary navigation ────────────────────────────── */}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {[
+            { label: "Pedidos de hoy", href: `/restaurant/${restaurant.slug}/orders`, blue: true },
+            { label: "Historial",      href: `/restaurant/${restaurant.slug}/history` },
+            { label: "Analíticas",     href: `/restaurant/${restaurant.slug}/analytics` },
+            { label: "Clientes",       href: `/restaurant/${restaurant.slug}/customers` },
+          ].map(({ label, href, blue }) => (
+            <Link
+              key={href}
+              className={`flex items-center justify-center rounded-xl px-3 py-3 text-sm font-semibold text-center leading-tight transition hover:opacity-90 ${
+                blue
+                  ? "bg-brand-blue text-white"
+                  : "border border-stone-300 bg-white text-stone-700 hover:bg-stone-50"
+              }`}
+              href={href}
+              rel="noreferrer"
+              target="_blank"
+            >
+              {label} ↗
+            </Link>
+          ))}
+        </div>
+
       </header>
 
       {/* Subscription management */}
@@ -156,29 +205,26 @@ export default async function AdminRestaurantPage({ params }: { params: Promise<
 
       <BusinessDataForm logoPath={restaurant.logoPath} restaurantId={restaurant.id} returnPath={`/admin/restaurants/${restaurant.slug}`} whatsappPhone={restaurant.whatsappPhone} />
 
-      {/* Demo data — combo showcase */}
-      {restaurant.slug === DEMO_SLUG && (
-        <details className="mt-4 rounded-xl border border-teal-200 bg-teal-50 p-4">
-          <summary className="cursor-pointer text-sm font-semibold text-teal-800">🎬 Poblar datos demo (últimos 15 días)</summary>
-          <p className="mt-2 text-xs text-teal-700">Genera órdenes y clientes ficticios para presentaciones de ventas.</p>
-          <form action={populateDemoData} className="mt-3">
-            <input name="restaurantId" type="hidden" value={restaurant.id} />
-            <button className="button-primary text-sm" type="submit">Generar datos demo</button>
-          </form>
-        </details>
-      )}
+      {/* Operator users */}
+      <section className="card mt-4">
+        <h2 className="mb-4 text-lg font-bold">Operadores del negocio</h2>
+        <RestaurantUsersPanel
+          restaurantId={restaurant.id}
+          restaurantSlug={restaurant.slug}
+          users={restaurant.users}
+        />
+      </section>
 
-      {/* Demo data — catalog showcase (Mi Pastelería) */}
-      {restaurant.slug === CATALOG_DEMO_SLUG && (
-        <details className="mt-4 rounded-xl border border-teal-200 bg-teal-50 p-4">
-          <summary className="cursor-pointer text-sm font-semibold text-teal-800">🎬 Poblar datos demo pastelería (últimos 15 días)</summary>
-          <p className="mt-2 text-xs text-teal-700">Genera pedidos y clientes ficticios con productos reales de la pastelería para presentaciones de ventas.</p>
-          <form action={populateCatalogDemoData} className="mt-3">
-            <input name="restaurantId" type="hidden" value={restaurant.id} />
-            <button className="button-primary text-sm" type="submit">Generar datos demo</button>
-          </form>
-        </details>
-      )}
+      {/* Demo data — universal (works for any restaurant, combo or catalog) */}
+      <details className="mt-4 rounded-xl border border-teal-200 bg-teal-50 p-4">
+        <summary className="cursor-pointer text-sm font-semibold text-teal-800">🎬 Poblar datos demo</summary>
+        <div className="mt-2 space-y-1 text-xs text-teal-700">
+          <p>Genera pedidos y clientes ficticios para los últimos 15 días más el día de hoy.</p>
+          <p>Los pedidos de hoy cubren <strong>todas las categorías</strong>: Nuevo, Pendiente, Revisar comprobante (con adjunto), Confirmado, Rechazado y Cancelado.</p>
+          <p className="font-semibold text-teal-700">Cada clic agrega más pedidos acumulativamente sin borrar los anteriores.</p>
+        </div>
+        <DemoDataForm restaurantId={restaurant.id} />
+      </details>
 
       {/* Danger zone */}
       <details className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4">
@@ -210,14 +256,7 @@ export default async function AdminRestaurantPage({ params }: { params: Promise<
           <div className="rounded-xl border-2 border-red-400 bg-white p-4">
             <p className="text-sm font-semibold text-red-900">Eliminar restaurante permanentemente</p>
             <p className="mt-1 text-xs text-red-600">Borra el restaurante, sus órdenes, menús, clientes y configuración. Irreversible.</p>
-            <form action={deleteRestaurant} className="mt-3 space-y-2">
-              <input name="restaurantId" type="hidden" value={restaurant.id} />
-              <input name="slug" type="hidden" value={restaurant.slug} />
-              <label className="block text-xs font-medium text-red-700">Escribe <strong>{restaurant.slug}</strong> para confirmar:
-                <input className="input mt-1 text-sm" name="confirmation" placeholder={restaurant.slug} required />
-              </label>
-              <button className="w-full rounded-xl border-2 border-red-500 bg-red-500 px-3 py-2 text-sm font-bold text-white transition hover:bg-red-600" type="submit">Eliminar restaurante</button>
-            </form>
+            <DeleteRestaurantForm restaurantId={restaurant.id} slug={restaurant.slug} />
           </div>
         </div>
       </details>

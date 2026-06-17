@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { logoutAction } from "@/app/login/actions";
 import { CreateRestaurantForm } from "@/components/create-restaurant-form";
 import { getSubscriptionStatus, STATUS_COLORS, STATUS_LABELS } from "@/lib/subscription";
+import { businessTypeEmoji, businessTypeLabel } from "@/lib/business-types";
 import { formatMoney } from "@/lib/format";
 import { getAdminRestaurants } from "@/lib/data";
 
@@ -13,15 +13,10 @@ export default async function AdminPage() {
 
   return (
     <main className="mx-auto max-w-4xl p-4 sm:p-6 3xl:max-w-5xl">
-      <header className="flex flex-wrap items-start justify-between gap-4 py-5">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-teal-600">Administración</p>
-          <h1 className="mt-1 text-3xl font-bold">Restaurantes</h1>
-          <p className="mt-1 text-sm text-stone-500">{restaurants.length} restaurante{restaurants.length !== 1 ? "s" : ""}</p>
-        </div>
-        <form action={logoutAction}>
-          <button className="button-danger" type="submit">Cerrar sesión</button>
-        </form>
+      <header className="py-5">
+        <p className="text-sm font-semibold uppercase tracking-wide text-purple-600">Administración</p>
+        <h1 className="mt-1 text-3xl font-bold">Restaurantes</h1>
+        <p className="mt-1 text-sm text-stone-500">{restaurants.length} restaurante{restaurants.length !== 1 ? "s" : ""}</p>
       </header>
 
       <details className="card">
@@ -42,8 +37,13 @@ export default async function AdminPage() {
               key={restaurant.id}
             >
               <div className="min-w-0">
-                <p className="truncate text-lg font-bold text-stone-900">{restaurant.name}</p>
-                <p className="text-sm text-stone-500">/{restaurant.slug} · {formatMoney(Number(restaurant.basePrice))}</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-base">{businessTypeEmoji(restaurant.businessType ?? "restaurant")}</span>
+                  <p className="truncate text-lg font-bold text-stone-900">{restaurant.name}</p>
+                </div>
+                <p className="text-sm text-stone-500">
+                  {businessTypeLabel(restaurant.businessType ?? "restaurant")} · /{restaurant.slug} · {formatMoney(Number(restaurant.basePrice))}
+                </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-medium text-stone-600">

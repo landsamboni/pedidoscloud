@@ -1,12 +1,22 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateOrderStatus } from "@/app/actions";
 import { formatMoney, formatOrderNumber } from "@/lib/format";
 import { parseItemName } from "@/lib/menu";
 
-type Order = {
+function relativeTime(createdAtMs: number, now: number): string {
+  const mins = Math.floor((now - createdAtMs) / 60000);
+  if (mins < 1) return "hace menos de 1 min";
+  if (mins < 60) return `hace ${mins} min`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m > 0 ? `hace ${h} h ${m} min` : `hace ${h} h`;
+}
+
+export type Order = {
   id: string;
   orderNumber: number;
   status: string;
@@ -83,10 +93,56 @@ interface Props {
   readOnly?: boolean;
 }
 
+// Groups that start expanded — urgent / actionable.
+const DEFAULT_OPEN = new Set(["review", "pending", "rejected"]);
+
 export function RestaurantOrders({ restaurantSlug, restaurantName = "", orders, readOnly = false }: Props) {
   const router = useRouter();
   const [now, setNow] = useState<number | null>(null);
   const [proofUrl, setProofUrl] = useState<string | null>(null);
+  const [openOverrides, setOpenOverrides] = useState<Record<string, boolean>>({});
+  // Card expansion: false = compact view (no items), true = full view
+  const [expandAll, setExpandAll] = useState(false);
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+
+  function isGroupOpen(key: string, count: number): boolean {
+    if (key in openOverrides) return openOverrides[key];
+    return count > 0;
+  }
+
+  function toggleGroup(key: string, count: number) {
+    setOpenOverrides((prev) => ({ ...prev, [key]: !isGroupOpen(key, count) }));
+  }
+
+  function isCardExpanded(id: string): boolean {
+    return expandAll || expandedCards.has(id);
+  }
+
+  function toggleCard(id: string) {
+    if (expandAll) {
+      // When global "expand all" is on, toggling a card collapses just that one
+      setExpandAll(false);
+      const all = new Set(orders.map(o => o.id));
+      all.delete(id);
+      setExpandedCards(all);
+    } else {
+      setExpandedCards(prev => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id); else next.add(id);
+        return next;
+      });
+    }
+  }
+
+  function handleExpandAll() {
+    setExpandAll(true);
+    setExpandedCards(new Set());
+  }
+
+  function handleCollapseAll() {
+    setExpandAll(false);
+    setExpandedCards(new Set());
+  }
 
   useEffect(() => {
     setNow(Date.now());
@@ -115,66 +171,142 @@ export function RestaurantOrders({ restaurantSlug, restaurantName = "", orders, 
   }, [orders]);
 
   if (!orders.length) {
-    return (
-      <>
-        {/* Still show nav even when no orders */}
-        <nav aria-label="Ir a sección" className="mb-5 flex flex-wrap gap-2">
-          {GROUPS.map((g) => (
-            <span className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold opacity-40 ${g.accent}`} key={g.key}>
-              {g.label} (0)
-            </span>
-          ))}
-        </nav>
-        <section className="card text-stone-600">Todavía no hay pedidos para hoy.</section>
-      </>
-    );
+    return <section className="card text-stone-600">Todavía no hay pedidos para hoy.</section>;
   }
 
   return (
     <>
-      {/* Section quick-nav — ALWAYS shows all groups */}
-      <nav aria-label="Ir a sección" className="mb-5 flex flex-wrap gap-2">
-        {GROUPS.map((g) => {
-          const count = g.statuses.reduce((n, s) => n + (byStatus[s]?.length ?? 0), 0);
-          return (
-            <a
-              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition hover:opacity-80 ${g.accent} ${count === 0 ? "opacity-40" : ""}`}
-              href={`#section-${g.key}`}
-              key={g.key}
-            >
-              {g.label} ({count})
-            </a>
-          );
-        })}
-      </nav>
+      {/* ── Toolbar ─────────────────────────────────────────────────────── */}
+      <div className="mb-3 flex justify-end">
+        {expandAll ? (
+          <button
+            className="text-xs font-semibold text-stone-500 hover:text-stone-700 transition"
+            onClick={handleCollapseAll}
+            type="button"
+          >
+            ↑ Colapsar todo
+          </button>
+        ) : (
+          <button
+            className="text-xs font-semibold text-brand-blue hover:underline transition"
+            onClick={handleExpandAll}
+            type="button"
+          >
+            ↓ Expandir todo
+          </button>
+        )}
+      </div>
 
-      {/* Sections */}
-      <div className="space-y-8">
+      {/* ── DESKTOP KANBAN (lg+) ─────────────────────────────────────────
+          Five columns, one per status group. All orders visible at once
+          without vertical scroll — the operator sees the full picture. */}
+      <div className="hidden lg:block overflow-x-auto pb-6">
+        <div className="flex gap-4 items-start" style={{ minWidth: `${GROUPS.length * 260}px` }}>
+          {GROUPS.map((group) => {
+            const groupOrders = group.statuses.flatMap((s) => byStatus[s] ?? []);
+            return (
+              <div key={group.key} className="flex flex-1 min-w-0 flex-col">
+                {/* Column header — title filters to this group; count badge stays */}
+                <div className={`mb-3 flex items-center justify-between rounded-xl border-2 px-3 py-2.5 ${group.accent}`}>
+                  <Link
+                    className="flex-1 text-sm font-bold leading-tight hover:underline"
+                    href={`/restaurant/${restaurantSlug}/orders/${group.key}`}
+                    title={`Ver solo: ${group.label}`}
+                  >
+                    {group.label}
+                  </Link>
+                  <span className="ml-2 shrink-0 rounded-full bg-white/70 px-2 py-0.5 text-xs font-black tabular-nums">
+                    {groupOrders.length}
+                  </span>
+                </div>
+                {/* Cards */}
+                <div className="space-y-3">
+                  {groupOrders.length > 0 ? (
+                    groupOrders.map((order) => (
+                      <OrderCard
+                        key={order.id}
+                        expanded={isCardExpanded(order.id)}
+                        now={now}
+                        onToggle={() => toggleCard(order.id)}
+                        onViewProof={setProofUrl}
+                        order={order}
+                        readOnly={readOnly}
+                        restaurantName={restaurantName}
+                        restaurantSlug={restaurantSlug}
+                      />
+                    ))
+                  ) : (
+                    <div className="rounded-2xl border-2 border-dashed border-stone-200 px-4 py-8 text-center text-sm text-stone-400 italic">
+                      Sin pedidos
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── MOBILE: collapsible sections (unchanged) ─────────────────── */}
+      <div className="lg:hidden space-y-3">
         {GROUPS.map((group) => {
           const groupOrders = group.statuses.flatMap((s) => byStatus[s] ?? []);
+          const isOpen = isGroupOpen(group.key, groupOrders.length);
           return (
-            <section id={`section-${group.key}`} key={group.key}>
-              <div className="mb-3 scroll-mt-4">
-                <span className={`rounded-full border px-3 py-1 text-sm font-bold ${group.accent}`}>
-                  {group.label} · {groupOrders.length}
-                </span>
+            <section id={`section-${group.key}`} key={group.key} className="scroll-mt-4">
+              <div className={`flex items-center justify-between rounded-2xl border-2 px-4 py-3 ${group.accent}`}>
+                <Link
+                  className="flex-1 text-sm font-bold hover:underline"
+                  href={`/restaurant/${restaurantSlug}/orders/${group.key}`}
+                >
+                  {group.label}
+                  <span className="ml-2 rounded-full bg-white/60 px-2 py-0.5 text-xs font-black">
+                    {groupOrders.length}
+                  </span>
+                </Link>
+                <button
+                  aria-expanded={isOpen}
+                  className="ml-2 shrink-0"
+                  onClick={() => toggleGroup(group.key, groupOrders.length)}
+                  type="button"
+                >
+                  <svg
+                    aria-hidden="true"
+                    className={`h-5 w-5 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2.5}
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M19 9l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
               </div>
-              {groupOrders.length > 0 ? (
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5 4xl:grid-cols-6 xl:items-start">
-                  {groupOrders.map((order) => (
-                    <OrderCard
-                      key={order.id}
-                      now={now}
-                      onViewProof={setProofUrl}
-                      order={order}
-                      readOnly={readOnly}
-                      restaurantName={restaurantName}
-                      restaurantSlug={restaurantSlug}
-                    />
-                  ))}
+              {!isOpen && groupOrders.length === 0 && (
+                <p className="mt-1 px-2 text-xs text-stone-400 italic">Sin pedidos.</p>
+              )}
+              {isOpen && (
+                <div className="mt-3">
+                  {groupOrders.length > 0 ? (
+                    <div className="grid gap-4 sm:grid-cols-2 sm:items-start">
+                      {groupOrders.map((order) => (
+                        <OrderCard
+                          key={order.id}
+                          expanded={isCardExpanded(order.id)}
+                          now={now}
+                          onToggle={() => toggleCard(order.id)}
+                          onViewProof={setProofUrl}
+                          order={order}
+                          readOnly={readOnly}
+                          restaurantName={restaurantName}
+                          restaurantSlug={restaurantSlug}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-stone-400 italic px-1">Sin pedidos en esta categoría.</p>
+                  )}
                 </div>
-              ) : (
-                <p className="text-sm text-stone-400 italic">Sin pedidos en esta categoría.</p>
               )}
             </section>
           );
@@ -206,8 +338,9 @@ export function RestaurantOrders({ restaurantSlug, restaurantName = "", orders, 
   );
 }
 
-function OrderCard({ order, restaurantSlug, restaurantName, now, readOnly, onViewProof }: {
-  order: Order; restaurantSlug: string; restaurantName: string; now: number | null; readOnly: boolean; onViewProof: (url: string) => void;
+export function OrderCard({ order, restaurantSlug, restaurantName, now, readOnly, onViewProof, expanded, onToggle }: {
+  order: Order; restaurantSlug: string; restaurantName: string; now: number | null; readOnly: boolean;
+  onViewProof: (url: string) => void; expanded: boolean; onToggle: () => void;
 }) {
   const [confirmNoProof, setConfirmNoProof] = useState(false);
   const border = urgencyBorder(order, now);
@@ -215,12 +348,24 @@ function OrderCard({ order, restaurantSlug, restaurantName, now, readOnly, onVie
 
   return (
     <article className={`card flex flex-col gap-0 ${border}`}>
-      <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
-        <div>
+      {/* Header — nowrap prevents status badge from dropping to a new line */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
           <p className="text-3xl font-black tracking-tight">{formatOrderNumber(order.orderNumber)}</p>
-          <p className="mt-0.5 text-sm text-stone-400">{order.createdAtLabel}</p>
+          {/* Two fixed lines — time on one, relative on another — keeps card height uniform */}
+          <p className="mt-0.5 flex items-center gap-1.5 text-sm text-stone-400 truncate">
+            {order.createdAtLabel}
+            {!expanded && order.paymentProofPath && (
+              <span className="rounded-full bg-purple-100 px-1.5 py-0.5 text-xs font-semibold text-purple-700 shrink-0">📎</span>
+            )}
+          </p>
+          {!readOnly && (
+            <p className="text-xs text-stone-400 h-4 leading-4 truncate">
+              {now ? relativeTime(order.createdAtMs, now) : " "}
+            </p>
+          )}
         </div>
-        <span className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold ${statusColors[order.status]}`}>
+        <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${statusColors[order.status]}`}>
           {statusLabels[order.status]}
         </span>
       </div>
@@ -259,43 +404,71 @@ function OrderCard({ order, restaurantSlug, restaurantName, now, readOnly, onVie
         </p>
       </div>
 
-      <div className="mt-4 space-y-2">
-        {/* Catalog mode: group items by category */}
-        {order.items[0]?.catalogItem ? (
-          (() => {
-            const byCategory = order.items.reduce<Record<string, typeof order.items>>((acc, item) => {
-              (acc[item.catalogCategory] ??= []).push(item);
-              return acc;
-            }, {});
-            return Object.entries(byCategory).map(([cat, items]) => (
-              <div className="rounded-xl bg-stone-50 p-3" key={cat}>
-                <p className="mb-1 text-xs font-bold uppercase tracking-wider text-stone-400">{cat}</p>
-                {items.map(item => (
-                  <div className="flex items-baseline justify-between gap-2 text-base" key={item.id}>
-                    <span className="font-medium">{item.quantity} × {item.catalogItem}</span>
-                    <span className="text-sm text-stone-500">{formatMoney(Number(item.unitPrice) * item.quantity)}</span>
-                  </div>
-                ))}
+      {/* Items — hidden in compact mode, visible when expanded */}
+      {expanded ? (
+        <div className="mt-4 space-y-2">
+          {order.items[0]?.catalogItem ? (
+            (() => {
+              const byCategory = order.items.reduce<Record<string, typeof order.items>>((acc, item) => {
+                (acc[item.catalogCategory] ??= []).push(item);
+                return acc;
+              }, {});
+              return Object.entries(byCategory).map(([cat, items]) => (
+                <div className="rounded-xl bg-stone-50 p-3" key={cat}>
+                  <p className="mb-1 text-xs font-bold uppercase tracking-wider text-stone-400">{cat}</p>
+                  {items.map(item => (
+                    <div className="flex items-baseline justify-between gap-2 text-base" key={item.id}>
+                      <span className="font-medium">{item.quantity} × {item.catalogItem}</span>
+                      <span className="text-sm text-stone-500">{formatMoney(Number(item.unitPrice) * item.quantity)}</span>
+                    </div>
+                  ))}
+                </div>
+              ));
+            })()
+          ) : (
+            order.items.map((item, index) => (
+              <div className="rounded-xl bg-stone-50 p-3" key={item.id}>
+                {order.items.length > 1 && <p className="mb-2 text-xs font-bold uppercase tracking-wider text-stone-400">Almuerzo {index + 1}</p>}
+                <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-base">
+                  <dt className="text-stone-500">Sopa</dt>      <dd className="font-medium">{parseItemName(item.soup)}</dd>
+                  <dt className="text-stone-500">Proteína</dt>  <dd className="font-medium">{parseItemName(item.protein)}</dd>
+                  <dt className="text-stone-500">Principio</dt> <dd className="font-medium">{parseItemName(item.side)}</dd>
+                  <dt className="text-stone-500">Bebida</dt>    <dd className="font-medium">{parseItemName(item.drink)}</dd>
+                </dl>
               </div>
-            ));
-          })()
-        ) : (
-          /* Combo mode (legacy) */
-          order.items.map((item, index) => (
-            <div className="rounded-xl bg-stone-50 p-3" key={item.id}>
-              {order.items.length > 1 && <p className="mb-2 text-xs font-bold uppercase tracking-wider text-stone-400">Almuerzo {index + 1}</p>}
-              <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-base">
-                <dt className="text-stone-500">Sopa</dt>      <dd className="font-medium">{parseItemName(item.soup)}</dd>
-                <dt className="text-stone-500">Proteína</dt>  <dd className="font-medium">{parseItemName(item.protein)}</dd>
-                <dt className="text-stone-500">Principio</dt> <dd className="font-medium">{parseItemName(item.side)}</dd>
-                <dt className="text-stone-500">Bebida</dt>    <dd className="font-medium">{parseItemName(item.drink)}</dd>
-              </dl>
-            </div>
-          ))
-        )}
-      </div>
+            ))
+          )}
+        </div>
+      ) : (
+        /* Compact: show item count summary + toggle button */
+        <button
+          className="mt-3 flex w-full items-center justify-between rounded-xl bg-stone-50 px-3 py-2 text-sm text-stone-500 transition hover:bg-stone-100"
+          onClick={onToggle}
+          type="button"
+        >
+          <span>
+            {order.items[0]?.catalogItem
+              ? `${order.items.reduce((s, i) => s + i.quantity, 0)} producto${order.items.reduce((s, i) => s + i.quantity, 0) !== 1 ? "s" : ""}`
+              : `${order.items.length} almuerzo${order.items.length !== 1 ? "s" : ""}`}
+          </span>
+          <span className="text-xs font-semibold text-brand-blue">Ver detalle ↓</span>
+        </button>
+      )}
 
-      {order.paymentProofPath && (
+      {/* Toggle button when expanded — same style as "Ver detalle" */}
+      {expanded && (
+        <button
+          className="mt-2 flex w-full items-center justify-between rounded-xl bg-stone-50 px-3 py-2 text-sm text-stone-500 transition hover:bg-stone-100"
+          onClick={onToggle}
+          type="button"
+        >
+          <span />
+          <span className="text-xs font-semibold text-brand-blue">Ocultar detalle ↑</span>
+        </button>
+      )}
+
+      {/* Proof section — only shown when expanded to keep compact height uniform */}
+      {expanded && order.paymentProofPath && (
         <div className="mt-4 rounded-xl bg-purple-50 p-3">
           <p className="text-sm font-semibold text-purple-800">
             Comprobante recibido{order.paymentSubmittedAtLabel ? ` · ${order.paymentSubmittedAtLabel}` : ""}
@@ -306,75 +479,86 @@ function OrderCard({ order, restaurantSlug, restaurantName, now, readOnly, onVie
         </div>
       )}
 
-      {/* Action buttons */}
-      {!readOnly && order.status !== "CANCELLED" && order.status !== "PAYMENT_CONFIRMED" && (
-        <div className="mt-4 flex flex-col gap-2 border-t border-stone-100 pt-4">
-          {/* Confirm payment — requires proof OR explicit double-confirm */}
-          {confirmNoProof && !order.paymentProofPath ? (
-            <div className="rounded-xl bg-amber-50 p-3 text-sm">
-              <p className="font-semibold text-amber-900">⚠ El cliente no adjuntó comprobante</p>
-              <p className="mt-1 text-amber-800">¿Confirmar el pago de todas formas?</p>
-              <div className="mt-3 flex gap-2">
-                <ConfirmButton id={order.id} onCancel={() => setConfirmNoProof(false)} slug={restaurantSlug} />
-                <button className={`${NEUTRAL_BTN} text-sm`} onClick={() => setConfirmNoProof(false)} type="button">Cancelar</button>
-              </div>
-            </div>
-          ) : (
-            <button
-              className={`${order.paymentProofPath ? "button-primary" : "rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800 transition hover:bg-amber-100"} w-full`}
-              onClick={() => {
-                if (!order.paymentProofPath) { setConfirmNoProof(true); return; }
-                // Has proof — submit directly via hidden form
-                (document.getElementById(`confirm-form-${order.id}`) as HTMLFormElement | null)?.requestSubmit();
-              }}
-              type="button"
-            >
-              {order.paymentProofPath ? "Confirmar pago" : "⚠ Confirmar sin comprobante"}
-            </button>
-          )}
-          {/* Hidden form for direct confirmation when proof exists */}
-          <form id={`confirm-form-${order.id}`} action={updateOrderStatus} className="hidden">
-            <input name="id" type="hidden" value={order.id} />
-            <input name="slug" type="hidden" value={restaurantSlug} />
-            <input name="status" type="hidden" value="PAYMENT_CONFIRMED" />
-          </form>
+      {/* ── Action buttons ───────────────────────────────────────────────
+          Compact: 1 primary action only (keeps card height uniform).
+          Expanded: all secondary actions become visible. */}
+      {!readOnly && (
+        <div className="mt-3 border-t border-stone-100 pt-3 space-y-2">
 
-          <div className="flex flex-wrap gap-2">
-            {order.status === "PAYMENT_REJECTED" && (
-              <StatusButton id={order.id} slug={restaurantSlug} status="PAYMENT_REVIEW" secondary>↩ Reactivar pedido</StatusButton>
-            )}
-            {order.paymentProofPath && order.status !== "PAYMENT_REJECTED" && (
-              <StatusButton id={order.id} slug={restaurantSlug} status="PAYMENT_REJECTED" secondary>Solicitar nuevo comprobante</StatusButton>
-            )}
-            <StatusButton id={order.id} slug={restaurantSlug} status="CANCELLED" secondary>Cancelar</StatusButton>
-          </div>
-        </div>
-      )}
-      {!readOnly && order.status === "PAYMENT_CONFIRMED" && (
-        <div className="mt-4 flex flex-wrap gap-2 border-t border-stone-100 pt-4">
-          <StatusButton
-            id={order.id}
-            slug={restaurantSlug}
-            status={order.paymentProofPath ? "PAYMENT_REVIEW" : "PAYMENT_PENDING"}
-            secondary
-          >
-            ↩ Reactivar pedido
-          </StatusButton>
-          <StatusButton id={order.id} slug={restaurantSlug} status="CANCELLED" secondary>
-            Cancelar pedido
-          </StatusButton>
-        </div>
-      )}
-      {!readOnly && order.status === "CANCELLED" && (
-        <div className="mt-4 flex flex-wrap gap-2 border-t border-stone-100 pt-4">
-          <StatusButton
-            id={order.id}
-            slug={restaurantSlug}
-            status={order.paymentProofPath ? "PAYMENT_REVIEW" : "PAYMENT_PENDING"}
-            secondary
-          >
-            ↩ Reactivar pedido
-          </StatusButton>
+          {/* ── PRIMARY ACTION (always visible) ── */}
+          {order.status !== "CANCELLED" && order.status !== "PAYMENT_CONFIRMED" && (
+            <>
+              {confirmNoProof && !order.paymentProofPath ? (
+                <div className="rounded-xl bg-amber-50 p-3 text-sm">
+                  <p className="font-semibold text-amber-900">⚠ El cliente no adjuntó comprobante</p>
+                  <p className="mt-1 text-amber-800">¿Confirmar el pago de todas formas?</p>
+                  <div className="mt-3 flex gap-2">
+                    <ConfirmButton id={order.id} onCancel={() => setConfirmNoProof(false)} slug={restaurantSlug} />
+                    <button className={`${NEUTRAL_BTN} text-sm`} onClick={() => setConfirmNoProof(false)} type="button">Cancelar</button>
+                  </div>
+                </div>
+              ) : (
+                order.status !== "PAYMENT_REJECTED" && (
+                  <>
+                    <button
+                      className={`${order.paymentProofPath ? "button-primary" : "rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-800 transition hover:bg-amber-100"} w-full`}
+                      onClick={() => {
+                        if (!order.paymentProofPath) { setConfirmNoProof(true); return; }
+                        (document.getElementById(`confirm-form-${order.id}`) as HTMLFormElement | null)?.requestSubmit();
+                      }}
+                      type="button"
+                    >
+                      {order.paymentProofPath ? "Confirmar pago" : "⚠ Confirmar sin comprobante"}
+                    </button>
+                    <form id={`confirm-form-${order.id}`} action={updateOrderStatus} className="hidden">
+                      <input name="id" type="hidden" value={order.id} />
+                      <input name="slug" type="hidden" value={restaurantSlug} />
+                      <input name="status" type="hidden" value="PAYMENT_CONFIRMED" />
+                    </form>
+                  </>
+                )
+              )}
+            </>
+          )}
+
+          {/* ── SECONDARY ACTIONS (expanded only) ── */}
+          {expanded && (
+            <div className="flex flex-wrap gap-2">
+              {/* Rejected: reactivate */}
+              {order.status === "PAYMENT_REJECTED" && (
+                <StatusButton id={order.id} slug={restaurantSlug} status="PAYMENT_REVIEW" secondary>↩ Reactivar pedido</StatusButton>
+              )}
+              {/* Has proof + not rejected: request new proof */}
+              {order.paymentProofPath && order.status === "PAYMENT_REVIEW" && (
+                <StatusButton id={order.id} slug={restaurantSlug} status="PAYMENT_REJECTED" secondary>Solicitar nuevo comprobante</StatusButton>
+              )}
+              {/* Cancel (all active statuses) */}
+              {order.status !== "CANCELLED" && order.status !== "PAYMENT_CONFIRMED" && (
+                <StatusButton id={order.id} slug={restaurantSlug} status="CANCELLED" secondary>Cancelar</StatusButton>
+              )}
+              {/* Confirmed: reactivate or cancel */}
+              {order.status === "PAYMENT_CONFIRMED" && (
+                <>
+                  <StatusButton id={order.id} slug={restaurantSlug} status={order.paymentProofPath ? "PAYMENT_REVIEW" : "PAYMENT_PENDING"} secondary>↩ Reactivar pedido</StatusButton>
+                  <StatusButton id={order.id} slug={restaurantSlug} status="CANCELLED" secondary>Cancelar pedido</StatusButton>
+                </>
+              )}
+              {/* Cancelled: reactivate */}
+              {order.status === "CANCELLED" && (
+                <StatusButton id={order.id} slug={restaurantSlug} status={order.paymentProofPath ? "PAYMENT_REVIEW" : "PAYMENT_PENDING"} secondary>↩ Reactivar pedido</StatusButton>
+              )}
+            </div>
+          )}
+
+          {/* Compact: show reactivate for cancelled/confirmed (single small button) */}
+          {!expanded && (order.status === "PAYMENT_CONFIRMED" || order.status === "CANCELLED") && (
+            <StatusButton id={order.id} slug={restaurantSlug} status={order.paymentProofPath ? "PAYMENT_REVIEW" : "PAYMENT_PENDING"} secondary>
+              ↩ Reactivar pedido
+            </StatusButton>
+          )}
+          {!expanded && order.status === "PAYMENT_REJECTED" && (
+            <StatusButton id={order.id} slug={restaurantSlug} status="PAYMENT_REVIEW" secondary>↩ Reactivar pedido</StatusButton>
+          )}
         </div>
       )}
     </article>

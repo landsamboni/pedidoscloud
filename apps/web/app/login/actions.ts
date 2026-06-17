@@ -57,7 +57,39 @@ export async function loginAction(_: LoginState, formData: FormData): Promise<Lo
     redirect(from && from.startsWith("/admin") ? from : "/admin");
   }
 
-  // Restaurant login — credentials from DB
+  const { compare } = await import("bcryptjs");
+
+  // ── Additional restaurant operator (RestaurantUser) ──────────────────────
+  // Checked BEFORE the main restaurant slug so operators can have a dedicated
+  // username that differs from the restaurant slug.
+  const opUser = await prisma.restaurantUser.findUnique({
+    where: { username },
+    select: {
+      passwordHash: true,
+      active: true,
+      restaurant: { select: { slug: true, active: true, subscriptionEndsAt: true } },
+    },
+  });
+
+  if (opUser) {
+    if (!opUser.active || !opUser.restaurant.active) {
+      return { error: "Credenciales inválidas." };
+    }
+    const valid = await compare(password, opUser.passwordHash);
+    if (!valid) return { error: "Credenciales inválidas." };
+
+    rateLimitReset(`login:${username}`);
+    const slug = opUser.restaurant.slug;
+    await createSession({
+      role: "restaurant",
+      restaurantSlug: slug,
+      subscriptionEndsAt: opUser.restaurant.subscriptionEndsAt?.toISOString(),
+    });
+    const dest = from && from.startsWith(`/restaurant/${slug}`) ? from : `/restaurant/${slug}`;
+    redirect(dest);
+  }
+
+  // ── Main restaurant login (slug as username) ──────────────────────────────
   const restaurant = await prisma.restaurant.findUnique({
     where: { slug: username },
     select: { slug: true, active: true, passwordHash: true, subscriptionEndsAt: true },
@@ -68,7 +100,6 @@ export async function loginAction(_: LoginState, formData: FormData): Promise<Lo
     return { error: "Este restaurante aún no tiene contraseña. Contacta al administrador." };
   }
 
-  const { compare } = await import("bcryptjs");
   const valid = await compare(password, restaurant.passwordHash);
   if (!valid) return { error: "Credenciales inválidas." };
 

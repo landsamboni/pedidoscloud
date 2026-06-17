@@ -1,4 +1,4 @@
-import { logoutAction } from "@/app/login/actions";
+import { LogoutButton } from "@/components/logout-button";
 
 export default async function SuspendedPage({ params }: { params: Promise<{ restaurantSlug: string }> }) {
   const { restaurantSlug } = await params;
@@ -22,11 +22,9 @@ export default async function SuspendedPage({ params }: { params: Promise<{ rest
           </p>
         </div>
 
-        <form action={logoutAction} className="mt-6">
-          <button className="button-danger w-full" type="submit">
-            Cerrar sesión
-          </button>
-        </form>
+        <div className="mt-6 flex justify-center">
+          <LogoutButton className="button-danger w-full" />
+        </div>
 
         <p className="mt-4 text-xs text-stone-400">Restaurante: {restaurantSlug}</p>
       </div>

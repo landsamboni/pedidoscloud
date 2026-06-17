@@ -157,6 +157,10 @@ export async function getAdminRestaurant(slug: string) {
         orderBy: { createdAt: "asc" },
       },
       paymentMethods: { orderBy: { position: "asc" } },
+      users: {
+        orderBy: { createdAt: "asc" },
+        select: { id: true, username: true, displayName: true, active: true, createdAt: true },
+      },
     },
   });
 }

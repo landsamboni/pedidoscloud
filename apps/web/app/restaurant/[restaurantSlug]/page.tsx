@@ -4,7 +4,6 @@ import { RestaurantSettings } from "@/components/restaurant-settings";
 import { BusinessDataForm } from "@/components/business-data-form";
 import { DeliveryCard, PaymentCard } from "@/components/settings-cards";
 import { ChangePasswordForm } from "@/components/change-password-form";
-import { logoutAction } from "@/app/login/actions";
 import { formatMoney, formatOrderNumber } from "@/lib/format";
 import { getDaysRemaining, getSubscriptionStatus, STATUS_COLORS, STATUS_LABELS } from "@/lib/subscription";
 import { getMenuForEditor, getTodayOrders } from "@/lib/data";
@@ -22,17 +21,10 @@ export default async function RestaurantConsolePage({ params }: { params: Promis
 
   return (
     <main className="mx-auto max-w-4xl p-4 sm:p-6 2xl:max-w-6xl 3xl:max-w-7xl">
-      <header className="flex flex-wrap items-start justify-between gap-4 py-5">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-teal-600">Consola del restaurante</p>
-          <h1 className="mt-1 text-3xl font-bold">{restaurant.name}</h1>
-          <p className="mt-2 text-stone-600">Administra tu menú, pagos Nequi y pedidos del día.</p>
-        </div>
-        <form action={logoutAction}>
-          <button className="button-danger" type="submit">
-            Cerrar sesión
-          </button>
-        </form>
+      <header className="py-5">
+        <p className="text-sm font-semibold uppercase tracking-wide text-teal-600">Consola del restaurante</p>
+        <h1 className="mt-1 text-3xl font-bold">{restaurant.name}</h1>
+        <p className="mt-1 text-stone-600">Administra tu menú, pagos Nequi y pedidos del día.</p>
       </header>
 
       {/* Subscription status banner */}
@@ -52,14 +44,37 @@ export default async function RestaurantConsolePage({ params }: { params: Promis
       )}
 
       <section className="card">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap gap-3">
-            <Link className="button-primary" href={`/restaurant/${restaurantSlug}/orders`}>Pedidos de hoy</Link>
-            <Link className="button-secondary" href={`/restaurant/${restaurantSlug}/history`}>Historial</Link>
-            <Link className="button-secondary" href={`/restaurant/${restaurantSlug}/analytics`}>Analíticas</Link>
-            <Link className="button-secondary" href={`/restaurant/${restaurantSlug}/customers`}>Clientes</Link>
-          </div>
-          <Link className="button-primary shrink-0" href={`/r/${restaurantSlug}`} rel="noreferrer" style={{ backgroundColor: "#7B61FF" }} target="_blank">Link para pedidos de clientes ↗</Link>
+        {/* Link para pedidos — full width, destacado */}
+        <Link
+          className="mb-3 flex w-full items-center justify-center rounded-2xl px-5 py-3.5 text-base font-bold text-white shadow-sm transition hover:opacity-90"
+          href={`/r/${restaurantSlug}`}
+          rel="noreferrer"
+          style={{ backgroundColor: "#7B61FF" }}
+          target="_blank"
+        >
+          Link para pedidos de clientes ↗
+        </Link>
+
+        {/* Navegación — grilla 2×2 en móvil, 4 columnas en desktop */}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {[
+            { label: "Pedidos de hoy", href: `/restaurant/${restaurantSlug}/orders`, blue: true },
+            { label: "Historial",      href: `/restaurant/${restaurantSlug}/history` },
+            { label: "Analíticas",     href: `/restaurant/${restaurantSlug}/analytics` },
+            { label: "Clientes",       href: `/restaurant/${restaurantSlug}/customers` },
+          ].map(({ label, href, blue }) => (
+            <Link
+              key={href}
+              className={`flex items-center justify-center rounded-xl px-3 py-3 text-sm font-semibold text-center leading-tight transition hover:opacity-90 ${
+                blue
+                  ? "bg-brand-blue text-white"
+                  : "border border-stone-300 bg-white text-stone-700 hover:bg-stone-50"
+              }`}
+              href={href}
+            >
+              {label}
+            </Link>
+          ))}
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-4">
           <Summary label="Pedidos de hoy" value={String(restaurant.orders.length)} />
