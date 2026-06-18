@@ -111,21 +111,38 @@ export function CatalogOrderForm({ restaurantSlug, orderUnitLabel, categories, d
           <div className="space-y-2">
             {cat.items.map(item => {
               const qty = quantities[item.id] ?? 0;
+              const imgUrl = item.imagePath ? resolveFileUrl(item.imagePath) : null;
               return (
-                <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-stone-200 p-3">
-                  <div className="min-w-0">
-                    <p className="font-medium text-stone-900 truncate">{item.name}</p>
-                    <p className="text-sm font-semibold text-brand-blue">{formatMoney(item.price)}</p>
-                    {(item.description || item.imagePath) && (
-                      <button
-                        className="mt-0.5 text-xs font-medium text-brand-purple hover:underline"
-                        onClick={() => setDetailItem(item)}
-                        type="button"
-                      >
-                        Ver detalles ›
-                      </button>
-                    )}
+                <div key={item.id} className={`flex items-center gap-3 rounded-xl border p-3 transition ${qty > 0 ? "border-brand-blue/30 bg-brand-blue/5" : "border-stone-200"}`}>
+                  {/* Thumbnail — clickable to open full detail */}
+                  {imgUrl ? (
+                    <button
+                      aria-label={`Ver foto de ${item.name}`}
+                      className="h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-stone-200 bg-stone-100"
+                      onClick={() => setDetailItem(item)}
+                      type="button"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img alt={item.name} className="h-full w-full object-cover" src={imgUrl} />
+                    </button>
+                  ) : null}
+
+                  {/* Info */}
+                  <div className="min-w-0 flex-1">
+                    <button
+                      className="text-left w-full"
+                      onClick={() => (item.description || item.imagePath) ? setDetailItem(item) : undefined}
+                      type="button"
+                    >
+                      <p className="font-semibold text-stone-900 leading-tight">{item.name}</p>
+                      {item.description && (
+                        <p className="mt-0.5 text-xs text-stone-500 line-clamp-2 leading-snug">{item.description}</p>
+                      )}
+                    </button>
+                    <p className="mt-1 text-sm font-bold text-brand-blue">{formatMoney(item.price)}</p>
                   </div>
+
+                  {/* Quantity controls */}
                   <div className="flex shrink-0 items-center gap-2">
                     <button
                       aria-label="Quitar uno"
