@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 function WhatsAppIcon() {
   return (
@@ -23,14 +23,14 @@ function WhatsAppIcon() {
  */
 export function ShareMenuImage({ slug, publishedToday, hasTemplate, version = "" }: { slug: string; publishedToday: boolean; hasTemplate: boolean; version?: string }) {
   const [canShareFiles, setCanShareFiles] = useState(false);
+  const [canShareText, setCanShareText]   = useState(false);
   const [copied, setCopied] = useState(false);
   const [preview, setPreview] = useState(false);
+  const [desktopPanel, setDesktopPanel] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const blobRef = useRef<Blob | null>(null);
-  // `version` busts the cache so editing the menu regenerates the image (the page
-  // refreshes in place without remounting, so the URL must change to refetch).
   const imageUrl = `/r/${slug}/menu-image?v=${encodeURIComponent(version)}`;
 
   useEffect(() => {
@@ -40,6 +40,8 @@ export function ShareMenuImage({ slug, publishedToday, hasTemplate, version = ""
     } catch {
       setCanShareFiles(false);
     }
+    // Text-only share (works on desktop Chrome, Edge, Android — does NOT require files)
+    setCanShareText(typeof navigator.share === "function");
   }, []);
 
   // Prefetch the PNG (ready before the user taps share / opens preview). Re-runs
@@ -95,7 +97,7 @@ export function ShareMenuImage({ slug, publishedToday, hasTemplate, version = ""
   }
 
   async function onShare() {
-    copyLink(); // fire-and-forget so it doesn't delay the share gesture
+    copyLink();
     let b = blobRef.current;
     if (!b) {
       setBusy(true);
@@ -108,20 +110,36 @@ export function ShareMenuImage({ slug, publishedToday, hasTemplate, version = ""
       }
       setBusy(false);
     }
+
     if (canShareFiles) {
+      // Mobile / desktop with file-share support → native OS share sheet with the image
       try {
-        await navigator.share({ files: [new File([b], `menu-${slug}.png`, { type: "image/png" })], text: orderLink(), title: "Menú de hoy" });
+        await navigator.share({
+          files: [new File([b], `menu-${slug}.png`, { type: "image/png" })],
+          text: orderLink(),
+          title: "Menú de hoy",
+        });
       } catch {
-        // user dismissed the share sheet, or sharing failed — no-op
+        // dismissed — no-op
+      }
+    } else if (canShareText) {
+      // Desktop Chrome/Edge: share the menu link via native share dialog
+      // (image files not supported but the link lets customers order directly)
+      try {
+        await navigator.share({ url: orderLink(), title: "Menú de hoy" });
+        // Also download the image so they can attach it manually if they want
+        downloadBlob(b);
+      } catch {
+        // dismissed — fall through to the desktop panel
+        setDesktopPanel(true);
       }
     } else {
-      // Desktop: no native file sharing. Download the image and open WhatsApp Web
-      // (uses an active session or the installed app) so the operator can drag the
-      // downloaded image into a chat. (Status posting is mobile-only in WhatsApp.)
-      downloadBlob(b);
-      window.open("https://web.whatsapp.com/", "_blank", "noopener,noreferrer");
+      // Safari / Firefox desktop: no share API — show the helper panel
+      setDesktopPanel(true);
     }
   }
+
+  const waWebLink = `https://web.whatsapp.com/send?text=${encodeURIComponent(orderLink())}`;
 
   return (
     <div className="space-y-3">
@@ -135,20 +153,65 @@ export function ShareMenuImage({ slug, publishedToday, hasTemplate, version = ""
         </button>
       </div>
 
-      {copied ? (
-        <p className="text-sm font-medium text-emerald-700">✓ Link de pedidos copiado. Pégalo en tu estado junto a la imagen.</p>
-      ) : (
-        <p className="text-xs text-stone-500">Al compartir, copiamos tu link de pedidos para que lo pegues en el estado de WhatsApp.</p>
-      )}
-
-      {!canShareFiles && (
-        <p className="text-xs text-stone-400">
-          En computador se descarga la imagen y se abre WhatsApp Web (arrastra ahí la imagen). Para publicar un <strong>estado</strong>, usa el celular.
-        </p>
+      {copied && (
+        <p className="text-sm font-medium text-emerald-700">✓ Link de pedidos copiado.</p>
       )}
 
       {!hasTemplate && (
         <p className="text-sm text-stone-500">Aún no has subido una plantilla de fondo: se usa un fondo por defecto. Sube una abajo para personalizarla.</p>
+      )}
+
+      {/* Desktop helper panel — shown when native file-share isn't available */}
+      {desktopPanel && (
+        <div className="rounded-xl border border-stone-200 bg-stone-50 p-4 space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-sm font-semibold text-stone-800">Compartir desde computador</p>
+            <button className="text-stone-400 hover:text-stone-600 text-lg leading-none" onClick={() => setDesktopPanel(false)} type="button">✕</button>
+          </div>
+          <ol className="text-sm text-stone-600 space-y-2 list-decimal list-inside">
+            <li>
+              <button
+                className="font-semibold text-brand-blue hover:underline"
+                onClick={() => { blobRef.current && downloadBlob(blobRef.current); }}
+                type="button"
+              >
+                Descarga la imagen del menú
+              </button>
+              {" "}— se guarda en tu carpeta de Descargas.
+            </li>
+            <li>
+              <a
+                className="font-semibold text-[#25D366] hover:underline"
+                href={waWebLink}
+                rel="noreferrer"
+                target="_blank"
+              >
+                Abre WhatsApp Web
+              </a>
+              {" "}con el link del menú ya listo para enviar.
+            </li>
+            <li>En WhatsApp Web, adjunta la imagen descargada al chat o estado que quieras.</li>
+          </ol>
+          <p className="text-xs text-stone-400">
+            💡 Para publicar la imagen directamente como <strong>estado</strong> de WhatsApp, hazlo desde tu celular donde tienes la app instalada.
+          </p>
+          <div className="flex gap-2">
+            <button
+              className="button-secondary text-sm py-1.5"
+              onClick={() => { blobRef.current && downloadBlob(blobRef.current); }}
+              type="button"
+            >
+              ↓ Descargar imagen
+            </button>
+            <button
+              className="button-secondary text-sm py-1.5"
+              onClick={copyLink}
+              type="button"
+            >
+              {copied ? "✓ Copiado" : "Copiar link del menú"}
+            </button>
+          </div>
+        </div>
       )}
 
       {preview && (

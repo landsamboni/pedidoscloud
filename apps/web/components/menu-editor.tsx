@@ -151,31 +151,31 @@ export function MenuEditor({
 
       {review && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setReview(null)}>
-          <div className="flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-stone-200 px-5 py-4">
+          <div className="flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-stone-200 px-4 py-3">
               <div>
-                <p className="text-lg font-bold text-stone-900">Revisar menú de hoy</p>
-                <p className="mt-0.5 text-sm text-stone-500">Así lo verán tus clientes</p>
+                <p className="text-sm font-bold text-stone-900">Revisar menú de hoy</p>
+                <p className="text-xs text-stone-500">Así lo verán tus clientes</p>
               </div>
-              <button aria-label="Cerrar" className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100" onClick={() => setReview(null)} type="button">✕</button>
+              <button aria-label="Cerrar" className="flex h-7 w-7 items-center justify-center rounded-lg text-stone-500 hover:bg-stone-100" onClick={() => setReview(null)} type="button">✕</button>
             </div>
-            <div className="space-y-5 overflow-y-auto px-5 py-4">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-3 overflow-y-auto px-4 py-3">
               {emptyGroups.length > 0 && (
-                <p className="rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+                <p className="col-span-2 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700">
                   ⚠ Falta llenar: {emptyGroups.map((g) => g.label).join(", ")}.
                 </p>
               )}
               {review.map((g) => (
                 <div key={g.label}>
-                  <p className="mb-1.5 text-sm font-bold uppercase tracking-wider text-teal-700">{g.label}</p>
+                  <p className="mb-1 text-xs font-bold uppercase tracking-wider text-teal-700">{g.label}</p>
                   {g.items.length === 0 ? (
-                    <p className="text-sm italic text-stone-400">Sin opciones.</p>
+                    <p className="text-xs italic text-stone-400">Sin opciones.</p>
                   ) : (
-                    <ul className="space-y-1">
+                    <ul className="space-y-0.5">
                       {g.items.map((it, idx) => (
-                        <li className="flex items-baseline justify-between gap-3 border-b border-stone-100 pb-1 text-stone-800" key={idx}>
+                        <li className="flex items-baseline justify-between gap-2 border-b border-stone-100 pb-0.5 text-xs text-stone-800" key={idx}>
                           <span>{it.name}</span>
-                          {it.surcharge && <span className="shrink-0 text-sm font-medium text-amber-600">{it.surcharge}</span>}
+                          {it.surcharge && <span className="shrink-0 font-medium text-amber-600">{it.surcharge}</span>}
                         </li>
                       ))}
                     </ul>
@@ -183,7 +183,7 @@ export function MenuEditor({
                 </div>
               ))}
             </div>
-            <div className="flex shrink-0 flex-col gap-2 border-t border-stone-200 px-5 py-4 sm:flex-row-reverse">
+            <div className="flex shrink-0 flex-col gap-2 border-t border-stone-200 px-4 py-3 sm:flex-row-reverse">
               <button
                 className="button-primary sm:flex-1"
                 disabled={pending || emptyGroups.length > 0}

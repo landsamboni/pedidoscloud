@@ -1644,6 +1644,21 @@ export async function updateCatalogMenu(
       include: { categories: { include: { items: true } } },
     });
 
+    // Capture description + imagePath of existing items BEFORE deleting, keyed by
+    // "categoryName::itemName" (lowercased). The delete-and-recreate strategy would
+    // otherwise silently discard any photos/descriptions added via updateMenuItemDetails.
+    const existingCats = await prisma.menuCategory.findMany({
+      where: { menuId: menu.id },
+      include: { items: { select: { name: true, description: true, imagePath: true } } },
+    });
+    const savedDetails = new Map<string, { description: string | null; imagePath: string | null }>();
+    for (const cat of existingCats) {
+      for (const item of cat.items) {
+        const key = `${cat.name.toLowerCase().trim()}::${item.name.toLowerCase().trim()}`;
+        savedDetails.set(key, { description: item.description, imagePath: item.imagePath });
+      }
+    }
+
     // Replace all categories: delete existing, recreate from submitted data.
     await prisma.menuCategory.deleteMany({ where: { menuId: menu.id } });
     for (let ci = 0; ci < categories.length; ci++) {
@@ -1653,12 +1668,16 @@ export async function updateCatalogMenu(
       });
       for (let ii = 0; ii < cat.items.length; ii++) {
         const item = cat.items[ii];
+        const key = `${cat.name.toLowerCase().trim()}::${item.name.toLowerCase().trim()}`;
+        const saved = savedDetails.get(key);
         await prisma.menuItem.create({
           data: {
             categoryId: created.id,
             name: item.name.trim(),
             price: new Prisma.Decimal(item.price),
             position: ii,
+            description: saved?.description ?? null,
+            imagePath: saved?.imagePath ?? null,
           },
         });
       }

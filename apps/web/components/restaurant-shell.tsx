@@ -106,25 +106,26 @@ export function RestaurantShell({ children, restaurantName, restaurantSlug, pend
 
         {/* Logo */}
         <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-slate-700/60 px-4">
-          <svg className="h-8 w-8 shrink-0" fill="none" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+          <svg className="h-8 w-8 shrink-0" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <linearGradient id="cloud-gradient" x1="0%" x2="100%" y1="0%" y2="100%">
                 <stop offset="0%" stopColor="#c026d3" />
                 <stop offset="50%" stopColor="#818cf8" />
-                <stop offset="100%" stopColor="#3b82f6" />
+                <stop offset="100%" stopColor="#2575FC" />
               </linearGradient>
             </defs>
-            {/* Cloud outline path */}
             <path
-              d="M23.5 20H9a5 5 0 01-.39-9.98A7 7 0 0122.5 12h1a4.5 4.5 0 010 9z"
+              d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"
               stroke="url(#cloud-gradient)"
               strokeLinecap="round"
               strokeLinejoin="round"
-              strokeWidth="2"
+              strokeWidth="1.75"
               fill="none"
             />
           </svg>
-          <span className="text-sm font-bold tracking-tight text-white">PedidosCloud</span>
+          <span className="text-sm font-bold tracking-tight">
+            <span className="text-white">Pedidos</span><span style={{ color: "#2575FC" }}>Cloud</span>
+          </span>
         </div>
 
         {/* Restaurant name */}
